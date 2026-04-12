@@ -1,0 +1,26 @@
+{
+  "calculator_id": "cal.disposal_site.level_assessment",
+  "output_field_id": "field.derived.disposal_site.level_assessment",
+  "status": "ok",
+  "unit": "list_of_records",
+  "value": [
+    {
+      "governing_dimension": "harm",
+      "level": "1级",
+      "level_by_harm": "1级",
+      "level_by_height": "2级",
+      "level_by_volume": "2级",
+      "site_id": "D1",
+      "site_name": "主矿区西侧弃渣场 D1"
+    },
+    {
+      "governing_dimension": "volume",
+      "level": "4级",
+      "level_by_harm": "4级",
+      "level_by_height": "4级",
+      "level_by_volume": "4级",
+      "site_id": "D2",
+      "site_name": "主矿区东侧弃渣场 D2"
+    }
+  ]
+}

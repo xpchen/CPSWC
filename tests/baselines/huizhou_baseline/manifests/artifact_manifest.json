@@ -1,0 +1,19 @@
+{
+  "artifacts": [
+    "art.attachment.AF_2_unavoidability_justification",
+    "art.attachment.AF_4_external_earth_purchase",
+    "art.attachment.AF_6_reuse_evidence",
+    "art.figure.F_06_monitoring_points",
+    "art.figure.F_08_topsoil_survey",
+    "art.figure.F_09_topsoil_stripping_range",
+    "art.figure.F_10_measures_layout",
+    "art.figure.F_12_borrow_and_disposal_location",
+    "art.figure.schedule_gantt",
+    "art.table.earthwork_balance",
+    "art.table.responsibility_range_by_admin_division",
+    "art.table.spoil_summary",
+    "art.table.topsoil_balance",
+    "art.table.weighted_target_calculation"
+  ],
+  "count": 14
+}

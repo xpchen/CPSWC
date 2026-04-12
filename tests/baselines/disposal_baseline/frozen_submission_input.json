@@ -1,0 +1,39 @@
+{
+  "artifact_manifest": [
+    "art.attachment.AF_5_geology_report",
+    "art.figure.F_06_monitoring_points",
+    "art.figure.F_08_topsoil_survey",
+    "art.figure.F_09_topsoil_stripping_range",
+    "art.figure.F_10_measures_layout",
+    "art.figure.F_12_borrow_and_disposal_location",
+    "art.figure.schedule_gantt",
+    "art.table.spoil_summary",
+    "art.table.topsoil_balance"
+  ],
+  "assurance_manifest": [
+    "as.geo.cgcs2000_compliance",
+    "as.geo.downstream_coverage_verified",
+    "as.seal.compile_unit_sealing",
+    "as.signature.responsibility_page"
+  ],
+  "calculator_manifest": [
+    "cal.compensation.fee",
+    "cal.target.weighted_comprehensive",
+    "cal.disposal_site.level_assessment"
+  ],
+  "content_hash": "e8e9c37db9313abde1f7f6894d9cab8b6a48e114faef7fa9db3b078f6ed9839a",
+  "fact_snapshot_hash": "5a327bfdf0548f7a6197dbbdf66632a9335dffcebf358e0a8ae6b6334d634a69",
+  "frozen_at": "2026-04-12T06:53:42.044824+00:00",
+  "obligation_manifest": [
+    "ob.disposal_site.geology_report",
+    "ob.disposal_site.location_map",
+    "ob.disposal_site.separate_prevention_zone",
+    "ob.disposal_site.site_selection",
+    "ob.disposal_site.stability_monitoring",
+    "ob.disposal_site.video_surveillance",
+    "ob.monitoring.baseline_monitoring",
+    "ob.monitoring.point_layout",
+    "ob.schedule.dual_line_gantt_chart",
+    "ob.topsoil.balance_required"
+  ]
+}

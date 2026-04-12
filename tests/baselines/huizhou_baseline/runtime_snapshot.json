@@ -1,0 +1,287 @@
+{
+  "calculator_results": [
+    {
+      "calculator_id": "cal.compensation.fee",
+      "error_message": null,
+      "output_field_id": "field.derived.investment.compensation_fee_amount",
+      "status": "ok",
+      "unit": "万元",
+      "value": 5.7
+    },
+    {
+      "calculator_id": "cal.target.weighted_comprehensive",
+      "error_message": null,
+      "output_field_id": "field.derived.target.weighted_comprehensive_target",
+      "status": "ok",
+      "unit": "record",
+      "value": {
+        "control_degree": 97.49,
+        "soil_loss_control_ratio": 0.89,
+        "spoil_protection_rate": 96.66,
+        "topsoil_protection_rate": 91.16,
+        "vegetation_coverage_rate": 24.49,
+        "vegetation_restoration_rate": 97.83
+      }
+    },
+    {
+      "calculator_id": "cal.disposal_site.level_assessment",
+      "error_message": null,
+      "output_field_id": "field.derived.disposal_site.level_assessment",
+      "status": "ok",
+      "unit": "list_of_records",
+      "value": []
+    }
+  ],
+  "derived_fields": {
+    "field.derived.disposal_site.level_assessment": [],
+    "field.derived.investment.compensation_fee_amount": 5.7,
+    "field.derived.target.weighted_comprehensive_target": {
+      "control_degree": 97.49,
+      "soil_loss_control_ratio": 0.89,
+      "spoil_protection_rate": 96.66,
+      "topsoil_protection_rate": 91.16,
+      "vegetation_coverage_rate": 24.49,
+      "vegetation_restoration_rate": 97.83
+    }
+  },
+  "facts_count": 58,
+  "lifecycle": "pre_submission",
+  "manifest": {
+    "artifacts_required": 14,
+    "assurances_required": 4,
+    "calculators_executed": [
+      {
+        "calculator_id": "cal.compensation.fee",
+        "error_message": null,
+        "output_field_id": "field.derived.investment.compensation_fee_amount",
+        "status": "ok",
+        "unit": "万元",
+        "value": 5.7
+      },
+      {
+        "calculator_id": "cal.target.weighted_comprehensive",
+        "error_message": null,
+        "output_field_id": "field.derived.target.weighted_comprehensive_target",
+        "status": "ok",
+        "unit": "record",
+        "value": {
+          "control_degree": 97.49,
+          "soil_loss_control_ratio": 0.89,
+          "spoil_protection_rate": 96.66,
+          "topsoil_protection_rate": 91.16,
+          "vegetation_coverage_rate": 24.49,
+          "vegetation_restoration_rate": 97.83
+        }
+      },
+      {
+        "calculator_id": "cal.disposal_site.level_assessment",
+        "error_message": null,
+        "output_field_id": "field.derived.disposal_site.level_assessment",
+        "status": "ok",
+        "unit": "list_of_records",
+        "value": []
+      }
+    ],
+    "lifecycle": "pre_submission",
+    "obligations_evaluated": 22,
+    "obligations_triggered": 14,
+    "registries_loaded": [
+      "fields",
+      "obligations",
+      "assurances",
+      "calculators"
+    ],
+    "ruleset": "v2026_gd_package"
+  },
+  "not_triggered_obligations": [
+    "ob.borrow_site.land_use_approval",
+    "ob.disposal_site.failure_analysis",
+    "ob.disposal_site.geology_report",
+    "ob.disposal_site.land_use_approval",
+    "ob.disposal_site.stability_monitoring",
+    "ob.disposal_site.video_surveillance",
+    "ob.topsoil.external_topsoil_source",
+    "ob.topsoil.soil_improvement_required"
+  ],
+  "obligation_details": [
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.sensitive_overlay.multi_admin_breakdown",
+      "py_expr": "len(_get_field('field.fact.location.county_list', unified) or []) >= 2",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.evaluation.weighted_target_required",
+      "py_expr": "len(set(_item.get('standard_level') for _item in (_get_field('field.fact.prevention.control_standard_level_breakdown', unified) or []))) >= 2",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.unavoidability.redline_conflict",
+      "py_expr": "bool(_get_field('field.fact.natural.key_prevention_treatment_areas', unified))  or  bool(_get_field('field.fact.natural.other_sensitive_areas', unified))",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.borrow_site.land_use_approval",
+      "py_expr": "_get_value('field.fact.earthwork.borrow', unified) > 0  and  _get_field('field.fact.earthwork.borrow_source_type', unified) == \"自设取土场\"",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.land_use_approval",
+      "py_expr": "any(_item.get('outside_permanent_land') in [True] for _item in (_get_field('field.fact.construction.temp_topsoil_site', unified) or []))",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.borrow_site.external_purchase_evidence",
+      "py_expr": "_get_value('field.fact.earthwork.borrow', unified) > 0  and  _get_field('field.fact.earthwork.borrow_source_type', unified) == \"外购\"",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.geology_report",
+      "py_expr": "any(_item.get('level') in [\"1级\", \"2级\"] for _item in (_get_field('field.derived.disposal_site.level_assessment', unified) or []))",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.reuse_evidence",
+      "py_expr": "_get_value('field.fact.earthwork.comprehensive_reuse', unified) > 0",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.topsoil.reuse_evidence",
+      "py_expr": "_get_value('field.fact.topsoil.excavation', unified) > _get_value('field.fact.topsoil.fill', unified)",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.site_selection",
+      "py_expr": "_get_value('field.fact.earthwork.spoil', unified) > 0  or  len(_get_field('field.fact.construction.temp_topsoil_site', unified) or []) > 0",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.location_map",
+      "py_expr": "_get_value('field.fact.earthwork.spoil', unified) > 0  or  _get_value('field.fact.earthwork.borrow', unified) > 0  or  len(_get_field('field.fact.construction.temp_topsoil_site', unified) or []) > 0",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.failure_analysis",
+      "py_expr": "_get_field('field.fact.disposal_site.failure_analysis_required', unified) == True",
+      "triggered": false
+    },
+    {
+      "mode": "always",
+      "obligation_id": "ob.monitoring.baseline_monitoring",
+      "py_expr": "True (always)",
+      "triggered": true
+    },
+    {
+      "mode": "always",
+      "obligation_id": "ob.monitoring.point_layout",
+      "py_expr": "True (always)",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.stability_monitoring",
+      "py_expr": "any(_item.get('level') in [\"1级\", \"2级\", \"3级\"] for _item in (_get_field('field.derived.disposal_site.level_assessment', unified) or []))",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.video_surveillance",
+      "py_expr": "any(_item.get('level') in [\"1级\", \"2级\", \"3级\"] for _item in (_get_field('field.derived.disposal_site.level_assessment', unified) or []))",
+      "triggered": false
+    },
+    {
+      "mode": "always",
+      "obligation_id": "ob.schedule.dual_line_gantt_chart",
+      "py_expr": "True (always)",
+      "triggered": true
+    },
+    {
+      "mode": "always",
+      "obligation_id": "ob.topsoil.balance_required",
+      "py_expr": "True (always)",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.evaluation.dual_source_earthwork_justification",
+      "py_expr": "_get_value('field.fact.earthwork.borrow', unified) > 0  and  _get_value('field.fact.earthwork.spoil', unified) > 0",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.separate_prevention_zone",
+      "py_expr": "_get_value('field.fact.earthwork.spoil', unified) > 0  or  len(_get_field('field.fact.construction.temp_topsoil_site', unified) or []) > 0",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.topsoil.soil_improvement_required",
+      "py_expr": "_get_value('field.fact.topsoil.fill', unified) > _get_value('field.fact.topsoil.excavation', unified)",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.topsoil.external_topsoil_source",
+      "py_expr": "_get_value('field.fact.topsoil.fill', unified) > _get_value('field.fact.topsoil.excavation', unified)",
+      "triggered": false
+    }
+  ],
+  "project_input_summary": {
+    "code": "2610-441322-04-01-SAMPLE01",
+    "industry": 29,
+    "name": "惠州市大亚湾澳头湾畔花园住宅小区项目(合成样本)",
+    "species": "报告书"
+  },
+  "required_artifacts": [
+    "art.attachment.AF_2_unavoidability_justification",
+    "art.attachment.AF_4_external_earth_purchase",
+    "art.attachment.AF_6_reuse_evidence",
+    "art.figure.F_06_monitoring_points",
+    "art.figure.F_08_topsoil_survey",
+    "art.figure.F_09_topsoil_stripping_range",
+    "art.figure.F_10_measures_layout",
+    "art.figure.F_12_borrow_and_disposal_location",
+    "art.figure.schedule_gantt",
+    "art.table.earthwork_balance",
+    "art.table.responsibility_range_by_admin_division",
+    "art.table.spoil_summary",
+    "art.table.topsoil_balance",
+    "art.table.weighted_target_calculation"
+  ],
+  "required_assurances": [
+    "as.geo.cgcs2000_compliance",
+    "as.geo.downstream_coverage_verified",
+    "as.seal.compile_unit_sealing",
+    "as.signature.responsibility_page"
+  ],
+  "ruleset": "v2026_gd_package",
+  "snapshot_id": "snap_e45121d023f5",
+  "timestamp": "2026-04-12T06:53:41.750160+00:00",
+  "triggered_obligations": [
+    "ob.borrow_site.external_purchase_evidence",
+    "ob.disposal_site.location_map",
+    "ob.disposal_site.reuse_evidence",
+    "ob.disposal_site.separate_prevention_zone",
+    "ob.disposal_site.site_selection",
+    "ob.evaluation.dual_source_earthwork_justification",
+    "ob.evaluation.weighted_target_required",
+    "ob.monitoring.baseline_monitoring",
+    "ob.monitoring.point_layout",
+    "ob.schedule.dual_line_gantt_chart",
+    "ob.sensitive_overlay.multi_admin_breakdown",
+    "ob.topsoil.balance_required",
+    "ob.topsoil.reuse_evidence",
+    "ob.unavoidability.redline_conflict"
+  ]
+}

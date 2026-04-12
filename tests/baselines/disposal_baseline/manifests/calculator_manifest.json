@@ -1,0 +1,8 @@
+{
+  "calculators": [
+    "cal.compensation.fee",
+    "cal.target.weighted_comprehensive",
+    "cal.disposal_site.level_assessment"
+  ],
+  "count": 3
+}

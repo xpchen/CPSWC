@@ -29,17 +29,27 @@ from cpswc.narrative.contract import (
 )
 from cpswc.narrative.templates.sec_1_1_basic_info import render as render_sec_1_1
 from cpswc.narrative.templates.sec_5_disposal import render_5_1, render_5_2
+from cpswc.narrative.templates.sec_7_2_targets import render as render_sec_7_2
+from cpswc.narrative.templates.sec_9_2_compensation import render as render_sec_9_2
+from cpswc.narrative.templates.sec_2_1_2_land_earthwork import render_2_1, render_2_2
+from cpswc.narrative.templates.sec_11_conclusion import render as render_sec_11
 
 
 # ============================================================
-# Template registry (pilot sections only)
+# Template registry
 # ============================================================
 # key = section_id, value = render function
-# 只有 pilot sections 有 template; 其余 section 保持 skeleton
 _PILOT_TEMPLATES: dict[str, Any] = {
+    # Step 14-0 pilot
     "sec.overview.project_basic": render_sec_1_1,
     "sec.disposal_site.source_and_flow": render_5_1,
     "sec.disposal_site.site_selection": render_5_2,
+    # Step 14-1 batch
+    "sec.soil_loss_prevention.targets": render_sec_7_2,
+    "sec.investment_estimation.compensation_fee": render_sec_9_2,
+    "sec.project_overview.land_occupation": render_2_1,
+    "sec.project_overview.earthwork_balance": render_2_2,
+    "sec.conclusion": render_sec_11,
 }
 
 
@@ -168,7 +178,8 @@ def project_narrative(snapshot: dict) -> NarrativeProjectionResult:
         if sec_id in _PILOT_TEMPLATES and is_applicable:
             try:
                 block = _PILOT_TEMPLATES[sec_id](
-                    facts=facts, derived=derived, triggered=triggered)
+                    facts=facts, derived=derived, triggered=triggered,
+                    snapshot=snapshot)
                 blocks.append(block)
                 if block.render_status == RenderStatus.FULL:
                     full_count += 1

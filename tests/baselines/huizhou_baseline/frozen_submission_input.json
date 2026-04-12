@@ -1,0 +1,48 @@
+{
+  "artifact_manifest": [
+    "art.attachment.AF_2_unavoidability_justification",
+    "art.attachment.AF_4_external_earth_purchase",
+    "art.attachment.AF_6_reuse_evidence",
+    "art.figure.F_06_monitoring_points",
+    "art.figure.F_08_topsoil_survey",
+    "art.figure.F_09_topsoil_stripping_range",
+    "art.figure.F_10_measures_layout",
+    "art.figure.F_12_borrow_and_disposal_location",
+    "art.figure.schedule_gantt",
+    "art.table.earthwork_balance",
+    "art.table.responsibility_range_by_admin_division",
+    "art.table.spoil_summary",
+    "art.table.topsoil_balance",
+    "art.table.weighted_target_calculation"
+  ],
+  "assurance_manifest": [
+    "as.geo.cgcs2000_compliance",
+    "as.geo.downstream_coverage_verified",
+    "as.seal.compile_unit_sealing",
+    "as.signature.responsibility_page"
+  ],
+  "calculator_manifest": [
+    "cal.compensation.fee",
+    "cal.target.weighted_comprehensive",
+    "cal.disposal_site.level_assessment"
+  ],
+  "content_hash": "626c96537aac12996f09acda7f1fc48b4f5cc07ae59d9e752a44e9b5ee089473",
+  "fact_snapshot_hash": "9a5890965770c17df218e5f1364bddc07e437bdedef2144bd7164e041fb8ba2d",
+  "frozen_at": "2026-04-12T06:53:41.750528+00:00",
+  "obligation_manifest": [
+    "ob.borrow_site.external_purchase_evidence",
+    "ob.disposal_site.location_map",
+    "ob.disposal_site.reuse_evidence",
+    "ob.disposal_site.separate_prevention_zone",
+    "ob.disposal_site.site_selection",
+    "ob.evaluation.dual_source_earthwork_justification",
+    "ob.evaluation.weighted_target_required",
+    "ob.monitoring.baseline_monitoring",
+    "ob.monitoring.point_layout",
+    "ob.schedule.dual_line_gantt_chart",
+    "ob.sensitive_overlay.multi_admin_breakdown",
+    "ob.topsoil.balance_required",
+    "ob.topsoil.reuse_evidence",
+    "ob.unavoidability.redline_conflict"
+  ]
+}

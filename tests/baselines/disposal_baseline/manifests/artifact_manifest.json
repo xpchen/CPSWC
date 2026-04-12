@@ -1,0 +1,14 @@
+{
+  "artifacts": [
+    "art.attachment.AF_5_geology_report",
+    "art.figure.F_06_monitoring_points",
+    "art.figure.F_08_topsoil_survey",
+    "art.figure.F_09_topsoil_stripping_range",
+    "art.figure.F_10_measures_layout",
+    "art.figure.F_12_borrow_and_disposal_location",
+    "art.figure.schedule_gantt",
+    "art.table.spoil_summary",
+    "art.table.topsoil_balance"
+  ],
+  "count": 9
+}

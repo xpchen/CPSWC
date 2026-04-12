@@ -1,0 +1,9 @@
+{
+  "assurances": [
+    "as.geo.cgcs2000_compliance",
+    "as.geo.downstream_coverage_verified",
+    "as.seal.compile_unit_sealing",
+    "as.signature.responsibility_page"
+  ],
+  "count": 4
+}

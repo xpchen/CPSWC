@@ -1,0 +1,7 @@
+{
+  "calculator_id": "cal.compensation.fee",
+  "output_field_id": "field.derived.investment.compensation_fee_amount",
+  "status": "ok",
+  "unit": "万元",
+  "value": 5.7
+}

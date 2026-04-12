@@ -1,0 +1,14 @@
+{
+  "calculator_id": "cal.target.weighted_comprehensive",
+  "output_field_id": "field.derived.target.weighted_comprehensive_target",
+  "status": "ok",
+  "unit": "record",
+  "value": {
+    "control_degree": 98,
+    "soil_loss_control_ratio": 0.9,
+    "spoil_protection_rate": 97,
+    "topsoil_protection_rate": 92,
+    "vegetation_coverage_rate": 25,
+    "vegetation_restoration_rate": 98
+  }
+}

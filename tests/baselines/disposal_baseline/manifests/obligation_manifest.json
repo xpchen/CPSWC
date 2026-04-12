@@ -1,0 +1,15 @@
+{
+  "count": 10,
+  "obligations": [
+    "ob.disposal_site.geology_report",
+    "ob.disposal_site.location_map",
+    "ob.disposal_site.separate_prevention_zone",
+    "ob.disposal_site.site_selection",
+    "ob.disposal_site.stability_monitoring",
+    "ob.disposal_site.video_surveillance",
+    "ob.monitoring.baseline_monitoring",
+    "ob.monitoring.point_layout",
+    "ob.schedule.dual_line_gantt_chart",
+    "ob.topsoil.balance_required"
+  ]
+}

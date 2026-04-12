@@ -1,0 +1,19 @@
+{
+  "count": 14,
+  "obligations": [
+    "ob.borrow_site.external_purchase_evidence",
+    "ob.disposal_site.location_map",
+    "ob.disposal_site.reuse_evidence",
+    "ob.disposal_site.separate_prevention_zone",
+    "ob.disposal_site.site_selection",
+    "ob.evaluation.dual_source_earthwork_justification",
+    "ob.evaluation.weighted_target_required",
+    "ob.monitoring.baseline_monitoring",
+    "ob.monitoring.point_layout",
+    "ob.schedule.dual_line_gantt_chart",
+    "ob.sensitive_overlay.multi_admin_breakdown",
+    "ob.topsoil.balance_required",
+    "ob.topsoil.reuse_evidence",
+    "ob.unavoidability.redline_conflict"
+  ]
+}

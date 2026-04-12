@@ -1,0 +1,73 @@
+{
+  "_schema": "cpswc_submission_package_v0",
+  "version_id": "v0_626c96537aac1299",
+  "frozen_input_hash": "626c96537aac12996f09acda7f1fc48b4f5cc07ae59d9e752a44e9b5ee089473",
+  "package_generated_at": "2026-04-12T06:53:41.909587+00:00",
+  "project_summary": {
+    "name": "惠州市大亚湾澳头湾畔花园住宅小区项目(合成样本)",
+    "code": "2610-441322-04-01-SAMPLE01",
+    "industry": 29,
+    "species": "报告书"
+  },
+  "ruleset": "v2026_gd_package",
+  "lifecycle": "pre_submission",
+  "files": {
+    "calculator_results/cal_compensation_fee.json": {
+      "sha256": "f9a322bf20f58262764e148cba14807994a79dcc5403516ffcf55fcf36334234",
+      "role": "calculator_detail"
+    },
+    "calculator_results/cal_disposal_site_level_assessment.json": {
+      "sha256": "5a37ac4603292a83a0ca3cb3e446035866e05b628b285eb10eab0b74e5777178",
+      "role": "calculator_detail"
+    },
+    "calculator_results/cal_target_weighted_comprehensive.json": {
+      "sha256": "5acfed9e5e7c95c1545f06f83c2540502e421cfd7997fd7377f8223ca4e5ea3c",
+      "role": "calculator_detail"
+    },
+    "frozen_submission_input.json": {
+      "sha256": "0d48af66a8fa6c59a19d5a7e8d905731b417ff5083be2af3d237d9bfcc353e29",
+      "role": "freeze_record"
+    },
+    "manifests/artifact_manifest.json": {
+      "sha256": "009aab7156259291e36bc9efc55767af7577843a178325a76aa728c37c936662",
+      "role": "manifest"
+    },
+    "manifests/assurance_manifest.json": {
+      "sha256": "4ba60461e387335c2b15b1de28e9ac8e67cc65eb4972956b02451e8acae45357",
+      "role": "manifest"
+    },
+    "manifests/calculator_manifest.json": {
+      "sha256": "58fc436e34a593c74cc6b4e1231bf89826e05b74522b53b587f3d6376469cb75",
+      "role": "manifest"
+    },
+    "manifests/obligation_manifest.json": {
+      "sha256": "c838eac6b5787a82aff34b072b02269b86da78e0a50725b93bc53ad2e546563e",
+      "role": "manifest"
+    },
+    "rendered/formal_tables_v0.docx": {
+      "sha256": "c18c7d1d2fbfc395cd36c07923542280b2b43e5640dd15fe3e7c8de7cc6d8d2d",
+      "role": "rendered_document"
+    },
+    "rendered/narrative_skeleton_v0.docx": {
+      "sha256": "22616d94b4d358d7a3ab8213ab8a23de7425cdce681abbac178f2e6f106ee6a5",
+      "role": "rendered_document"
+    },
+    "runtime_snapshot.json": {
+      "sha256": "626c96537aac12996f09acda7f1fc48b4f5cc07ae59d9e752a44e9b5ee089473",
+      "role": "core_snapshot"
+    },
+    "submission_package_version.json": {
+      "sha256": "6466c123c174e0473a2c13a1c9ad4fb4653990ee122aa8b11cbe2087fe4ca65f",
+      "role": "version_record"
+    },
+    "workbench.html": {
+      "sha256": "7b90c23ffaa504676ea9b19b9b7ee7ccd5835d715688ed7bdbf53764fb27252d",
+      "role": "visual_workbench"
+    }
+  },
+  "file_count": 13,
+  "integrity_check": {
+    "method": "sha256_per_file",
+    "note": "Each file's sha256 is independently computed. Verify by re-hashing the file content."
+  }
+}

@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CPSWC v0 Workbench — 惠州市大亚湾澳头湾畔花园住宅小区项目(合成样本)</title>
+<style>
+/* ---- Reset + Base ---- */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;
+  line-height:1.6;color:#1a1a2e;background:#f8f9fa;padding:1.5rem;max-width:1200px;margin:0 auto}
+h1{font-size:1.5rem;margin-bottom:.5rem}
+h2{font-size:1.15rem;color:#16213e;border-bottom:2px solid #0f3460;padding-bottom:.3rem;margin:1.5rem 0 .8rem}
+h3{font-size:1rem;color:#333;margin:.8rem 0 .4rem}
+
+/* ---- Card ---- */
+.card{background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:1rem 1.2rem;margin-bottom:1rem;
+  box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600}
+.badge-ok{background:#d4edda;color:#155724}
+.badge-err{background:#f8d7da;color:#721c24}
+.badge-info{background:#cce5ff;color:#004085}
+.badge-warn{background:#fff3cd;color:#856404}
+.badge-critical{background:#e2e3f5;color:#383d6e}
+.badge-muted{background:#eee;color:#666}
+
+/* ---- Tabs ---- */
+.tabs{display:flex;gap:0;border-bottom:2px solid #0f3460;margin-bottom:1rem}
+.tab{padding:.5rem 1rem;cursor:pointer;border:1px solid transparent;border-bottom:none;
+  border-radius:6px 6px 0 0;font-size:.9rem;color:#555;background:#f0f0f0}
+.tab.active{color:#0f3460;background:#fff;border-color:#0f3460 #0f3460 #fff;font-weight:600}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* ---- Table ---- */
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin:.5rem 0}
+th,td{text-align:left;padding:.4rem .6rem;border-bottom:1px solid #eee}
+th{background:#f5f5f5;font-weight:600;color:#333;position:sticky;top:0}
+tr:hover td{background:#f9f9fe}
+td.mono{font-family:"SF Mono",Consolas,"Liberation Mono",monospace;font-size:.8rem;word-break:break-all}
+
+/* ---- Details/Summary (drill-down) ---- */
+details{margin:.3rem 0}
+details>summary{cursor:pointer;padding:.3rem .5rem;border-radius:4px;font-size:.85rem}
+details>summary:hover{background:#f0f4ff}
+details>.detail-body{padding:.5rem .8rem;background:#fafbff;border-left:3px solid #0f3460;
+  margin:.3rem 0 .3rem 1rem;font-size:.83rem}
+
+/* ---- Search ---- */
+.search-box{width:100%;padding:.4rem .6rem;border:1px solid #ccc;border-radius:4px;
+  font-size:.85rem;margin-bottom:.6rem}
+
+/* ---- Utilities ---- */
+.flex-row{display:flex;gap:1rem;flex-wrap:wrap}
+.flex-col{flex:1;min-width:300px}
+.text-muted{color:#888;font-size:.8rem}
+.text-green{color:#28a745}
+.text-red{color:#dc3545}
+.mt-1{margin-top:.5rem}
+.kv-grid{display:grid;grid-template-columns:max-content 1fr;gap:.2rem .8rem;font-size:.85rem}
+.kv-grid dt{color:#555;font-weight:600}
+.kv-grid dd{color:#1a1a2e}
+.scroll-y{max-height:500px;overflow-y:auto}
+</style>
+</head>
+<body>
+
+<!-- ====== HEADER ====== -->
+<h1>CPSWC v0 Workbench</h1>
+<p class="text-muted">
+  Snapshot: <code>snap_e45121d023f5</code> &middot;
+  2026-04-12T06:53:41.750160+00:00 &middot;
+  Ruleset: v2026_gd_package
+</p>
+
+<!-- ====== TABS ====== -->
+<div class="tabs" id="main-tabs">
+  <div class="tab active" data-tab="summary">Summary</div>
+  <div class="tab" data-tab="facts">Facts / Derived</div>
+  <div class="tab" data-tab="calculators">Calculators</div>
+  <div class="tab" data-tab="obligations">Obligations</div>
+  <div class="tab" data-tab="drilldown">Rule Drill-down</div>
+  <div class="tab" data-tab="freeze">Freeze / Version</div>
+</div>
+
+<!-- ====== 1. SUMMARY ====== -->
+<div class="tab-content active" id="tab-summary">
+  <div class="card">
+    <h2>Project Summary</h2>
+    <dl class="kv-grid">
+      <dt>Project</dt><dd>惠州市大亚湾澳头湾畔花园住宅小区项目(合成样本)</dd>
+      <dt>Code</dt><dd>2610-441322-04-01-SAMPLE01</dd>
+      <dt>Industry</dt><dd>29</dd>
+      <dt>Species</dt><dd>报告书</dd>
+      <dt>Ruleset</dt><dd>v2026_gd_package</dd>
+      <dt>Lifecycle</dt><dd>pre_submission</dd>
+    </dl>
+  </div>
+  <div class="flex-row">
+    <div class="card flex-col">
+      <h3>Registries</h3>
+      <p>fields, obligations, assurances, calculators</p>
+    </div>
+    <div class="card flex-col">
+      <h3>Counts</h3>
+      <dl class="kv-grid">
+        <dt>Facts</dt><dd>58</dd>
+        <dt>Derived</dt><dd>3</dd>
+        <dt>Calculators</dt><dd>3</dd>
+        <dt>Obligations triggered</dt><dd>14</dd>
+        <dt>Artifacts required</dt><dd>14</dd>
+        <dt>Assurances required</dt><dd>4</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 2. FACTS / DERIVED ====== -->
+<div class="tab-content" id="tab-facts">
+  <div class="card">
+    <h2>Facts (58)</h2>
+    <input type="text" class="search-box" placeholder="Search facts..." onkeyup="filterTable(this,'facts-table')">
+    <div class="scroll-y">
+    <table id="facts-table">
+      <thead><tr><th>Field ID</th><th>Value</th></tr></thead>
+      <tbody>
+      
+      <tr><td class="mono">field.fact.construction.living_area</td><td class="mono">[{&#34;name&#34;: &#34;主施工生产生活区&#34;, &#34;location&#34;: {&#34;x&#34;: 114.6235, &#34;y&#34;: 22.7518, &#34;crs&#34;: &#34;CGCS2000&#34;}, &#34;area&#34;: {&#34;value&#34;: 0.65, &#34;unit&#34;:...</td></tr>
+      
+      <tr><td class="mono">field.fact.construction.road</td><td class="mono">[{&#34;name&#34;: &#34;施工主入口道路&#34;, &#34;nature&#34;: &#34;新建&#34;, &#34;length&#34;: {&#34;value&#34;: 320, &#34;unit&#34;: &#34;m&#34;}, &#34;width&#34;: {&#34;value&#34;: 6, &#34;unit&#34;: &#34;m&#34;},...</td></tr>
+      
+      <tr><td class="mono">field.fact.construction.temp_topsoil_site</td><td class="mono">[{&#34;name_or_id&#34;: &#34;TS01&#34;, &#34;location&#34;: {&#34;x&#34;: 114.6238, &#34;y&#34;: 22.7525, &#34;crs&#34;: &#34;CGCS2000&#34;}, &#34;type&#34;: &#34;表土堆场&#34;, &#34;area&#34;:...</td></tr>
+      
+      <tr><td class="mono">field.fact.disposal_site.failure_analysis_required</td><td class="mono">False</td></tr>
+      
+      <tr><td class="mono">field.fact.disposal_site.level_assessment</td><td class="mono">[]</td></tr>
+      
+      <tr><td class="mono">field.fact.earthwork.borrow</td><td class="mono">{&#34;value&#34;: 0.5, &#34;unit&#34;: &#34;万m³&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.earthwork.borrow_source_type</td><td class="mono">外购</td></tr>
+      
+      <tr><td class="mono">field.fact.earthwork.comprehensive_reuse</td><td class="mono">{&#34;value&#34;: 2.0, &#34;unit&#34;: &#34;万m³&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.earthwork.excavation</td><td class="mono">{&#34;value&#34;: 8.5, &#34;unit&#34;: &#34;万m³&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.earthwork.fill</td><td class="mono">{&#34;value&#34;: 6.8, &#34;unit&#34;: &#34;万m³&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.earthwork.self_reuse</td><td class="mono">{&#34;value&#34;: 5.0, &#34;unit&#34;: &#34;万m³&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.earthwork.spoil</td><td class="mono">{&#34;value&#34;: 3.5, &#34;unit&#34;: &#34;万m³&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.investment.civil_investment</td><td class="mono">{&#34;value&#34;: 62000, &#34;unit&#34;: &#34;万元&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.investment.total_investment</td><td class="mono">{&#34;value&#34;: 95000, &#34;unit&#34;: &#34;万元&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.land.county_breakdown</td><td class="mono">[{&#34;county&#34;: &#34;惠阳区&#34;, &#34;nature&#34;: &#34;永久&#34;, &#34;type&#34;: &#34;住宅用地&#34;, &#34;area&#34;: {&#34;value&#34;: 7.1, &#34;unit&#34;: &#34;hm²&#34;}}, {&#34;county&#34;: &#34;惠阳区&#34;,...</td></tr>
+      
+      <tr><td class="mono">field.fact.land.permanent_area</td><td class="mono">{&#34;value&#34;: 8.2, &#34;unit&#34;: &#34;hm²&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.land.temporary_area</td><td class="mono">{&#34;value&#34;: 1.3, &#34;unit&#34;: &#34;hm²&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.land.total_area</td><td class="mono">{&#34;value&#34;: 9.5, &#34;unit&#34;: &#34;hm²&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.location.county_list</td><td class="mono">[&#34;惠阳区&#34;, &#34;大亚湾开发区&#34;]</td></tr>
+      
+      <tr><td class="mono">field.fact.location.prefecture_list</td><td class="mono">[&#34;惠州市&#34;]</td></tr>
+      
+      <tr><td class="mono">field.fact.location.province_list</td><td class="mono">[&#34;广东省&#34;]</td></tr>
+      
+      <tr><td class="mono">field.fact.location.redline_geometry_ref</td><td class="mono">{&#34;geo_store_id&#34;: &#34;geo.sample.huizhou_housing_v0.redline&#34;, &#34;crs&#34;: &#34;CGCS2000&#34;, &#34;epsg&#34;: 4490, &#34;source&#34;: &#34;virtual...</td></tr>
+      
+      <tr><td class="mono">field.fact.location.river_basin_agency</td><td class="mono">东江流域管理局</td></tr>
+      
+      <tr><td class="mono">field.fact.natural.allowable_loss</td><td class="mono">{&#34;value&#34;: 500, &#34;unit&#34;: &#34;t/(km²·a)&#34;}</td></tr>
+      
+      <tr><td class="mono">field.fact.natural.climate_type</td><td class="mono">亚热带季风气候</td></tr>
+      
+      <tr><td class="mono">field.fact.natural.key_prevention_treatment_areas</td><td class="mono">[]</td></tr>
+      
+      <tr><td class="mono">field.fact.natural.landform_type</td><td class="mono">冲积平原</td></tr>
+      
+      <tr><td class="mono">field.fact.natural.original_erosion_modulus</td><td class="mono">{&#34;value&#34;: 500, &#34;unit&#34;: &#34;t/(km²·a)&#34;}</td></tr>
+      
+      <tr><td class="mono">field.fact.natural.other_sensitive_areas</td><td class="mono">[{&#34;area_type&#34;: &#34;生态保护红线&#34;, &#34;name&#34;: &#34;惠州市生态保护红线(惠阳片区)&#34;, &#34;spatial_relation&#34;: &#34;项目西侧红线擦边, 约 0.08 hm² 落入缓冲区, 未实质占用核心区&#34;,...</td></tr>
+      
+      <tr><td class="mono">field.fact.natural.soil_erosion_intensity</td><td class="mono">轻度</td></tr>
+      
+      <tr><td class="mono">field.fact.natural.soil_erosion_type</td><td class="mono">水力侵蚀</td></tr>
+      
+      <tr><td class="mono">field.fact.natural.water_soil_zoning</td><td class="mono">南方红壤区</td></tr>
+      
+      <tr><td class="mono">field.fact.party.compile_unit</td><td class="mono">{&#34;name&#34;: &#34;惠州市绿景水土保持咨询服务有限公司 (参考单位, 非真实委托)&#34;, &#34;legal_representative&#34;: &#34;(合成)&#34;, &#34;unified_social_credit_code&#34;:...</td></tr>
+      
+      <tr><td class="mono">field.fact.party.construction_unit</td><td class="mono">{&#34;name&#34;: &#34;惠州市澳头湾畔房地产开发有限公司 (合成)&#34;, &#34;legal_representative&#34;: &#34;(合成)&#34;, &#34;unified_social_credit_code&#34;:...</td></tr>
+      
+      <tr><td class="mono">field.fact.prediction.new_loss</td><td class="mono">{&#34;value&#34;: 280, &#34;unit&#34;: &#34;t&#34;, &#34;precision&#34;: 1}</td></tr>
+      
+      <tr><td class="mono">field.fact.prediction.reducible_loss</td><td class="mono">{&#34;value&#34;: 250, &#34;unit&#34;: &#34;t&#34;, &#34;precision&#34;: 1}</td></tr>
+      
+      <tr><td class="mono">field.fact.prediction.total_loss</td><td class="mono">{&#34;value&#34;: 350, &#34;unit&#34;: &#34;t&#34;, &#34;precision&#34;: 1}</td></tr>
+      
+      <tr><td class="mono">field.fact.prevention.control_standard_level</td><td class="mono">一级</td></tr>
+      
+      <tr><td class="mono">field.fact.prevention.control_standard_level_breakdown</td><td class="mono">[{&#34;zone_id&#34;: &#34;Z1&#34;, &#34;zone_name&#34;: &#34;惠阳区主体住宅区&#34;, &#34;standard_level&#34;: &#34;一级&#34;, &#34;area&#34;: {&#34;value&#34;: 7.9, &#34;unit&#34;: &#34;hm²&#34;}},...</td></tr>
+      
+      <tr><td class="mono">field.fact.prevention.planned_vegetation_area</td><td class="mono">{&#34;value&#34;: 2.38, &#34;unit&#34;: &#34;hm²&#34;, &#34;precision&#34;: 0.01, &#34;_note&#34;: &#34;placeholder stub; 植物措施规划面积&#34;}</td></tr>
+      
+      <tr><td class="mono">field.fact.prevention.protected_spoil_volume</td><td class="mono">{&#34;value&#34;: 3.48, &#34;unit&#34;: &#34;万m³&#34;, &#34;precision&#34;: 0.01, &#34;_note&#34;: &#34;placeholder stub; 含拦挡(1.28) + 临时防护(0.20) + 综合利用(2.00)&#34;}</td></tr>
+      
+      <tr><td class="mono">field.fact.prevention.protected_topsoil_volume</td><td class="mono">{&#34;value&#34;: 0.28, &#34;unit&#34;: &#34;万m³&#34;, &#34;precision&#34;: 0.01, &#34;_note&#34;: &#34;placeholder stub; 剥离 0.30 - 损耗 0.02 ≈ 0.28&#34;}</td></tr>
+      
+      <tr><td class="mono">field.fact.prevention.responsibility_range_area</td><td class="mono">{&#34;value&#34;: 9.5, &#34;unit&#34;: &#34;hm²&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.prevention.should_restore_area</td><td class="mono">{&#34;value&#34;: 2.4, &#34;unit&#34;: &#34;hm²&#34;, &#34;precision&#34;: 0.01, &#34;_note&#34;: &#34;placeholder stub; 可绿化区域 (绿地+缓坡), v0 按主体设计绿地率估算&#34;}</td></tr>
+      
+      <tr><td class="mono">field.fact.prevention.total_loss_area</td><td class="mono">{&#34;value&#34;: 9.5, &#34;unit&#34;: &#34;hm²&#34;, &#34;precision&#34;: 0.01, &#34;_note&#34;: &#34;placeholder stub; v0 简化为等于责任范围&#34;}</td></tr>
+      
+      <tr><td class="mono">field.fact.prevention.treated_loss_area</td><td class="mono">{&#34;value&#34;: 9.45, &#34;unit&#34;: &#34;hm²&#34;, &#34;precision&#34;: 0.01, &#34;_note&#34;: &#34;placeholder stub; v0 由人工按措施布设确定; 接近总责任范围表示基本全覆盖&#34;}</td></tr>
+      
+      <tr><td class="mono">field.fact.project.code</td><td class="mono">2610-441322-04-01-SAMPLE01</td></tr>
+      
+      <tr><td class="mono">field.fact.project.industry_category</td><td class="mono">29</td></tr>
+      
+      <tr><td class="mono">field.fact.project.name</td><td class="mono">惠州市大亚湾澳头湾畔花园住宅小区项目(合成样本)</td></tr>
+      
+      <tr><td class="mono">field.fact.project.nature</td><td class="mono">新建</td></tr>
+      
+      <tr><td class="mono">field.fact.regulatory.compensation_fee_rate</td><td class="mono">{&#34;value&#34;: 0.6, &#34;unit&#34;: &#34;元/m²&#34;, &#34;_source&#34;: &#34;粤发改价格〔2021〕231 号 (Step 11A 首批 live regulatory field)&#34;}</td></tr>
+      
+      <tr><td class="mono">field.fact.schedule.design_horizon_year</td><td class="mono">2029</td></tr>
+      
+      <tr><td class="mono">field.fact.schedule.end_time</td><td class="mono">2028-06</td></tr>
+      
+      <tr><td class="mono">field.fact.schedule.start_time</td><td class="mono">2026-09</td></tr>
+      
+      <tr><td class="mono">field.fact.topsoil.excavation</td><td class="mono">{&#34;value&#34;: 0.3, &#34;unit&#34;: &#34;万m³&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.topsoil.fill</td><td class="mono">{&#34;value&#34;: 0.15, &#34;unit&#34;: &#34;万m³&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.topsoil.stripable_area</td><td class="mono">{&#34;value&#34;: 3.5, &#34;unit&#34;: &#34;hm²&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      <tr><td class="mono">field.fact.topsoil.stripable_volume</td><td class="mono">{&#34;value&#34;: 0.3, &#34;unit&#34;: &#34;万m³&#34;, &#34;precision&#34;: 0.01}</td></tr>
+      
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Derived Fields (3)</h2>
+    <div class="scroll-y">
+    <table>
+      <thead><tr><th>Field ID</th><th>Value</th><th>Source Calculator</th></tr></thead>
+      <tbody>
+      
+      <tr>
+        <td class="mono">field.derived.disposal_site.level_assessment</td>
+        <td class="mono">[]</td>
+        <td><span class="badge badge-info">cal.disposal_site.level_assessment</span></td>
+      </tr>
+      
+      <tr>
+        <td class="mono">field.derived.investment.compensation_fee_amount</td>
+        <td class="mono">5.7</td>
+        <td><span class="badge badge-info">cal.compensation.fee</span></td>
+      </tr>
+      
+      <tr>
+        <td class="mono">field.derived.target.weighted_comprehensive_target</td>
+        <td class="mono">{&#34;control_degree&#34;: 97.49, &#34;soil_loss_control_ratio&#34;: 0.89, &#34;spoil_protection_rate&#34;: 96.66, &#34;topsoil_protection_rate&#34;: 91.16, &#34;vegetation_coverage_rate&#34;: 24.49, &#34;vegetation_restoration_rate&#34;: 97.83}</td>
+        <td><span class="badge badge-info">cal.target.weighted_comprehensive</span></td>
+      </tr>
+      
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 3. CALCULATORS ====== -->
+<div class="tab-content" id="tab-calculators">
+  <div class="card">
+    <h2>Live Calculators (3)</h2>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">OK</span>
+        <strong>cal.compensation.fee</strong>
+        &rarr; field.derived.investment.compensation_fee_amount
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Status</dt><dd>ok</dd>
+          <dt>Output</dt><dd class="mono">5.7</dd>
+          <dt>Unit</dt><dd>万元</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">OK</span>
+        <strong>cal.target.weighted_comprehensive</strong>
+        &rarr; field.derived.target.weighted_comprehensive_target
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Status</dt><dd>ok</dd>
+          <dt>Output</dt><dd class="mono">{&#34;control_degree&#34;: 97.49, &#34;soil_loss_control_ratio&#34;: 0.89, &#34;spoil_protection_rate&#34;: 96.66, &#34;topsoil_protection_rate&#34;: 91.16, &#34;vegetation_coverage_rate&#34;: 24.49, &#34;vegetation_restoration_rate&#34;: 97.83}</dd>
+          <dt>Unit</dt><dd>record</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">OK</span>
+        <strong>cal.disposal_site.level_assessment</strong>
+        &rarr; field.derived.disposal_site.level_assessment
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Status</dt><dd>ok</dd>
+          <dt>Output</dt><dd class="mono">[]</dd>
+          <dt>Unit</dt><dd>list_of_records</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+  </div>
+</div>
+
+<!-- ====== 4. OBLIGATIONS / ARTIFACTS / ASSURANCES ====== -->
+<div class="tab-content" id="tab-obligations">
+  <div class="flex-row">
+    <div class="card flex-col">
+      <h2>Triggered (14)</h2>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.borrow_site.external_purchase_evidence</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.disposal_site.location_map</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.disposal_site.reuse_evidence</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.disposal_site.separate_prevention_zone</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.disposal_site.site_selection</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.evaluation.dual_source_earthwork_justification</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.evaluation.weighted_target_required</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.monitoring.baseline_monitoring</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.monitoring.point_layout</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.schedule.dual_line_gantt_chart</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.sensitive_overlay.multi_admin_breakdown</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.topsoil.balance_required</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.topsoil.reuse_evidence</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-ok">+</span> <code>ob.unavoidability.redline_conflict</code></div>
+      
+    </div>
+    <div class="card flex-col">
+      <h2>Not Triggered (8)</h2>
+      
+      <div style="padding:2px 0"><span class="badge badge-muted">&ndash;</span> <code>ob.borrow_site.land_use_approval</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-muted">&ndash;</span> <code>ob.disposal_site.failure_analysis</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-muted">&ndash;</span> <code>ob.disposal_site.geology_report</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-muted">&ndash;</span> <code>ob.disposal_site.land_use_approval</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-muted">&ndash;</span> <code>ob.disposal_site.stability_monitoring</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-muted">&ndash;</span> <code>ob.disposal_site.video_surveillance</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-muted">&ndash;</span> <code>ob.topsoil.external_topsoil_source</code></div>
+      
+      <div style="padding:2px 0"><span class="badge badge-muted">&ndash;</span> <code>ob.topsoil.soil_improvement_required</code></div>
+      
+    </div>
+  </div>
+  <div class="card">
+    <h2>Required Artifacts (14)</h2>
+    <div class="scroll-y">
+    <table>
+      <thead><tr><th>#</th><th>Artifact ID</th></tr></thead>
+      <tbody>
+      
+      <tr><td>1</td><td class="mono">art.attachment.AF_2_unavoidability_justification</td></tr>
+      
+      <tr><td>2</td><td class="mono">art.attachment.AF_4_external_earth_purchase</td></tr>
+      
+      <tr><td>3</td><td class="mono">art.attachment.AF_6_reuse_evidence</td></tr>
+      
+      <tr><td>4</td><td class="mono">art.figure.F_06_monitoring_points</td></tr>
+      
+      <tr><td>5</td><td class="mono">art.figure.F_08_topsoil_survey</td></tr>
+      
+      <tr><td>6</td><td class="mono">art.figure.F_09_topsoil_stripping_range</td></tr>
+      
+      <tr><td>7</td><td class="mono">art.figure.F_10_measures_layout</td></tr>
+      
+      <tr><td>8</td><td class="mono">art.figure.F_12_borrow_and_disposal_location</td></tr>
+      
+      <tr><td>9</td><td class="mono">art.figure.schedule_gantt</td></tr>
+      
+      <tr><td>10</td><td class="mono">art.table.earthwork_balance</td></tr>
+      
+      <tr><td>11</td><td class="mono">art.table.responsibility_range_by_admin_division</td></tr>
+      
+      <tr><td>12</td><td class="mono">art.table.spoil_summary</td></tr>
+      
+      <tr><td>13</td><td class="mono">art.table.topsoil_balance</td></tr>
+      
+      <tr><td>14</td><td class="mono">art.table.weighted_target_calculation</td></tr>
+      
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Required Assurances (4)</h2>
+    
+    <div style="padding:2px 0"><span class="badge badge-info">AS</span> <code>as.geo.cgcs2000_compliance</code></div>
+    
+    <div style="padding:2px 0"><span class="badge badge-info">AS</span> <code>as.geo.downstream_coverage_verified</code></div>
+    
+    <div style="padding:2px 0"><span class="badge badge-info">AS</span> <code>as.seal.compile_unit_sealing</code></div>
+    
+    <div style="padding:2px 0"><span class="badge badge-info">AS</span> <code>as.signature.responsibility_page</code></div>
+    
+  </div>
+</div>
+
+<!-- ====== 5. RULE DRILL-DOWN ====== -->
+<div class="tab-content" id="tab-drilldown">
+  <div class="card">
+    <h2>Obligation Drill-down</h2>
+    <input type="text" class="search-box" placeholder="Search obligations..." onkeyup="filterDetails(this,'ob-drilldown')">
+    <div id="ob-drilldown" class="scroll-y">
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.sensitive_overlay.multi_admin_breakdown</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">len(_get_field(&#39;field.fact.location.county_list&#39;, unified) or []) &gt;= 2</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.multi_admin_range_table</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.table.responsibility_range_by_admin_division</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.evaluation.weighted_target_required</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">len(set(_item.get(&#39;standard_level&#39;) for _item in (_get_field(&#39;field.fact.prevention.control_standard_level_breakdown&#39;, unified) or []))) &gt;= 2</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.weighted_target_trigger</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.table.weighted_target_calculation</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.unavoidability.redline_conflict</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">bool(_get_field(&#39;field.fact.natural.key_prevention_treatment_areas&#39;, unified))  or  bool(_get_field(&#39;field.fact.natural.other_sensitive_areas&#39;, unified))</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.unavoidability_trigger</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.attachment.AF_2_unavoidability_justification</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-muted">OFF</span>
+        <code>ob.borrow_site.land_use_approval</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">_get_value(&#39;field.fact.earthwork.borrow&#39;, unified) &gt; 0  and  _get_field(&#39;field.fact.earthwork.borrow_source_type&#39;, unified) == &#34;自设取土场&#34;</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.borrow_site_land_confirmation</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.attachment.AF_3_land_use_confirmation</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-muted">OFF</span>
+        <code>ob.disposal_site.land_use_approval</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">any(_item.get(&#39;outside_permanent_land&#39;) in [True] for _item in (_get_field(&#39;field.fact.construction.temp_topsoil_site&#39;, unified) or []))</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.disposal_site_land_confirmation</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.attachment.AF_3_land_use_confirmation</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.borrow_site.external_purchase_evidence</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">_get_value(&#39;field.fact.earthwork.borrow&#39;, unified) &gt; 0  and  _get_field(&#39;field.fact.earthwork.borrow_source_type&#39;, unified) == &#34;外购&#34;</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.external_purchase_supporting</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.attachment.AF_4_external_earth_purchase</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-muted">OFF</span>
+        <code>ob.disposal_site.geology_report</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">any(_item.get(&#39;level&#39;) in [&#34;1级&#34;, &#34;2级&#34;] for _item in (_get_field(&#39;field.derived.disposal_site.level_assessment&#39;, unified) or []))</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.spoil_level_4_geology</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.attachment.AF_5_geology_report</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.disposal_site.reuse_evidence</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">_get_value(&#39;field.fact.earthwork.comprehensive_reuse&#39;, unified) &gt; 0</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.spoil_reuse_supporting</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.attachment.AF_6_reuse_evidence</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.topsoil.reuse_evidence</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">_get_value(&#39;field.fact.topsoil.excavation&#39;, unified) &gt; _get_value(&#39;field.fact.topsoil.fill&#39;, unified)</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.topsoil_reuse_supporting</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.attachment.AF_6_reuse_evidence</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.disposal_site.site_selection</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">_get_value(&#39;field.fact.earthwork.spoil&#39;, unified) &gt; 0  or  len(_get_field(&#39;field.fact.construction.temp_topsoil_site&#39;, unified) or []) &gt; 0</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.disposal_site_summary_table</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.table.spoil_summary</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.disposal_site.location_map</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">_get_value(&#39;field.fact.earthwork.spoil&#39;, unified) &gt; 0  or  _get_value(&#39;field.fact.earthwork.borrow&#39;, unified) &gt; 0  or  len(_get_field(&#39;field.fact.construction.temp_topsoil_site&#39;, unified) or []) &gt; 0</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.disposal_site_location_map</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.figure.F_12_borrow_and_disposal_location</dd>
+          <dt>required_assurances</dt><dd class="mono">as.geo.downstream_coverage_verified</dd>
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-muted">OFF</span>
+        <code>ob.disposal_site.failure_analysis</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">_get_field(&#39;field.fact.disposal_site.failure_analysis_required&#39;, unified) == True</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.spoil_failure_analysis</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.subreport.spoil_failure_analysis</dd>
+          <dt>required_assurances</dt><dd class="mono">as.commitment.spoil_failure_report_truth</dd>
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.monitoring.baseline_monitoring</code>
+        <span class="text-muted">always</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>always</dd>
+          <dt>DSL expr</dt><dd class="mono">True (always)</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.monitoring_baseline</dd>
+          
+          
+          
+          
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.monitoring.point_layout</code>
+        <span class="text-muted">always</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>always</dd>
+          <dt>DSL expr</dt><dd class="mono">True (always)</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.monitoring_point_layout</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.figure.F_06_monitoring_points</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-muted">OFF</span>
+        <code>ob.disposal_site.stability_monitoring</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">any(_item.get(&#39;level&#39;) in [&#34;1级&#34;, &#34;2级&#34;, &#34;3级&#34;] for _item in (_get_field(&#39;field.derived.disposal_site.level_assessment&#39;, unified) or []))</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.spoil_level_3_monitoring</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.figure.F_06_monitoring_points</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-muted">OFF</span>
+        <code>ob.disposal_site.video_surveillance</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">any(_item.get(&#39;level&#39;) in [&#34;1级&#34;, &#34;2级&#34;, &#34;3级&#34;] for _item in (_get_field(&#39;field.derived.disposal_site.level_assessment&#39;, unified) or []))</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.spoil_level_3_video</dd>
+          
+          
+          
+          
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.schedule.dual_line_gantt_chart</code>
+        <span class="text-muted">always</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>always</dd>
+          <dt>DSL expr</dt><dd class="mono">True (always)</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.dual_line_gantt_chart</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.figure.schedule_gantt</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.topsoil.balance_required</code>
+        <span class="text-muted">always</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>always</dd>
+          <dt>DSL expr</dt><dd class="mono">True (always)</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.topsoil_balance_required</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.table.topsoil_balance, art.figure.F_08_topsoil_survey, art.figure.F_09_topsoil_stripping_range</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.evaluation.dual_source_earthwork_justification</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">_get_value(&#39;field.fact.earthwork.borrow&#39;, unified) &gt; 0  and  _get_value(&#39;field.fact.earthwork.spoil&#39;, unified) &gt; 0</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.borrow_and_spoil_justification</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.table.earthwork_balance</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-ok">TRIG</span>
+        <code>ob.disposal_site.separate_prevention_zone</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">_get_value(&#39;field.fact.earthwork.spoil&#39;, unified) &gt; 0  or  len(_get_field(&#39;field.fact.construction.temp_topsoil_site&#39;, unified) or []) &gt; 0</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.separate_disposal_zone</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.figure.F_10_measures_layout</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-muted">OFF</span>
+        <code>ob.topsoil.soil_improvement_required</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">_get_value(&#39;field.fact.topsoil.fill&#39;, unified) &gt; _get_value(&#39;field.fact.topsoil.excavation&#39;, unified)</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.topsoil_improvement</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.table.topsoil_balance</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-muted">OFF</span>
+        <code>ob.topsoil.external_topsoil_source</code>
+        <span class="text-muted">conditional</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>Trigger mode</dt><dd>conditional</dd>
+          <dt>DSL expr</dt><dd class="mono">_get_value(&#39;field.fact.topsoil.fill&#39;, unified) &gt; _get_value(&#39;field.fact.topsoil.excavation&#39;, unified)</dd>
+          <dt>source_rule_id</dt><dd class="mono">rule.t2026.external_topsoil_source</dd>
+          
+          
+          
+          <dt>required_artifacts</dt><dd class="mono">art.attachment.AF_6_reuse_evidence</dd>
+          
+        </dl>
+      </div>
+    </details>
+    
+    </div>
+  </div>
+  <div class="card">
+    <h2>Calculator Drill-down</h2>
+    
+    <details>
+      <summary>
+        <span class="badge badge-critical">CAL</span>
+        <code>cal.compensation.fee</code>
+        <span class="text-muted">official_approval (rank 4)</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>normative_basis_refs</dt><dd class="mono">rule.guangdong.fa_gai_2021_231, rule.guangdong.shui_gui_fan_zi_2026_1, rule.ministry_order_53</dd>
+          <dt>evidence_anchor_refs</dt><dd class="mono">field.fact.land.permanent_area, field.fact.land.temporary_area, field.fact.regulatory.compensation_fee_rate, field.fact.location.province_list</dd>
+          <dt>authority_class</dt><dd>official_approval</dd>
+          <dt>precedence_rank</dt><dd>4</dd>
+          <dt>protection_level</dt><dd>CRITICAL</dd>
+          <dt>inputs</dt><dd class="mono">field.fact.land.permanent_area, field.fact.land.temporary_area, field.fact.regulatory.compensation_fee_rate</dd>
+          <dt>outputs</dt><dd class="mono">field.derived.investment.compensation_fee_amount</dd>
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-critical">CAL</span>
+        <code>cal.target.weighted_comprehensive</code>
+        <span class="text-muted">recommended_standard (rank 5)</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>normative_basis_refs</dt><dd class="mono">rule.gb_t_50434_2018.chapter_4, rule.gb_t_50434_2018.table_4_0_2_5, rule.template_2026.section_7_3_2</dd>
+          <dt>evidence_anchor_refs</dt><dd class="mono">field.fact.prevention.control_standard_level, field.fact.prevention.control_standard_level_breakdown, field.fact.natural.water_soil_zoning, field.fact.prevention.responsibility_range_area</dd>
+          <dt>authority_class</dt><dd>recommended_standard</dd>
+          <dt>precedence_rank</dt><dd>5</dd>
+          <dt>protection_level</dt><dd>CRITICAL</dd>
+          <dt>inputs</dt><dd class="mono">field.fact.prevention.control_standard_level_breakdown, field.fact.prevention.control_standard_level, field.fact.natural.water_soil_zoning</dd>
+          <dt>outputs</dt><dd class="mono">field.derived.target.weighted_comprehensive_target</dd>
+        </dl>
+      </div>
+    </details>
+    
+    <details>
+      <summary>
+        <span class="badge badge-critical">CAL</span>
+        <code>cal.disposal_site.level_assessment</code>
+        <span class="text-muted">mandatory_standard (rank 3)</span>
+      </summary>
+      <div class="detail-body">
+        <dl class="kv-grid">
+          <dt>normative_basis_refs</dt><dd class="mono">rule.gb_51018_2014.section_5_7_1, rule.gb_51018_2014.table_5_7_1_notes</dd>
+          <dt>evidence_anchor_refs</dt><dd class="mono">field.fact.disposal_site.level_assessment</dd>
+          <dt>authority_class</dt><dd>mandatory_standard</dd>
+          <dt>precedence_rank</dt><dd>3</dd>
+          <dt>protection_level</dt><dd>CRITICAL</dd>
+          <dt>inputs</dt><dd class="mono">field.fact.disposal_site.level_assessment</dd>
+          <dt>outputs</dt><dd class="mono">field.derived.disposal_site.level_assessment</dd>
+        </dl>
+      </div>
+    </details>
+    
+  </div>
+</div>
+
+<!-- ====== 6. FREEZE / VERSION ====== -->
+<div class="tab-content" id="tab-freeze">
+  
+  <div class="card">
+    <h2>FrozenSubmissionInput</h2>
+    <dl class="kv-grid">
+      <dt>content_hash</dt><dd class="mono">626c96537aac12996f09acda7f1fc48b4f5cc07ae59d9e752a44e9b5ee089473</dd>
+      <dt>fact_snapshot_hash</dt><dd class="mono">9a5890965770c17df218e5f1364bddc07e437bdedef2144bd7164e041fb8ba2d</dd>
+      <dt>frozen_at</dt><dd>2026-04-12T06:53:41.750528+00:00</dd>
+    </dl>
+    <h3 class="mt-1">Manifests</h3>
+    <dl class="kv-grid">
+      <dt>Artifacts</dt><dd>14 items</dd>
+      <dt>Assurances</dt><dd>4 items</dd>
+      <dt>Calculators</dt><dd>cal.compensation.fee, cal.target.weighted_comprehensive, cal.disposal_site.level_assessment</dd>
+      <dt>Obligations</dt><dd>14 items</dd>
+    </dl>
+  </div>
+  
+  
+  <div class="card">
+    <h2>SubmissionPackageVersion</h2>
+    <dl class="kv-grid">
+      <dt>version_id</dt><dd class="mono">v0_626c96537aac1299</dd>
+      <dt>frozen_input_hash</dt><dd class="mono">626c96537aac12996f09acda7f1fc48b4f5cc07ae59d9e752a44e9b5ee089473</dd>
+      <dt>timestamp</dt><dd>2026-04-12T06:53:41.750528+00:00</dd>
+      
+    </dl>
+  </div>
+  
+  
+</div>
+
+<!-- ====== JS ====== -->
+<script>
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// Table search
+function filterTable(input, tableId) {
+  const q = input.value.toLowerCase();
+  const rows = document.getElementById(tableId).querySelectorAll('tbody tr');
+  rows.forEach(r => { r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none'; });
+}
+
+// Details search
+function filterDetails(input, containerId) {
+  const q = input.value.toLowerCase();
+  const items = document.getElementById(containerId).querySelectorAll('details');
+  items.forEach(d => { d.style.display = d.textContent.toLowerCase().includes(q) ? '' : 'none'; });
+}
+</script>
+
+<footer style="margin-top:2rem;padding-top:1rem;border-top:1px solid #ddd;font-size:.75rem;color:#999;text-align:center">
+  CPSWC v0 Workbench Shell (Step 12B) &middot; Generated 2026-04-12T06:53:41.750160+00:00 &middot; Read-only internal tool
+</footer>
+</body>
+</html>

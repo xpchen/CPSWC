@@ -1,0 +1,73 @@
+{
+  "_schema": "cpswc_submission_package_v0",
+  "version_id": "v0_e8e9c37db9313abd",
+  "frozen_input_hash": "e8e9c37db9313abde1f7f6894d9cab8b6a48e114faef7fa9db3b078f6ed9839a",
+  "package_generated_at": "2026-04-12T06:53:42.199101+00:00",
+  "project_summary": {
+    "name": "河源市紫金县(虚构)水土保持方案合成样本-矿区弃渣场高风险",
+    "code": "SAMPLE-HIGH-RISK-DISPOSAL-01",
+    "industry": 30,
+    "species": "报告书"
+  },
+  "ruleset": "v2026_gd_package",
+  "lifecycle": "pre_submission",
+  "files": {
+    "calculator_results/cal_compensation_fee.json": {
+      "sha256": "3df784f318bada7a0d748da2444c5d167043a89e8fc66e5504aa34ff60c3e41b",
+      "role": "calculator_detail"
+    },
+    "calculator_results/cal_disposal_site_level_assessment.json": {
+      "sha256": "037f25cd5f29001c2cf3875c03cb395c288d98c03911a790acc951d2587b0984",
+      "role": "calculator_detail"
+    },
+    "calculator_results/cal_target_weighted_comprehensive.json": {
+      "sha256": "0a1ffaf72edbf49074291ccf6589517c967108c083d9d9d099edc2ecfcb6bf75",
+      "role": "calculator_detail"
+    },
+    "frozen_submission_input.json": {
+      "sha256": "347c6bb442653867a3c284df3b6ae60965f750448cfb90a0061197a90e9a2ca7",
+      "role": "freeze_record"
+    },
+    "manifests/artifact_manifest.json": {
+      "sha256": "0bd755efadb196fde9d7510bf23cd7a92d1b76ba7d60a9837368a49870c2ee4c",
+      "role": "manifest"
+    },
+    "manifests/assurance_manifest.json": {
+      "sha256": "4ba60461e387335c2b15b1de28e9ac8e67cc65eb4972956b02451e8acae45357",
+      "role": "manifest"
+    },
+    "manifests/calculator_manifest.json": {
+      "sha256": "58fc436e34a593c74cc6b4e1231bf89826e05b74522b53b587f3d6376469cb75",
+      "role": "manifest"
+    },
+    "manifests/obligation_manifest.json": {
+      "sha256": "7b450bf9c83f2f1355def43fa902f4b1af1d08c19ecf4f3705dafe03f41467f5",
+      "role": "manifest"
+    },
+    "rendered/formal_tables_v0.docx": {
+      "sha256": "3e3882447e96494b2fc6caa28645fdeffe0e6a13bc9dffc72204476f7f9b045d",
+      "role": "rendered_document"
+    },
+    "rendered/narrative_skeleton_v0.docx": {
+      "sha256": "cc8ddaa8f37c248a042d4314c127052481e0f5e3668d1dff4c0e08b13b51e31a",
+      "role": "rendered_document"
+    },
+    "runtime_snapshot.json": {
+      "sha256": "e8e9c37db9313abde1f7f6894d9cab8b6a48e114faef7fa9db3b078f6ed9839a",
+      "role": "core_snapshot"
+    },
+    "submission_package_version.json": {
+      "sha256": "ee3074cd5164c92c9b8336a4aef39fd6ce6efe17b58db2b7f5051c23064de4c8",
+      "role": "version_record"
+    },
+    "workbench.html": {
+      "sha256": "8bde41e1db76235d4bb8f462d004f5f788cf2091747c3cd551e92a37f5881395",
+      "role": "visual_workbench"
+    }
+  },
+  "file_count": 13,
+  "integrity_check": {
+    "method": "sha256_per_file",
+    "note": "Each file's sha256 is independently computed. Verify by re-hashing the file content."
+  }
+}

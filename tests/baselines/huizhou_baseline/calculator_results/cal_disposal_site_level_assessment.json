@@ -1,0 +1,7 @@
+{
+  "calculator_id": "cal.disposal_site.level_assessment",
+  "output_field_id": "field.derived.disposal_site.level_assessment",
+  "status": "ok",
+  "unit": "list_of_records",
+  "value": []
+}

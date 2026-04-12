@@ -1,0 +1,339 @@
+{
+  "calculator_results": [
+    {
+      "calculator_id": "cal.compensation.fee",
+      "error_message": null,
+      "output_field_id": "field.derived.investment.compensation_fee_amount",
+      "status": "ok",
+      "unit": "万元",
+      "value": 27.0
+    },
+    {
+      "calculator_id": "cal.target.weighted_comprehensive",
+      "error_message": null,
+      "output_field_id": "field.derived.target.weighted_comprehensive_target",
+      "status": "ok",
+      "unit": "record",
+      "value": {
+        "control_degree": 98,
+        "soil_loss_control_ratio": 0.9,
+        "spoil_protection_rate": 97,
+        "topsoil_protection_rate": 92,
+        "vegetation_coverage_rate": 25,
+        "vegetation_restoration_rate": 98
+      }
+    },
+    {
+      "calculator_id": "cal.disposal_site.level_assessment",
+      "error_message": null,
+      "output_field_id": "field.derived.disposal_site.level_assessment",
+      "status": "ok",
+      "unit": "list_of_records",
+      "value": [
+        {
+          "governing_dimension": "harm",
+          "level": "1级",
+          "level_by_harm": "1级",
+          "level_by_height": "2级",
+          "level_by_volume": "2级",
+          "site_id": "D1",
+          "site_name": "主矿区西侧弃渣场 D1"
+        },
+        {
+          "governing_dimension": "volume",
+          "level": "4级",
+          "level_by_harm": "4级",
+          "level_by_height": "4级",
+          "level_by_volume": "4级",
+          "site_id": "D2",
+          "site_name": "主矿区东侧弃渣场 D2"
+        }
+      ]
+    }
+  ],
+  "derived_fields": {
+    "field.derived.disposal_site.level_assessment": [
+      {
+        "governing_dimension": "harm",
+        "level": "1级",
+        "level_by_harm": "1级",
+        "level_by_height": "2级",
+        "level_by_volume": "2级",
+        "site_id": "D1",
+        "site_name": "主矿区西侧弃渣场 D1"
+      },
+      {
+        "governing_dimension": "volume",
+        "level": "4级",
+        "level_by_harm": "4级",
+        "level_by_height": "4级",
+        "level_by_volume": "4级",
+        "site_id": "D2",
+        "site_name": "主矿区东侧弃渣场 D2"
+      }
+    ],
+    "field.derived.investment.compensation_fee_amount": 27.0,
+    "field.derived.target.weighted_comprehensive_target": {
+      "control_degree": 98,
+      "soil_loss_control_ratio": 0.9,
+      "spoil_protection_rate": 97,
+      "topsoil_protection_rate": 92,
+      "vegetation_coverage_rate": 25,
+      "vegetation_restoration_rate": 98
+    }
+  },
+  "facts_count": 34,
+  "lifecycle": "pre_submission",
+  "manifest": {
+    "artifacts_required": 9,
+    "assurances_required": 4,
+    "calculators_executed": [
+      {
+        "calculator_id": "cal.compensation.fee",
+        "error_message": null,
+        "output_field_id": "field.derived.investment.compensation_fee_amount",
+        "status": "ok",
+        "unit": "万元",
+        "value": 27.0
+      },
+      {
+        "calculator_id": "cal.target.weighted_comprehensive",
+        "error_message": null,
+        "output_field_id": "field.derived.target.weighted_comprehensive_target",
+        "status": "ok",
+        "unit": "record",
+        "value": {
+          "control_degree": 98,
+          "soil_loss_control_ratio": 0.9,
+          "spoil_protection_rate": 97,
+          "topsoil_protection_rate": 92,
+          "vegetation_coverage_rate": 25,
+          "vegetation_restoration_rate": 98
+        }
+      },
+      {
+        "calculator_id": "cal.disposal_site.level_assessment",
+        "error_message": null,
+        "output_field_id": "field.derived.disposal_site.level_assessment",
+        "status": "ok",
+        "unit": "list_of_records",
+        "value": [
+          {
+            "governing_dimension": "harm",
+            "level": "1级",
+            "level_by_harm": "1级",
+            "level_by_height": "2级",
+            "level_by_volume": "2级",
+            "site_id": "D1",
+            "site_name": "主矿区西侧弃渣场 D1"
+          },
+          {
+            "governing_dimension": "volume",
+            "level": "4级",
+            "level_by_harm": "4级",
+            "level_by_height": "4级",
+            "level_by_volume": "4级",
+            "site_id": "D2",
+            "site_name": "主矿区东侧弃渣场 D2"
+          }
+        ]
+      }
+    ],
+    "lifecycle": "pre_submission",
+    "obligations_evaluated": 22,
+    "obligations_triggered": 10,
+    "registries_loaded": [
+      "fields",
+      "obligations",
+      "assurances",
+      "calculators"
+    ],
+    "ruleset": "v2026_gd_package"
+  },
+  "not_triggered_obligations": [
+    "ob.borrow_site.external_purchase_evidence",
+    "ob.borrow_site.land_use_approval",
+    "ob.disposal_site.failure_analysis",
+    "ob.disposal_site.land_use_approval",
+    "ob.disposal_site.reuse_evidence",
+    "ob.evaluation.dual_source_earthwork_justification",
+    "ob.evaluation.weighted_target_required",
+    "ob.sensitive_overlay.multi_admin_breakdown",
+    "ob.topsoil.external_topsoil_source",
+    "ob.topsoil.reuse_evidence",
+    "ob.topsoil.soil_improvement_required",
+    "ob.unavoidability.redline_conflict"
+  ],
+  "obligation_details": [
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.sensitive_overlay.multi_admin_breakdown",
+      "py_expr": "len(_get_field('field.fact.location.county_list', unified) or []) >= 2",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.evaluation.weighted_target_required",
+      "py_expr": "len(set(_item.get('standard_level') for _item in (_get_field('field.fact.prevention.control_standard_level_breakdown', unified) or []))) >= 2",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.unavoidability.redline_conflict",
+      "py_expr": "bool(_get_field('field.fact.natural.key_prevention_treatment_areas', unified))  or  bool(_get_field('field.fact.natural.other_sensitive_areas', unified))",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.borrow_site.land_use_approval",
+      "py_expr": "_get_value('field.fact.earthwork.borrow', unified) > 0  and  _get_field('field.fact.earthwork.borrow_source_type', unified) == \"自设取土场\"",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.land_use_approval",
+      "py_expr": "any(_item.get('outside_permanent_land') in [True] for _item in (_get_field('field.fact.construction.temp_topsoil_site', unified) or []))",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.borrow_site.external_purchase_evidence",
+      "py_expr": "_get_value('field.fact.earthwork.borrow', unified) > 0  and  _get_field('field.fact.earthwork.borrow_source_type', unified) == \"外购\"",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.geology_report",
+      "py_expr": "any(_item.get('level') in [\"1级\", \"2级\"] for _item in (_get_field('field.derived.disposal_site.level_assessment', unified) or []))",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.reuse_evidence",
+      "py_expr": "_get_value('field.fact.earthwork.comprehensive_reuse', unified) > 0",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.topsoil.reuse_evidence",
+      "py_expr": "_get_value('field.fact.topsoil.excavation', unified) > _get_value('field.fact.topsoil.fill', unified)",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.site_selection",
+      "py_expr": "_get_value('field.fact.earthwork.spoil', unified) > 0  or  len(_get_field('field.fact.construction.temp_topsoil_site', unified) or []) > 0",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.location_map",
+      "py_expr": "_get_value('field.fact.earthwork.spoil', unified) > 0  or  _get_value('field.fact.earthwork.borrow', unified) > 0  or  len(_get_field('field.fact.construction.temp_topsoil_site', unified) or []) > 0",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.failure_analysis",
+      "py_expr": "_get_field('field.fact.disposal_site.failure_analysis_required', unified) == True",
+      "triggered": false
+    },
+    {
+      "mode": "always",
+      "obligation_id": "ob.monitoring.baseline_monitoring",
+      "py_expr": "True (always)",
+      "triggered": true
+    },
+    {
+      "mode": "always",
+      "obligation_id": "ob.monitoring.point_layout",
+      "py_expr": "True (always)",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.stability_monitoring",
+      "py_expr": "any(_item.get('level') in [\"1级\", \"2级\", \"3级\"] for _item in (_get_field('field.derived.disposal_site.level_assessment', unified) or []))",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.video_surveillance",
+      "py_expr": "any(_item.get('level') in [\"1级\", \"2级\", \"3级\"] for _item in (_get_field('field.derived.disposal_site.level_assessment', unified) or []))",
+      "triggered": true
+    },
+    {
+      "mode": "always",
+      "obligation_id": "ob.schedule.dual_line_gantt_chart",
+      "py_expr": "True (always)",
+      "triggered": true
+    },
+    {
+      "mode": "always",
+      "obligation_id": "ob.topsoil.balance_required",
+      "py_expr": "True (always)",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.evaluation.dual_source_earthwork_justification",
+      "py_expr": "_get_value('field.fact.earthwork.borrow', unified) > 0  and  _get_value('field.fact.earthwork.spoil', unified) > 0",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.disposal_site.separate_prevention_zone",
+      "py_expr": "_get_value('field.fact.earthwork.spoil', unified) > 0  or  len(_get_field('field.fact.construction.temp_topsoil_site', unified) or []) > 0",
+      "triggered": true
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.topsoil.soil_improvement_required",
+      "py_expr": "_get_value('field.fact.topsoil.fill', unified) > _get_value('field.fact.topsoil.excavation', unified)",
+      "triggered": false
+    },
+    {
+      "mode": "conditional",
+      "obligation_id": "ob.topsoil.external_topsoil_source",
+      "py_expr": "_get_value('field.fact.topsoil.fill', unified) > _get_value('field.fact.topsoil.excavation', unified)",
+      "triggered": false
+    }
+  ],
+  "project_input_summary": {
+    "code": "SAMPLE-HIGH-RISK-DISPOSAL-01",
+    "industry": 30,
+    "name": "河源市紫金县(虚构)水土保持方案合成样本-矿区弃渣场高风险",
+    "species": "报告书"
+  },
+  "required_artifacts": [
+    "art.attachment.AF_5_geology_report",
+    "art.figure.F_06_monitoring_points",
+    "art.figure.F_08_topsoil_survey",
+    "art.figure.F_09_topsoil_stripping_range",
+    "art.figure.F_10_measures_layout",
+    "art.figure.F_12_borrow_and_disposal_location",
+    "art.figure.schedule_gantt",
+    "art.table.spoil_summary",
+    "art.table.topsoil_balance"
+  ],
+  "required_assurances": [
+    "as.geo.cgcs2000_compliance",
+    "as.geo.downstream_coverage_verified",
+    "as.seal.compile_unit_sealing",
+    "as.signature.responsibility_page"
+  ],
+  "ruleset": "v2026_gd_package",
+  "snapshot_id": "snap_9f05f7759731",
+  "timestamp": "2026-04-12T06:53:42.044455+00:00",
+  "triggered_obligations": [
+    "ob.disposal_site.geology_report",
+    "ob.disposal_site.location_map",
+    "ob.disposal_site.separate_prevention_zone",
+    "ob.disposal_site.site_selection",
+    "ob.disposal_site.stability_monitoring",
+    "ob.disposal_site.video_surveillance",
+    "ob.monitoring.baseline_monitoring",
+    "ob.monitoring.point_layout",
+    "ob.schedule.dual_line_gantt_chart",
+    "ob.topsoil.balance_required"
+  ]
+}

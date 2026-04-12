@@ -486,6 +486,42 @@ _CHAPTER_TREE = [
 ]
 
 
+def _try_render_generic_table(doc: Document, table_id: str, snapshot: dict):
+    """尝试用 P0 通用表格协议渲染指定 table_id"""
+    try:
+        from cpswc.renderers.table_projections import TABLE_PROJECTIONS
+        from cpswc.renderers.table_protocol import render_data_table
+    except ImportError:
+        return
+    proj_fn = TABLE_PROJECTIONS.get(table_id)
+    if proj_fn:
+        table_data = proj_fn(snapshot)
+        render_data_table(doc, table_data)
+
+
+def _try_render_section_table(doc: Document, section_id: str, snapshot: dict):
+    """检查某 section 是否有对应的自动生成表, 如有则渲染"""
+    try:
+        from cpswc.renderers.table_projections import TABLE_PROJECTIONS
+        from cpswc.renderers.table_protocol import render_data_table
+    except ImportError:
+        return
+    # 查找 section_id 对应的表 (通过 spec.section_id 匹配)
+    for table_id, proj_fn in TABLE_PROJECTIONS.items():
+        spec = proj_fn.__code__.co_consts  # 不够可靠, 改用 spec 属性
+    # 更可靠的方式: 遍历所有 projection 的 spec, 看哪个 section_id 匹配
+    from cpswc.renderers import table_projections as tp
+    for attr_name in dir(tp):
+        if attr_name.startswith("SPEC_"):
+            spec = getattr(tp, attr_name)
+            if hasattr(spec, "section_id") and spec.section_id == section_id:
+                proj_fn = TABLE_PROJECTIONS.get(spec.table_id)
+                if proj_fn:
+                    table_data = proj_fn(snapshot)
+                    if table_data.rows:  # 有数据才渲染
+                        render_data_table(doc, table_data)
+
+
 def _is_section_active(node: dict, triggered: set[str]) -> bool:
     """判断节点是否活跃 (义务触发或 always)"""
     policy = node.get("render_policy", "always")
@@ -556,6 +592,12 @@ def _render_section_node(doc: Document, node: dict, triggered: set[str],
                     _render_weighted_target_table(doc, snapshot)
                 elif art_ref == "art.table.investment.compensation_fee":
                     _render_compensation_fee_table(doc, snapshot, calc_results_dir)
+                else:
+                    # P0 generic table protocol
+                    _try_render_generic_table(doc, art_ref, snapshot)
+
+            # Auto-embed: check if this section has a registered table projection
+            _try_render_section_table(doc, sec_id, snapshot)
 
             # Recurse children
             for child in node.get("children") or []:
@@ -585,6 +627,11 @@ def _render_section_node(doc: Document, node: dict, triggered: set[str],
             _render_weighted_target_table(doc, snapshot)
         elif art_ref == "art.table.investment.compensation_fee":
             _render_compensation_fee_table(doc, snapshot, calc_results_dir)
+        else:
+            _try_render_generic_table(doc, art_ref, snapshot)
+
+    # Auto-embed for skeleton sections too
+    _try_render_section_table(doc, sec_id, snapshot)
 
     for child in node.get("children") or []:
         _render_section_node(doc, child, triggered, snapshot,

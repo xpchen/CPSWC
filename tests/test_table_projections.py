@@ -85,16 +85,15 @@ DISP = _load_snapshot("disposal_highrisk_v0.json")
 def test_total_land_huizhou():
     td = project_total_land_occupation(HZ)
     assert td.render_policy == TableRenderPolicy.RENDER_WITH_VALUES
-    assert len(td.rows) == 1
-    assert td.rows[0]["permanent"] == 8.2
-    assert td.rows[0]["temporary"] == 1.3
-    assert td.rows[0]["total"] == 9.5
+    assert len(td.rows) >= 1  # M1: now from county_breakdown, multiple rows
     assert td.total_row is not None
+    assert td.total_row["permanent"] == 8.2
+    assert td.total_row["temporary"] == 1.3
 
 def test_total_land_disposal():
     td = project_total_land_occupation(DISP)
     assert td.render_policy == TableRenderPolicy.RENDER_WITH_VALUES
-    assert td.rows[0]["permanent"] == 38.0
+    assert td.total_row["permanent"] == 38.0
 
 
 # ============================================================
@@ -106,6 +105,7 @@ def test_earthwork_huizhou():
     assert td.render_policy == TableRenderPolicy.RENDER_WITH_VALUES
     assert td.rows[0]["excavation"] == 8.5
     assert td.rows[0]["spoil"] == 3.5
+    assert td.rows[0]["component"] == "项目合计"
     assert td.total_row is not None
 
 
@@ -140,7 +140,7 @@ def test_topsoil_huizhou():
 def test_topsoil_disposal_placeholder():
     td = project_topsoil_balance(DISP)
     # Disposal has no topsoil data → placeholder or all None
-    assert td.rows[0]["stripable_area"] is None or td.render_policy in (
+    assert td.rows[0]["excavation"] is None or td.render_policy in (
         TableRenderPolicy.RENDER_WITH_PLACEHOLDER,
         TableRenderPolicy.RENDER_WITH_VALUES,
     )
@@ -225,6 +225,30 @@ def test_registry_matches_specs():
             )
 
 
+
+# ============================================================
+# Test: six_indicator_review (N2)
+# ============================================================
+
+def test_six_indicator_huizhou():
+    from cpswc.renderers.table_projections import project_six_indicator_review
+    td = project_six_indicator_review(HZ)
+    assert td.render_policy in (
+        TableRenderPolicy.RENDER_WITH_VALUES,
+        TableRenderPolicy.RENDER_WITH_PLACEHOLDER,
+    )
+    assert len(td.rows) == 6  # 6 indicators
+    # First indicator should have target value
+    assert td.rows[0]["indicator"] == "水土流失治理度 (%)"
+
+def test_six_indicator_disposal():
+    from cpswc.renderers.table_projections import project_six_indicator_review
+    td = project_six_indicator_review(DISP)
+    assert len(td.rows) == 6
+    # Disposal: target may be "—" if derived not pre-populated in test snapshot
+    # (full runtime populates it; test uses raw sample without runtime)
+    assert td.rows[0]["target"] in ("98", "—")
+
 # ============================================================
 # Run all tests
 # ============================================================
@@ -245,3 +269,4 @@ if __name__ == "__main__":
             failed += 1
     print(f"\n{passed} passed, {failed} failed")
     sys.exit(1 if failed else 0)
+

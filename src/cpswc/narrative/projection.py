@@ -56,6 +56,8 @@ from cpswc.narrative.templates.sec_6_soil_loss import (
 )
 from cpswc.narrative.templates.sec_7_3_design_horizon import render as render_sec_7_horizon
 from cpswc.narrative.templates.sec_1_2_spec_sheet import render as render_sec_1_2
+from cpswc.narrative.templates.sec_7_1_responsibility_range import render as render_sec_7_1
+from cpswc.narrative.templates.sec_7_5_benefit_analysis import render as render_sec_7_5
 
 
 # ============================================================
@@ -89,7 +91,9 @@ _PILOT_TEMPLATES: dict[str, Any] = {
     "sec.evaluation.site_selection": render_sec_3_1,
     "sec.soil_loss_analysis.current_state": render_sec_6_1,
     "sec.soil_loss_analysis.prediction_result": render_sec_6_2,
+    "sec.soil_loss_prevention.responsibility_range": render_sec_7_1,
     "sec.soil_loss_prevention.design_horizon": render_sec_7_horizon,
+    "sec.soil_loss_prevention.benefit_analysis": render_sec_7_5,
 }
 
 # Parent chapter headers: section_id → 1-sentence intro text

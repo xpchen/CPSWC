@@ -9,7 +9,7 @@
 
 ## 一、已 LIVE（2 张）
 
-### 1. art.table.investment.compensation_fee — 水土保持补偿费计算表
+### 1. art.table.investment.compensation_fee — 水土保持补偿费计费表
 
 | 项目 | 说明 |
 |---|---|

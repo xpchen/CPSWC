@@ -224,7 +224,7 @@ artifacts:
         5. 水土保持监测措施估算表
         6. 分年度投资估算表
         7. 独立费用计算表
-        8. 水土保持补偿费计算表
+        8. 水土保持补偿费计费表
         9. 工程单价汇总表
         10. 施工机械台时费汇总表 (+ 主要材料单价汇总表)
     format_spec:
@@ -311,7 +311,7 @@ artifacts:
 
   art.table.investment.compensation_fee:
     kind: table
-    canonical_name: 水土保持补偿费计算表
+    canonical_name: 水土保持补偿费计费表
     parent: art.table.investment_appendix
     requirement: always
     content_spec: |

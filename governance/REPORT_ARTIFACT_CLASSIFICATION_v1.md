@@ -54,7 +54,7 @@
 
 | 工件 ID | 名称 | calculator | 说明 |
 |---|---|---|---|
-| art.table.investment.compensation_fee | 水土保持补偿费计算表 | cal.compensation.fee | 全自动，ground truth 5.7/27.0 万元 |
+| art.table.investment.compensation_fee | 水土保持补偿费计费表 | cal.compensation.fee | 全自动，ground truth 5.7/27.0 万元 |
 | art.table.weighted_target_calculation | 水土流失防治指标计算表 | cal.target.weighted_comprehensive | 全自动，6 率加权 |
 
 #### B-2. CAN_GENERATE（11 件）— facts 已就绪，只缺 renderer

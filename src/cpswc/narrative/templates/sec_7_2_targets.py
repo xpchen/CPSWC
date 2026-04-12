@@ -159,7 +159,7 @@ def render(facts: dict, derived: dict, triggered: set[str],
                 text=(
                     "上述目标值由 cal.target.weighted_comprehensive 计算器产出，"
                     "依据 GB/T 50434-2018 表 4.0.2-5 南方红壤区目标值，"
-                    "按各防治分区面积权重加权得出。详见附表 AT-02。"
+                    "按各防治分区面积权重加权得出。详见水土流失防治指标计算表。"
                 ),
                 evidence_refs=[
                     "cal.target.weighted_comprehensive",

@@ -1,0 +1,111 @@
+# 措施 → 定额编码映射 (v0 Pilot)
+#
+# 将 CSV 导入的措施条目映射到 2025版水土保持工程概算定额,
+# 用于自动查询工料机消耗量和计算单价。
+#
+# 字段说明:
+#   quota_code:  定额主编码 (quotas.code)
+#   detail_code: 子项编码 (quota_details.detail_code), 对应具体规格
+#   unit_convert: 定额单位到措施单位的换算系数
+#                 例: 定额单位 "100m³" → 措施单位 "m³" → factor=0.01
+#   notes: 选型说明
+#
+# 映射原则:
+#   - 一条措施只映射一个定额子项 (1:1)
+#   - 映射不到时留空, 退回手工定价
+#   - unit_convert 保证定额消耗量 × factor = 每措施单位的消耗量
+
+version: "0.1"
+edition: "2025"
+source_db: "data/quota_2025/quota_2025.db"
+
+mappings:
+  # ======== 工程措施 ========
+  eng_01:
+    measure_name: 浆砌石排水沟
+    measure_unit: m
+    quota_code: "0309"
+    detail_code: "03029"        # 护底 (排水沟底板浆砌)
+    quota_title: 浆砌块（片）石
+    quota_unit: 100m³砌体方
+    unit_convert: 0.01          # 100m³ → m³, 但措施单位是 m (线性)
+    convert_note: "需结合断面尺寸: 1m 排水沟 ≈ 0.3×0.3=0.09m³ 砌体, factor=0.09/100=0.0009"
+    notes: 排水沟为浆砌石结构, 选 "护底" 子项
+
+  eng_02:
+    measure_name: M7.5浆砌石挡土墙
+    measure_unit: m³
+    quota_code: "0309"
+    detail_code: "03031"        # 挡土墙
+    quota_title: 浆砌块（片）石
+    quota_unit: 100m³砌体方
+    unit_convert: 0.01          # 100m³ → 1m³
+    notes: 浆砌块石挡土墙, 直接按砌体方计
+
+  eng_03:
+    measure_name: 土质截水沟
+    measure_unit: m
+    quota_code: "0102"
+    detail_code: "01004"        # 土类级别Ⅰ-Ⅱ (惠州以Ⅰ-Ⅱ类为主)
+    quota_title: 人工挖排水沟、截水沟
+    quota_unit: 100m³自然方
+    unit_convert: 0.01          # 100m³ → m³
+    convert_note: "需结合断面尺寸: 1m 截水沟 ≈ 0.4×0.3/2=0.06m³, factor=0.06/100=0.0006"
+    notes: 土质截水沟, 仅开挖工作量
+
+  # ======== 植物措施 ========
+  plant_01:
+    measure_name: 撒播草籽
+    measure_unit: hm²
+    quota_code: "1006"
+    detail_code: "10016"
+    quota_title: 护坡撒草籽
+    quota_unit: 100m²
+    unit_convert: 100            # 1hm² = 10000m² = 100 × (100m²)
+    notes: 护坡撒草籽, 含人工+草籽+无纺布
+
+  plant_02:
+    measure_name: 种植乔灌木
+    measure_unit: 株
+    quota_code: "082001"
+    detail_code: "08147"         # 土球直径20cm
+    quota_title: 栽植带土球乔木
+    quota_unit: 100株
+    unit_convert: 0.01           # 100株 → 1株
+    notes: 小叶榕等小乔木, 选最小规格 (土球20cm)
+
+  plant_03:
+    measure_name: 铺设草皮
+    measure_unit: m²
+    quota_code: "081201"
+    detail_code: "08083"         # 满铺
+    quota_title: 草皮铺种
+    quota_unit: 100m²
+    unit_convert: 0.01           # 100m² → 1m²
+    notes: 百慕大草皮满铺
+
+  # ======== 临时措施 ========
+  temp_01:
+    measure_name: 临时排水沟
+    measure_unit: m
+    quota_code: "0102"
+    detail_code: "01004"         # 土类级别Ⅰ-Ⅱ
+    quota_title: 人工挖排水沟、截水沟
+    quota_unit: 100m³自然方
+    unit_convert: 0.01
+    convert_note: "同 eng_03, 需结合断面尺寸换算"
+    notes: 临时土质排水沟, 仅开挖
+
+  temp_02:
+    measure_name: 密目网苫盖
+    measure_unit: m²
+    quota_code: ~               # 定额库无直接对应条目
+    detail_code: ~
+    notes: 密目网苫盖为市场采购项, 无定额条目, 保持手工定价
+
+  temp_03:
+    measure_name: 洗车池
+    measure_unit: 座
+    quota_code: ~               # 非定额标准项
+    detail_code: ~
+    notes: 洗车池为非标设施, 按市场报价, 保持手工定价

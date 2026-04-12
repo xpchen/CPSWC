@@ -25,3 +25,6 @@ Thumbs.db
 /outputs/
 /tmp/
 *.zip
+
+# Data (scraped quota DB + raw JSON, too large for git)
+/data/

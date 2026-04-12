@@ -1,0 +1,150 @@
+{
+  "$schema": "CPSWC_SAMPLE_v0",
+  "sample_id": "sample.intake_shiwei_intake",
+  "sample_meta": {
+    "purpose": "intake_validator end-to-end test",
+    "project_id": "shiwei_intake",
+    "generated_at": "2026-04-13"
+  },
+  "facts": {
+    "field.fact.project.name": "世维华南供应链枢纽项目（二期）",
+    "field.fact.project.industry_category": "仓储物流",
+    "field.fact.project.nature": "新建",
+    "field.fact.project.builder": "惠州市世维仓储物流有限公司",
+    "field.fact.project.compiler": "惠州恒江工程咨询有限公司",
+    "field.fact.location.province_list": [
+      "广东省"
+    ],
+    "field.fact.location.prefecture_list": [
+      "惠州市"
+    ],
+    "field.fact.location.county_list": [
+      "仲恺高新技术产业开发区"
+    ],
+    "field.fact.location.river_basin_agency": "东江流域管理局",
+    "field.fact.investment.total_investment": {
+      "value": 10769.0,
+      "unit": "万元"
+    },
+    "field.fact.investment.civil_investment": {
+      "value": 6580.51,
+      "unit": "万元"
+    },
+    "field.fact.schedule.start_time": "2021-12",
+    "field.fact.schedule.end_time": "2023-08",
+    "field.fact.schedule.design_horizon_year": 2024,
+    "field.fact.land.total_area": {
+      "value": 7.08,
+      "unit": "hm²"
+    },
+    "field.fact.land.permanent_area": {
+      "value": 7.08,
+      "unit": "hm²"
+    },
+    "field.fact.land.temporary_area": {
+      "value": 0.0,
+      "unit": "hm²"
+    },
+    "field.fact.land.county_breakdown": [
+      {
+        "county": "仲恺高新区",
+        "type": "建筑物区",
+        "area": {
+          "value": 4.15,
+          "unit": "hm²"
+        },
+        "nature": "永久"
+      },
+      {
+        "county": "仲恺高新区",
+        "type": "景观绿化区",
+        "area": {
+          "value": 1.42,
+          "unit": "hm²"
+        },
+        "nature": "永久"
+      },
+      {
+        "county": "仲恺高新区",
+        "type": "道路广场区",
+        "area": {
+          "value": 1.51,
+          "unit": "hm²"
+        },
+        "nature": "永久"
+      }
+    ],
+    "field.fact.earthwork.excavation": {
+      "value": 1.08,
+      "unit": "万m³"
+    },
+    "field.fact.earthwork.fill": {
+      "value": 1.51,
+      "unit": "万m³"
+    },
+    "field.fact.earthwork.self_reuse": {
+      "value": 1.08,
+      "unit": "万m³"
+    },
+    "field.fact.earthwork.comprehensive_reuse": {
+      "value": 0.0,
+      "unit": "万m³"
+    },
+    "field.fact.earthwork.spoil": {
+      "value": 0.0,
+      "unit": "万m³"
+    },
+    "field.fact.earthwork.borrow": {
+      "value": 0.43,
+      "unit": "万m³"
+    },
+    "field.fact.earthwork.borrow_source_type": "外购",
+    "field.fact.topsoil.stripable_area": {
+      "value": 0.0,
+      "unit": "hm²"
+    },
+    "field.fact.topsoil.stripable_volume": {
+      "value": 0.0,
+      "unit": "万m³"
+    },
+    "field.fact.topsoil.excavation": {
+      "value": 0.0,
+      "unit": "万m³"
+    },
+    "field.fact.topsoil.fill": {
+      "value": 0.0,
+      "unit": "万m³"
+    },
+    "field.fact.natural.climate_type": "南亚热带季风气候",
+    "field.fact.natural.landform_type": "冲积平原",
+    "field.fact.natural.soil_erosion_type": "水力侵蚀",
+    "field.fact.natural.soil_erosion_intensity": "微度",
+    "field.fact.natural.original_erosion_modulus": {
+      "value": 500,
+      "unit": "t/(km²·a)"
+    },
+    "field.fact.natural.allowable_loss": {
+      "value": 500,
+      "unit": "t/(km²·a)"
+    },
+    "field.fact.natural.water_soil_zoning": "南方红壤区",
+    "field.fact.prediction.total_loss": {
+      "value": 285,
+      "unit": "t"
+    },
+    "field.fact.prediction.new_loss": {
+      "value": 248,
+      "unit": "t"
+    },
+    "field.fact.prediction.reducible_loss": {
+      "value": 248,
+      "unit": "t"
+    },
+    "field.fact.disposal_site.failure_analysis_required": false,
+    "field.fact.regulatory.compensation_fee_rate": {
+      "value": 0.6,
+      "unit": "元/m²",
+      "source": "粤发改价格〔2021〕231号"
+    }
+  }
+}

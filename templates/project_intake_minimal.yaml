@@ -1,0 +1,146 @@
+# ============================================================
+# CPSWC 项目录入模板 (最小版)
+# ============================================================
+# 填写说明:
+#   - 带 [必填] 标记的字段必须提供，否则报告无法生成
+#   - 带 [推荐] 标记的字段建议提供，缺失时对应章节会降级
+#   - 带 [可选] 标记的字段不涉及时留空或删除
+#   - 数值字段格式: {value: 数值, unit: 单位}
+#   - 列表字段用 YAML 列表语法
+# ============================================================
+
+# ── 录入包 A: 项目基本信息 ──────────────────────────
+
+project:
+  name: ""                    # [必填] 项目全称
+  code: ""                    # [可选] 项目代码
+  industry_category: ""       # [必填] 行业类别 (如: 仓储物流/工业/房地产/交通)
+  nature: ""                  # [必填] 建设性质 (新建/改扩建/迁建)
+  builder: ""                 # [推荐] 建设单位全称
+  compiler: ""                # [推荐] 编制单位全称
+
+location:
+  province_list:              # [必填] 涉及省份
+    - ""
+  prefecture_list:            # [必填] 涉及地市
+    - ""
+  county_list:                # [推荐] 涉及县区
+    - ""
+  river_basin_agency: ""      # [可选] 流域管理机构
+
+investment:
+  total_investment:            # [必填] 总投资
+    value:
+    unit: "万元"
+  civil_investment:            # [必填] 土建投资
+    value:
+    unit: "万元"
+
+schedule:
+  start_time: ""              # [必填] 动工时间 (格式: YYYY-MM)
+  end_time: ""                # [必填] 完工时间 (格式: YYYY-MM)
+  design_horizon_year:        # [推荐] 设计水平年 (整数年)
+
+
+# ── 录入包 B: 占地 / 土石方 / 表土 ──────────────────
+
+land:
+  total_area:                  # [必填] 总占地面积
+    value:
+    unit: "hm²"
+  permanent_area:              # [必填] 永久占地
+    value:
+    unit: "hm²"
+  temporary_area:              # [必填] 临时占地 (无则填 0)
+    value:
+    unit: "hm²"
+  county_breakdown:            # [推荐] 项目组成分区
+    # - county: "区县名"
+    #   type: "分区名称"
+    #   area: {value: 0.0, unit: "hm²"}
+    #   nature: "永久"  # 或 "临时"
+
+earthwork:
+  excavation:                  # [必填] 挖方
+    value:
+    unit: "万m³"
+  fill:                        # [必填] 填方
+    value:
+    unit: "万m³"
+  self_reuse:                  # [推荐] 场内自用
+    value:
+    unit: "万m³"
+  comprehensive_reuse:         # [推荐] 综合利用
+    value:
+    unit: "万m³"
+  spoil:                       # [必填] 弃方 (无则填 0)
+    value:
+    unit: "万m³"
+  borrow:                      # [推荐] 借方 (无则填 0)
+    value:
+    unit: "万m³"
+  borrow_source_type: ""       # [可选] 借方来源 (外购/取土场)
+
+topsoil:
+  stripable_area:              # [推荐] 可剥离表土面积
+    value:
+    unit: "hm²"
+  stripable_volume:            # [推荐] 可剥离表土量
+    value:
+    unit: "万m³"
+  excavation:                  # [推荐] 表土挖方
+    value:
+    unit: "万m³"
+  fill:                        # [推荐] 表土回覆量
+    value:
+    unit: "万m³"
+
+
+# ── 录入包 C: 自然条件 / 侵蚀预测 ──────────────────
+
+natural:
+  climate_type: ""             # [推荐] 气候类型 (如: 南亚热带季风气候)
+  landform_type: ""            # [推荐] 地貌类型 (如: 冲积平原/丘陵)
+  soil_erosion_type: ""        # [推荐] 侵蚀类型 (水力侵蚀/风力侵蚀)
+  soil_erosion_intensity: ""   # [推荐] 侵蚀强度 (微度/轻度/中度)
+  original_erosion_modulus:    # [推荐] 原地貌侵蚀模数
+    value:
+    unit: "t/(km²·a)"
+  allowable_loss:              # [推荐] 容许土壤流失量
+    value:
+    unit: "t/(km²·a)"
+  water_soil_zoning: ""        # [必填] 水土保持区划 (如: 南方红壤区)
+  key_prevention_treatment_areas: []  # [可选] 重点防治区 (空列表=不涉及)
+  other_sensitive_areas: []           # [可选] 其他敏感区 (空列表=不涉及)
+
+prediction:
+  total_loss:                  # [推荐] 预测水土流失总量
+    value:
+    unit: "t"
+  new_loss:                    # [推荐] 新增水土流失量
+    value:
+    unit: "t"
+  reducible_loss:              # [推荐] 可治理流失量
+    value:
+    unit: "t"
+
+
+# ── 录入包 D: 防治标准 / 弃渣 / 法规 ──────────────
+
+prevention:
+  control_standard_level: ""   # [推荐] 防治标准等级 (一级/二级/三级)
+  # control_standard_level_breakdown:  # [可选] 多等级分区时填写
+  #   - zone_id: "Z1"
+  #     zone_name: "主体区"
+  #     standard_level: "一级"
+  #     area: {value: 0.0, unit: "hm²"}
+
+disposal_site:
+  level_assessment: []         # [可选] 弃渣场级别评定 (空列表=不涉及)
+  failure_analysis_required: false  # [可选] 是否需要破坏分析
+
+regulatory:
+  compensation_fee_rate:       # [推荐] 补偿费费率
+    value:
+    unit: "元/m²"
+    source: ""                 # 文件依据 (如: 粤发改价格〔2021〕231号)

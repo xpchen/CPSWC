@@ -1,0 +1,134 @@
+# ============================================================
+# 世维华南供应链枢纽项目（二期）— 录入示例
+# ============================================================
+# 来源: 参考样稿 02 (报告书)
+# 用途: 演示 CPSWC 录入 → 校验 → 生成 全流程
+# ============================================================
+
+project:
+  name: "世维华南供应链枢纽项目（二期）"
+  code: ""
+  industry_category: "仓储物流"
+  nature: "新建"
+  builder: "惠州市世维仓储物流有限公司"
+  compiler: "惠州恒江工程咨询有限公司"
+
+location:
+  province_list:
+    - "广东省"
+  prefecture_list:
+    - "惠州市"
+  county_list:
+    - "仲恺高新技术产业开发区"
+  river_basin_agency: "东江流域管理局"
+
+investment:
+  total_investment:
+    value: 10769.00
+    unit: "万元"
+  civil_investment:
+    value: 6580.51
+    unit: "万元"
+
+schedule:
+  start_time: "2021-12"
+  end_time: "2023-08"
+  design_horizon_year: 2024
+
+land:
+  total_area:
+    value: 7.08
+    unit: "hm²"
+  permanent_area:
+    value: 7.08
+    unit: "hm²"
+  temporary_area:
+    value: 0.0
+    unit: "hm²"
+  county_breakdown:
+    - county: "仲恺高新区"
+      type: "建筑物区"
+      area: {value: 4.15, unit: "hm²"}
+      nature: "永久"
+    - county: "仲恺高新区"
+      type: "景观绿化区"
+      area: {value: 1.42, unit: "hm²"}
+      nature: "永久"
+    - county: "仲恺高新区"
+      type: "道路广场区"
+      area: {value: 1.51, unit: "hm²"}
+      nature: "永久"
+
+earthwork:
+  excavation:
+    value: 1.08
+    unit: "万m³"
+  fill:
+    value: 1.51
+    unit: "万m³"
+  self_reuse:
+    value: 1.08
+    unit: "万m³"
+  comprehensive_reuse:
+    value: 0.0
+    unit: "万m³"
+  spoil:
+    value: 0.0
+    unit: "万m³"
+  borrow:
+    value: 0.43
+    unit: "万m³"
+  borrow_source_type: "外购"
+
+topsoil:
+  stripable_area:
+    value: 0.0
+    unit: "hm²"
+  stripable_volume:
+    value: 0.0
+    unit: "万m³"
+  excavation:
+    value: 0.0
+    unit: "万m³"
+  fill:
+    value: 0.0
+    unit: "万m³"
+
+natural:
+  climate_type: "南亚热带季风气候"
+  landform_type: "冲积平原"
+  soil_erosion_type: "水力侵蚀"
+  soil_erosion_intensity: "微度"
+  original_erosion_modulus:
+    value: 500
+    unit: "t/(km²·a)"
+  allowable_loss:
+    value: 500
+    unit: "t/(km²·a)"
+  water_soil_zoning: "南方红壤区"
+  key_prevention_treatment_areas: []
+  other_sensitive_areas: []
+
+prediction:
+  total_loss:
+    value: 285
+    unit: "t"
+  new_loss:
+    value: 248
+    unit: "t"
+  reducible_loss:
+    value: 248
+    unit: "t"
+
+prevention:
+  control_standard_level: ""
+
+disposal_site:
+  level_assessment: []
+  failure_analysis_required: false
+
+regulatory:
+  compensation_fee_rate:
+    value: 0.6
+    unit: "元/m²"
+    source: "粤发改价格〔2021〕231号"

@@ -55,6 +55,7 @@ from cpswc.narrative.templates.sec_6_soil_loss import (
     render_prediction as render_sec_6_2,
 )
 from cpswc.narrative.templates.sec_7_3_design_horizon import render as render_sec_7_horizon
+from cpswc.narrative.templates.sec_1_2_spec_sheet import render as render_sec_1_2
 
 
 # ============================================================
@@ -65,6 +66,7 @@ _PILOT_TEMPLATES: dict[str, Any] = {
     # Step 14-0 pilot
     "sec.overview": render_sec_0,
     "sec.overview.project_basic": render_sec_1_1,
+    "sec.overview.spec_sheet_end": render_sec_1_2,
     "sec.disposal_site.source_and_flow": render_5_1,
     "sec.disposal_site.site_selection": render_5_2,
     # Step 14-1 batch

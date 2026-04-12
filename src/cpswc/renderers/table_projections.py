@@ -795,6 +795,131 @@ def project_appendix_fees(snapshot: dict) -> TableData:
 
 
 # ============================================================
+# 特性表 — art.table.spec_sheet (工程特性表)
+# ============================================================
+# 对齐样稿: 表 2.1-1 工程特性表
+# 三部分: 一、项目基本情况  二、项目组成及占地  三、土石方平衡
+# v0: 两列 key-value 表, 从 facts 直接投影
+
+SPEC_SPEC_SHEET = TableSpec(
+    table_id="art.table.spec_sheet",
+    title="工程特性表",
+    columns=[
+        TableColumn(key="item", header="项目", unit="", align="left", fmt="str"),
+        TableColumn(key="value", header="内容", unit="", align="left", fmt="str"),
+    ],
+    has_total_row=False,
+    footnote="数据来源: facts 直接投影 (对齐样稿工程特性表)",
+    section_id="sec.overview.spec_sheet_end",
+)
+
+
+def _fmt_q(facts: dict, key: str, suffix: str = "") -> str:
+    """Format a Quantity fact as 'value unit' or '—'"""
+    v = facts.get(key)
+    if v is None:
+        return "—"
+    if isinstance(v, dict) and "value" in v:
+        val = v["value"]
+        unit = v.get("unit", "")
+        return f"{val} {unit}".strip() + suffix
+    if isinstance(v, list):
+        return "、".join(str(x) for x in v) if v else "—"
+    return str(v) if v else "—"
+
+
+def project_spec_sheet(snapshot: dict) -> TableData:
+    """工程特性表: 三部分 key-value 投影"""
+    facts = snapshot.get("_original_facts") or {}
+    derived = snapshot.get("derived_fields") or {}
+    rows: list[dict] = []
+
+    def _add(item: str, value: str):
+        rows.append({"item": item, "value": value})
+
+    def _section(title: str):
+        rows.append({"item": title, "value": ""})
+
+    # ── 一、项目基本情况 ──
+    _section("一、项目基本情况")
+    _add("项目名称", _fmt_q(facts, "field.fact.project.name"))
+    code = facts.get("field.fact.project.code")
+    if code:
+        _add("项目代码", str(code))
+    _add("建设单位", _fmt_q(facts, "field.fact.project.builder"))
+    _add("编制单位", _fmt_q(facts, "field.fact.project.compiler"))
+    _add("行业类别", _fmt_q(facts, "field.fact.project.industry_category"))
+    _add("建设性质", _fmt_q(facts, "field.fact.project.nature"))
+
+    # 位置
+    province = _fmt_q(facts, "field.fact.location.province_list")
+    prefecture = _fmt_q(facts, "field.fact.location.prefecture_list")
+    county = _fmt_q(facts, "field.fact.location.county_list")
+    _add("涉及省（市、区）", province)
+    _add("涉及地市", prefecture)
+    _add("涉及县", county)
+    _add("流域管理机构", _fmt_q(facts, "field.fact.location.river_basin_agency"))
+
+    # 投资
+    _add("总投资", _fmt_q(facts, "field.fact.investment.total_investment"))
+    _add("土建投资", _fmt_q(facts, "field.fact.investment.civil_investment"))
+
+    # 工期
+    start = _fmt_q(facts, "field.fact.schedule.start_time")
+    end = _fmt_q(facts, "field.fact.schedule.end_time")
+    _add("动工时间", start)
+    _add("完工时间", end)
+    _add("设计水平年", _fmt_q(facts, "field.fact.schedule.design_horizon_year"))
+
+    # 占地
+    _add("总占地面积", _fmt_q(facts, "field.fact.land.total_area"))
+    _add("永久占地", _fmt_q(facts, "field.fact.land.permanent_area"))
+    _add("临时占地", _fmt_q(facts, "field.fact.land.temporary_area"))
+
+    # ── 二、项目组成及占地情况 ──
+    breakdown = facts.get("field.fact.land.county_breakdown")
+    if isinstance(breakdown, list) and breakdown:
+        _section("二、项目组成及占地情况")
+        for rec in breakdown:
+            comp = rec.get("type", "—")
+            area = rec.get("area", {})
+            area_str = f"{area.get('value', '—')} {area.get('unit', '')}".strip() if isinstance(area, dict) else str(area)
+            nature = rec.get("nature", "")
+            _add(comp, f"{area_str}（{nature}）" if nature else area_str)
+
+    # ── 三、土石方平衡 ──
+    _section("三、土石方平衡")
+    _add("挖方量", _fmt_q(facts, "field.fact.earthwork.excavation"))
+    _add("填方量", _fmt_q(facts, "field.fact.earthwork.fill"))
+    _add("借方量", _fmt_q(facts, "field.fact.earthwork.borrow"))
+    _add("弃方量", _fmt_q(facts, "field.fact.earthwork.spoil"))
+
+    # ── 四、水土保持相关 ──
+    _section("四、水土保持相关")
+    _add("侵蚀类型", _fmt_q(facts, "field.fact.natural.soil_erosion_type"))
+    _add("侵蚀强度", _fmt_q(facts, "field.fact.natural.soil_erosion_intensity"))
+    _add("原地貌侵蚀模数", _fmt_q(facts, "field.fact.natural.original_erosion_modulus"))
+    _add("容许土壤流失量", _fmt_q(facts, "field.fact.natural.allowable_loss"))
+    _add("水土保持区划", _fmt_q(facts, "field.fact.natural.water_soil_zoning"))
+    level = _fmt_q(facts, "field.fact.prevention.control_standard_level")
+    if level != "—":
+        _add("防治标准等级", level)
+    _add("可剥离表土量", _fmt_q(facts, "field.fact.topsoil.stripable_volume"))
+
+    # 水保投资 (derived)
+    comp_fee = derived.get("field.derived.investment.compensation_fee_amount")
+    if comp_fee is not None:
+        _add("水土保持补偿费", f"{comp_fee} 万元")
+
+    return TableData(
+        spec=SPEC_SPEC_SHEET,
+        rows=rows,
+        total_row=None,
+        render_policy=TableRenderPolicy.RENDER_WITH_VALUES,
+    )
+
+
+# ============================================================
 # Registry
 # ============================================================
 
@@ -811,4 +936,5 @@ TABLE_PROJECTIONS = {
     "art.table.investment.appendix_total": project_appendix_total,  # Step 17
     "art.table.investment.appendix_existing": project_appendix_existing,  # Step 17
     "art.table.investment.appendix_fees": project_appendix_fees,  # Step 17
+    "art.table.spec_sheet": project_spec_sheet,  # Step 24
 }

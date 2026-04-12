@@ -1,0 +1,89 @@
+{
+  "$schema": "CPSWC_SAMPLE_v0",
+  "sample_id": "sample.huinan_zhigu_v0",
+  "sample_meta": {
+    "purpose": "真实项目压力测试 — 从参考样稿 01 提取的 facts",
+    "source": "docs/refs/05_参考样稿/01_惠南智谷创业创新中心项目_水土保持方案报告表.pdf",
+    "project_real_name": "惠南智谷创业创新中心项目",
+    "disclaimer": "facts 从已公开报批稿 PDF 提取, 用于 CPSWC 管线压力测试",
+    "generated_at": "2026-04-13",
+    "applicable_ruleset": "2018_format + guangdong_package",
+    "notes": [
+      "报告表格式 (非报告书)",
+      "小项目 (总投资 5321 万, 占地 0.78 hm²)",
+      "项目已开工后补编方案 (先建后报)",
+      "有表土可剥离 (0.01 万m³, 极少量)",
+      "有弃方 (0.40 万m³), 弃至邻近项目回填",
+      "有临时占地 (0.39 hm²)",
+      "无敏感区 / 红线冲突",
+      "单一行政区 (仲恺高新区)",
+      "单一防治标准等级 (一级)"
+    ]
+  },
+  "facts": {
+    "field.fact.project.name": "惠南智谷创业创新中心项目",
+    "field.fact.project.code": "2108-441305-04-01-552966",
+    "field.fact.project.industry_category": "工业",
+    "field.fact.project.nature": "新建",
+    "field.fact.project.builder": "惠州市惠南科技园投资开发有限公司",
+    "field.fact.project.compiler": "惠州市绿景水土保持咨询服务有限公司",
+
+    "field.fact.location.province_list": ["广东省"],
+    "field.fact.location.prefecture_list": ["惠州市"],
+    "field.fact.location.county_list": ["仲恺高新技术产业开发区"],
+    "field.fact.location.river_basin_agency": "",
+
+    "field.fact.investment.total_investment": {"value": 5321.84, "unit": "万元", "precision": 0.01},
+    "field.fact.investment.civil_investment": {"value": 3957.07, "unit": "万元", "precision": 0.01},
+
+    "field.fact.schedule.start_time": "2022-03",
+    "field.fact.schedule.end_time": "2023-06",
+    "field.fact.schedule.design_horizon_year": 2024,
+
+    "field.fact.land.total_area": {"value": 0.78, "unit": "hm²", "precision": 0.01},
+    "field.fact.land.permanent_area": {"value": 0.39, "unit": "hm²", "precision": 0.01},
+    "field.fact.land.temporary_area": {"value": 0.39, "unit": "hm²", "precision": 0.01},
+    "field.fact.land.county_breakdown": [
+      {"county": "仲恺高新区", "type": "主体工程区", "area": {"value": 0.39, "unit": "hm²"}, "nature": "永久"},
+      {"county": "仲恺高新区", "type": "临时堆土区", "area": {"value": 0.04, "unit": "hm²"}, "nature": "临时"},
+      {"county": "仲恺高新区", "type": "施工生产生活区", "area": {"value": 0.35, "unit": "hm²"}, "nature": "临时"}
+    ],
+
+    "field.fact.earthwork.excavation": {"value": 0.76, "unit": "万m³", "precision": 0.01},
+    "field.fact.earthwork.fill": {"value": 0.36, "unit": "万m³", "precision": 0.01},
+    "field.fact.earthwork.self_reuse": {"value": 0.36, "unit": "万m³", "precision": 0.01},
+    "field.fact.earthwork.comprehensive_reuse": {"value": 0.0, "unit": "万m³", "precision": 0.01},
+    "field.fact.earthwork.spoil": {"value": 0.40, "unit": "万m³", "precision": 0.01},
+    "field.fact.earthwork.borrow": {"value": 0.0, "unit": "万m³", "precision": 0.01},
+
+    "field.fact.topsoil.stripable_area": {"value": 0.02, "unit": "hm²", "precision": 0.01},
+    "field.fact.topsoil.stripable_volume": {"value": 0.01, "unit": "万m³", "precision": 0.01},
+    "field.fact.topsoil.excavation": {"value": 0.01, "unit": "万m³", "precision": 0.01},
+    "field.fact.topsoil.fill": {"value": 0.01, "unit": "万m³", "precision": 0.01},
+
+    "field.fact.natural.climate_type": "亚热带季风气候",
+    "field.fact.natural.landform_type": "冲积平原",
+    "field.fact.natural.soil_erosion_type": "水力侵蚀",
+    "field.fact.natural.soil_erosion_intensity": "微度",
+    "field.fact.natural.original_erosion_modulus": {"value": 500, "unit": "t/(km²·a)"},
+    "field.fact.natural.allowable_loss": {"value": 500, "unit": "t/(km²·a)"},
+    "field.fact.natural.water_soil_zoning": "南方红壤区",
+    "field.fact.natural.key_prevention_treatment_areas": [],
+    "field.fact.natural.other_sensitive_areas": [],
+
+    "field.fact.prediction.total_loss": {"value": 37, "unit": "t", "precision": 1},
+    "field.fact.prediction.new_loss": {"value": 29, "unit": "t", "precision": 1},
+    "field.fact.prediction.reducible_loss": {"value": 29, "unit": "t", "precision": 1},
+
+    "field.fact.prevention.control_standard_level": "一级",
+
+    "field.fact.disposal_site.failure_analysis_required": false,
+    "field.fact.disposal_site.level_assessment": [],
+
+    "field.fact.regulatory.compensation_fee_rate": {
+      "value": 0.6,
+      "unit": "元/m²",
+      "source": "粤发改价格〔2021〕231号"
+    }
+  }
+}

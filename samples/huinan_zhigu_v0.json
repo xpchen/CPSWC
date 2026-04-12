@@ -32,6 +32,12 @@
     "field.fact.location.prefecture_list": ["惠州市"],
     "field.fact.location.county_list": ["仲恺高新技术产业开发区"],
     "field.fact.location.river_basin_agency": "",
+    "field.fact.location.redline_geometry_ref": {
+      "approximate_center": {"latitude": 22.9766, "longitude": 114.4771},
+      "crs": "CGCS2000",
+      "epsg": 4490,
+      "source": "报告表 3.1 (中心 114°28′37.576″E, 22°58′35.774″N)"
+    },
 
     "field.fact.investment.total_investment": {"value": 5321.84, "unit": "万元", "precision": 0.01},
     "field.fact.investment.civil_investment": {"value": 3957.07, "unit": "万元", "precision": 0.01},
@@ -76,6 +82,14 @@
     "field.fact.prediction.reducible_loss": {"value": 29, "unit": "t", "precision": 1},
 
     "field.fact.prevention.control_standard_level": "一级",
+    "field.fact.prevention.control_standard_level_breakdown": [
+      {
+        "zone_id": "项目建设区",
+        "standard_level": "一级",
+        "area": {"value": 0.78, "unit": "hm²"}
+      }
+    ],
+    "field.fact.prevention.responsibility_range_area": {"value": 0.78, "unit": "hm²", "precision": 0.01},
 
     "field.fact.disposal_site.failure_analysis_required": false,
     "field.fact.disposal_site.level_assessment": [],

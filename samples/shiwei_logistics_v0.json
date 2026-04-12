@@ -21,7 +21,7 @@
   },
   "facts": {
     "field.fact.project.name": "世维华南供应链枢纽项目（二期）",
-    "field.fact.project.code": "",
+    "field.fact.project.code": "2112-441305-04-01-210651",
     "field.fact.project.industry_category": "仓储物流",
     "field.fact.project.nature": "新建",
     "field.fact.project.builder": "惠州市世维仓储物流有限公司",
@@ -80,6 +80,16 @@
     "field.fact.prediction.total_loss": {"value": 285, "unit": "t", "precision": 1},
     "field.fact.prediction.new_loss": {"value": 248, "unit": "t", "precision": 1},
     "field.fact.prediction.reducible_loss": {"value": 248, "unit": "t", "precision": 1},
+
+    "field.fact.prevention.control_standard_level": "一级",
+    "field.fact.prevention.control_standard_level_breakdown": [
+      {
+        "zone_id": "项目建设区",
+        "standard_level": "一级",
+        "area": {"value": 7.08, "unit": "hm²"}
+      }
+    ],
+    "field.fact.prevention.responsibility_range_area": {"value": 7.08, "unit": "hm²", "precision": 0.01},
 
     "field.fact.disposal_site.failure_analysis_required": false,
     "field.fact.disposal_site.level_assessment": [],

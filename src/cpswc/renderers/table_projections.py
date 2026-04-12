@@ -578,6 +578,122 @@ def project_investment_split_summary(snapshot: dict) -> TableData:
 
 
 # ============================================================
+# Step 17: Investment Appendix Skeletons
+# ============================================================
+# 附表结构对齐样稿, 数据全 "—" (v0 无分项 facts)
+# 目的: 验证 INVESTMENT_FACTS_BACKFILL_CONTRACT 的输出可落地性
+
+SPEC_APPENDIX_TOTAL = TableSpec(
+    table_id="art.table.investment.appendix_total",
+    title="附表 1 水土保持工程投资估算总表",
+    columns=[
+        TableColumn(key="seq", header="序号", unit="", align="center", fmt="str"),
+        TableColumn(key="name", header="工程或费用名称", unit="", align="left", fmt="str"),
+        TableColumn(key="construction", header="建安工程费", unit="万元", align="right", fmt="2f"),
+        TableColumn(key="plant", header="植物措施费", unit="万元", align="right", fmt="2f"),
+        TableColumn(key="independent", header="独立费用", unit="万元", align="right", fmt="2f"),
+        TableColumn(key="new_total", header="方案新增投资", unit="万元", align="right", fmt="2f"),
+        TableColumn(key="existing", header="主体已有投资", unit="万元", align="right", fmt="2f"),
+        TableColumn(key="grand_total", header="工程总投资", unit="万元", align="right", fmt="2f"),
+    ],
+    has_total_row=False,
+    footnote="",
+    section_id="",  # 附表, 不绑定正文 section
+)
+
+SPEC_APPENDIX_EXISTING = TableSpec(
+    table_id="art.table.investment.appendix_existing",
+    title="附表 3 主体工程已列水土保持措施投资",
+    columns=[
+        TableColumn(key="seq", header="序号", unit="", align="center", fmt="str"),
+        TableColumn(key="name", header="措施名称", unit="", align="left", fmt="str"),
+        TableColumn(key="unit", header="单位", unit="", align="center", fmt="str"),
+        TableColumn(key="quantity", header="数量", unit="", align="right", fmt="2f"),
+        TableColumn(key="unit_price", header="单价 (元)", unit="", align="right", fmt="2f"),
+        TableColumn(key="amount", header="合价 (万元)", unit="", align="right", fmt="2f"),
+    ],
+    has_total_row=True,
+    footnote="主体已列措施由设计院在录入时以 source_attribution='主体已列' 标注",
+    section_id="",
+)
+
+SPEC_APPENDIX_FEES = TableSpec(
+    table_id="art.table.investment.appendix_fees",
+    title="附表 4 独立费用 / 预备费 / 专项费用估算表",
+    columns=[
+        TableColumn(key="seq", header="序号", unit="", align="center", fmt="str"),
+        TableColumn(key="name", header="费用项", unit="", align="left", fmt="str"),
+        TableColumn(key="rate", header="费率", unit="", align="center", fmt="str"),
+        TableColumn(key="base", header="计费基数 (万元)", unit="", align="right", fmt="2f"),
+        TableColumn(key="amount", header="金额 (万元)", unit="", align="right", fmt="2f"),
+    ],
+    has_total_row=True,
+    footnote="费率依据: 水总[2024]323号 | v0 缺建安费基数, 全部 '—'",
+    section_id="",
+)
+
+_INDEPENDENT_FEE_ROWS = [
+    ("1", "建设单位管理费"),
+    ("2", "招标业务费"),
+    ("3", "经济技术咨询费"),
+    ("4", "工程建设监理费"),
+    ("5", "工程造价咨询服务费"),
+    ("6", "科研勘测设计费"),
+    ("7", "水土保持设施验收咨询费"),
+]
+
+
+def project_appendix_total(snapshot: dict) -> TableData:
+    """附表1: 和正文总表相同行骨架, 但多列 (建安/植物/独立/新增/已有/总计)"""
+    derived = snapshot.get("derived_fields") or {}
+    comp_fee = derived.get("field.derived.investment.compensation_fee_amount")
+    rows = []
+    for row_id, seq, name in _INVESTMENT_ROWS:
+        row = {"seq": seq, "name": name,
+               "construction": None, "plant": None, "independent": None,
+               "new_total": None, "existing": None, "grand_total": None}
+        if row_id == "compensation" and comp_fee is not None:
+            row["new_total"] = comp_fee
+            row["existing"] = 0
+            row["grand_total"] = comp_fee
+        rows.append(row)
+    footnote = (
+        "附表版投资估算总表 (对齐样稿附表1) | "
+        "v0 仅补偿费行有数据, 其余待 InvestmentEstimationSubsystem 完善"
+    )
+    spec = TableSpec(
+        table_id=SPEC_APPENDIX_TOTAL.table_id,
+        title=SPEC_APPENDIX_TOTAL.title,
+        columns=SPEC_APPENDIX_TOTAL.columns,
+        has_total_row=False, footnote=footnote, section_id="",
+    )
+    return TableData(spec=spec, rows=rows,
+                     render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+
+
+def project_appendix_existing(snapshot: dict) -> TableData:
+    """附表3: 主体已列措施投资 — v0 全 '—' (无分项 facts)"""
+    rows = [{"seq": "—", "name": "（待录入主体已列措施条目）",
+             "unit": "—", "quantity": None, "unit_price": None, "amount": None}]
+    total_row = {"seq": "", "name": "合计", "unit": "", "quantity": None,
+                 "unit_price": None, "amount": None}
+    return TableData(spec=SPEC_APPENDIX_EXISTING, rows=rows, total_row=total_row,
+                     render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+
+
+def project_appendix_fees(snapshot: dict) -> TableData:
+    """附表4: 独立费用/预备费 — v0 全 '—' (缺建安费基数)"""
+    rows = []
+    for seq, name in _INDEPENDENT_FEE_ROWS:
+        rows.append({"seq": seq, "name": name, "rate": "—", "base": None, "amount": None})
+    rows.append({"seq": "", "name": "独立费用小计", "rate": "", "base": None, "amount": None})
+    rows.append({"seq": "", "name": "基本预备费 (10%)", "rate": "10%", "base": None, "amount": None})
+    total_row = {"seq": "", "name": "合计", "rate": "", "base": None, "amount": None}
+    return TableData(spec=SPEC_APPENDIX_FEES, rows=rows, total_row=total_row,
+                     render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+
+
+# ============================================================
 # Registry
 # ============================================================
 
@@ -591,4 +707,7 @@ TABLE_PROJECTIONS = {
     "art.table.six_indicator_review": project_six_indicator_review,
     "art.table.investment.total_summary": project_investment_total_summary,  # Step 16
     "art.table.investment.split_summary": project_investment_split_summary,  # Step 16
+    "art.table.investment.appendix_total": project_appendix_total,  # Step 17
+    "art.table.investment.appendix_existing": project_appendix_existing,  # Step 17
+    "art.table.investment.appendix_fees": project_appendix_fees,  # Step 17
 }

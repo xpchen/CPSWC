@@ -55,12 +55,20 @@ def render(facts: dict, derived: dict, triggered: set[str],
 
     measure_count = len(registry) if isinstance(registry, list) else 0
 
-    p1 = NarrativeParagraph(
-        text=(
+    if measure_count > 0:
+        scope_text = (
             f"本项目水土保持投资估算包括工程措施费、植物措施费、"
             f"临时措施费及水土保持补偿费四部分，"
             f"共涉及{measure_count}项防治措施。"
-        ),
+        )
+    else:
+        scope_text = (
+            f"本项目水土保持投资估算包括工程措施费、植物措施费、"
+            f"临时措施费及水土保持补偿费四部分。"
+        )
+
+    p1 = NarrativeParagraph(
+        text=scope_text,
         evidence_refs=[
             "field.fact.investment.measures_registry",
         ],

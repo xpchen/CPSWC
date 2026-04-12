@@ -77,12 +77,19 @@ def render(facts: dict, derived: dict, triggered: set[str],
     paragraphs = []
 
     if variant == "single_level":
-        paragraphs.append(NarrativeParagraph(
-            text=(
+        if level and level != "—":
+            intro_text = (
                 f"本项目位于{zoning}，防治标准等级为{level}。"
                 f"根据 GB/T 50434-2018 第 4 章，"
                 f"按{zoning}{level}标准确定六项防治指标目标值如下。"
-            ),
+            )
+        else:
+            intro_text = (
+                f"本项目位于{zoning}。"
+                f"根据 GB/T 50434-2018 第 4 章确定六项防治指标目标值如下。"
+            )
+        paragraphs.append(NarrativeParagraph(
+            text=intro_text,
             evidence_refs=[
                 "field.fact.prevention.control_standard_level",
                 "field.fact.natural.water_soil_zoning",
@@ -130,7 +137,9 @@ def render(facts: dict, derived: dict, triggered: set[str],
             unit = _INDICATOR_UNITS.get(key, "")
             lines.append(f"{label}: {val}{unit}")
 
-        method = "面积加权计算" if variant == "multi_level" else f"{level}标准查表"
+        method = "面积加权计算" if variant == "multi_level" else (
+            f"{level}标准查表" if level and level != "—" else "标准查表"
+        )
         paragraphs.append(NarrativeParagraph(
             text=(
                 f"经{method}，本项目水土流失防治六项指标目标值为: "

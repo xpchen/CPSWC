@@ -54,8 +54,8 @@ def render(facts: dict, derived: dict, triggered: set[str],
         NarrativeParagraph(
             text=(
                 f"综上所述，{name}的水土保持方案编制依据充分，"
-                f"防治标准等级为{level}，"
-                f"各项防治指标目标值符合 GB/T 50434-2018 的要求。"
+                + (f"防治标准等级为{level}，" if level and level != "—" else "")
+                + f"各项防治指标目标值符合 GB/T 50434-2018 的要求。"
             ),
             evidence_refs=[
                 "field.fact.project.name",

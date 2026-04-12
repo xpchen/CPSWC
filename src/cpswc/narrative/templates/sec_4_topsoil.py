@@ -92,6 +92,37 @@ def render_stripping(facts: dict, derived: dict, triggered: set[str],
 
     total_n = _num(facts, "field.fact.land.total_area")
     strip_n = _num(facts, "field.fact.topsoil.stripable_area")
+    strip_vol_n = _num(facts, "field.fact.topsoil.stripable_volume")
+
+    # 无可剥离表土时, 用行业自然表达
+    if strip_n <= 0 and strip_vol_n <= 0:
+        p1 = NarrativeParagraph(
+            text=(
+                f"项目总占地面积{total_area}。"
+                f"经现场踏勘，项目用地范围内无可剥离表土，"
+                f"因此本方案不涉及表土剥离。"
+            ),
+            evidence_refs=[
+                "field.fact.land.total_area",
+                "field.fact.topsoil.stripable_area",
+                "field.fact.topsoil.stripable_volume",
+            ],
+            source_rule_refs=[
+                "rule.template_2026.section_4",
+                "standard.gb_50433_2018.section_4",
+            ],
+        )
+        return NarrativeBlock(
+            section_id="sec.topsoil.stripping",
+            title="表土剥离",
+            render_status=RenderStatus.FULL,
+            paragraphs=[p1],
+            variant_id="default",
+            template_id=TEMPLATE_SPEC_STRIPPING.template_id,
+            template_version=TEMPLATE_SPEC_STRIPPING.template_version,
+            normative_basis=TEMPLATE_SPEC_STRIPPING.normative_basis,
+        )
+
     strip_pct = f"{strip_n / total_n * 100:.0f}" if total_n > 0 else "—"
 
     p1 = NarrativeParagraph(
@@ -151,6 +182,29 @@ def render_balance(facts: dict, derived: dict, triggered: set[str],
     strip_n = _num(facts, "field.fact.topsoil.stripable_volume")
     exc_n = _num(facts, "field.fact.topsoil.excavation")
     fill_n = _num(facts, "field.fact.topsoil.fill")
+
+    # 无表土时直接给出结论
+    if strip_n <= 0 and exc_n <= 0 and fill_n <= 0:
+        p = NarrativeParagraph(
+            text="本项目无可剥离表土，不涉及表土平衡。",
+            evidence_refs=[
+                "field.fact.topsoil.stripable_volume",
+                "field.fact.topsoil.excavation",
+                "field.fact.topsoil.fill",
+            ],
+            source_rule_refs=["rule.template_2026.section_4"],
+        )
+        return NarrativeBlock(
+            section_id="sec.topsoil.balance",
+            title="表土平衡",
+            render_status=RenderStatus.FULL,
+            paragraphs=[p],
+            variant_id="default",
+            template_id=TEMPLATE_SPEC_BALANCE.template_id,
+            template_version=TEMPLATE_SPEC_BALANCE.template_version,
+            normative_basis=TEMPLATE_SPEC_BALANCE.normative_basis,
+        )
+
     surplus = exc_n - fill_n
 
     p1 = NarrativeParagraph(

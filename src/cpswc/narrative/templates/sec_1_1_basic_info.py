@@ -69,7 +69,9 @@ def render(facts: dict, derived: dict, triggered: set[str],
 
     p1 = NarrativeParagraph(
         text=(
-            f"{name}（项目代码：{code}）为{nature}项目，"
+            f"{name}"
+            f"{'（项目代码：' + code + '）' if code and code != '—' else ''}"
+            f"为{nature}项目，"
             f"属{industry}类行业，位于{province}{prefecture}。"
             f"项目总投资{total_inv}，其中土建投资{civil_inv}。"
         ),

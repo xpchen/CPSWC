@@ -1384,6 +1384,117 @@ def project_prediction_summary(snapshot: dict) -> TableData:
 # Registry
 # ============================================================
 
+# ============================================================
+# Step 32+: 六率分项达标表 (Six-Indicator Zone Breakdown Table)
+# ============================================================
+# 按防治分区展开六率目标值, 多等级项目含面积权重和加权合计行。
+# 数据来源: control_standard_level_breakdown (facts) +
+#           weighted_comprehensive_target (derived) +
+#           GB/T 50434-2018 目标查表
+
+SPEC_SIX_INDICATOR_BREAKDOWN = TableSpec(
+    table_id="art.table.six_indicator_breakdown",
+    title="水土流失防治目标分区取值表",
+    columns=[
+        TableColumn(key="zone", header="防治分区", unit="", align="left", fmt="str"),
+        TableColumn(key="level", header="防治标准等级", unit="", align="center", fmt="str"),
+        TableColumn(key="area", header="面积", unit="hm²", align="right", fmt=".2f"),
+        TableColumn(key="weight", header="权重", unit="%", align="right", fmt="str"),
+        TableColumn(key="control_degree", header="治理度", unit="%", align="right", fmt="str"),
+        TableColumn(key="soil_loss_control_ratio", header="流失控制比", unit="", align="right", fmt="str"),
+        TableColumn(key="spoil_protection_rate", header="渣土防护率", unit="%", align="right", fmt="str"),
+        TableColumn(key="topsoil_protection_rate", header="表土保护率", unit="%", align="right", fmt="str"),
+        TableColumn(key="vegetation_restoration_rate", header="植被恢复率", unit="%", align="right", fmt="str"),
+        TableColumn(key="vegetation_coverage_rate", header="覆盖率", unit="%", align="right", fmt="str"),
+    ],
+    has_total_row=False,
+    footnote="目标值来源: GB/T 50434-2018 表 4.0.2-5 | 加权方法: 面积加权 (cal.target.weighted_comprehensive)",
+    section_id="sec.soil_loss_prevention.targets",
+)
+
+
+def project_six_indicator_breakdown(snapshot: dict) -> TableData:
+    """按防治分区展开六率目标, 单等级→1 行, 多等级→分区行 + 加权合计行"""
+    facts = snapshot.get("_original_facts") or {}
+    derived = snapshot.get("derived_fields") or {}
+
+    breakdown = facts.get("field.fact.prevention.control_standard_level_breakdown")
+    level_single = facts.get("field.fact.prevention.control_standard_level")
+    wt = derived.get("field.derived.target.weighted_comprehensive_target") or {}
+
+    ind_keys = [
+        "control_degree", "soil_loss_control_ratio", "spoil_protection_rate",
+        "topsoil_protection_rate", "vegetation_restoration_rate", "vegetation_coverage_rate",
+    ]
+
+    def _fmt(val):
+        return str(val) if val is not None else "—"
+
+    rows = []
+
+    if isinstance(breakdown, list) and len(breakdown) > 0:
+        total_area = sum(
+            (z.get("area", {}).get("value", 0) if isinstance(z.get("area"), dict)
+             else z.get("area", 0))
+            for z in breakdown
+        )
+
+        for zone in breakdown:
+            name = zone.get("zone_name") or zone.get("zone_id", "—")
+            level = zone.get("standard_level", "—")
+            area_raw = zone.get("area")
+            area = area_raw.get("value", 0) if isinstance(area_raw, dict) else (area_raw or 0)
+            w = (area / total_area * 100) if total_area > 0 else 0
+
+            # Look up standard targets for this level
+            level_targets = _GBT50434_SOUTH_RED.get(level, {})
+
+            row = {
+                "zone": name,
+                "level": level,
+                "area": area,
+                "weight": f"{w:.1f}",
+            }
+            for k in ind_keys:
+                row[k] = _fmt(level_targets.get(k))
+            rows.append(row)
+
+        # Weighted total row (only for multi-zone)
+        if len(breakdown) > 1 and wt:
+            total_row = {
+                "zone": "加权目标值",
+                "level": "—",
+                "area": total_area,
+                "weight": "100.0",
+            }
+            for k in ind_keys:
+                total_row[k] = _fmt(wt.get(k))
+            rows.append(total_row)
+
+    elif level_single and level_single in _GBT50434_SOUTH_RED:
+        # Single level fallback: no breakdown list, just one row
+        if not wt:
+            wt = _GBT50434_SOUTH_RED[level_single]
+        resp_area = facts.get("field.fact.prevention.responsibility_range_area")
+        area = (resp_area.get("value", 0) if isinstance(resp_area, dict)
+                else (resp_area or 0))
+        row = {
+            "zone": "全项目",
+            "level": level_single,
+            "area": area,
+            "weight": "100.0",
+        }
+        for k in ind_keys:
+            row[k] = _fmt(wt.get(k))
+        rows.append(row)
+
+    policy = (TableRenderPolicy.RENDER_WITH_VALUES if rows
+              else TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+
+    return TableData(
+        spec=SPEC_SIX_INDICATOR_BREAKDOWN, rows=rows, render_policy=policy)
+
+
 TABLE_PROJECTIONS = {
     "art.table.total_land_occupation": project_total_land_occupation,
     "art.table.earthwork_balance": project_earthwork_balance,
@@ -1405,4 +1516,5 @@ TABLE_PROJECTIONS = {
     "art.table.prediction.erosion_modulus": project_erosion_modulus,  # Step 31B
     "art.table.prediction.result": project_prediction_result,  # Step 31B
     "art.table.prediction.summary": project_prediction_summary,  # Step 31B
+    "art.table.six_indicator_breakdown": project_six_indicator_breakdown,  # Step 32+
 }

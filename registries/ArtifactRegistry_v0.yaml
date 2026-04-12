@@ -487,6 +487,18 @@ artifacts:
       - field.fact.prevention.control_standard_level
     renderer: TableProjection
 
+  art.table.six_indicator_breakdown:
+    kind: table
+    canonical_name: 水土流失防治目标分区取值表
+    source: 2026_template_7_2
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.soil_loss_prevention.targets
+    data_source_refs:
+      - field.fact.prevention.control_standard_level_breakdown
+      - field.derived.target.weighted_comprehensive_target
+    renderer: TableProjection
+
   art.table.monitoring_points:
     kind: table
     canonical_name: 水土保持监测点位布设表

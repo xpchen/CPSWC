@@ -52,6 +52,7 @@ TEMPLATE_SPEC_EVAL = NarrativeTemplateSpec(
         "field.fact.topsoil.stripable_volume",
         "field.fact.location.province_list",
         "field.fact.location.prefecture_list",
+        "field.derived.target.weighted_comprehensive_target",
     ],
 )
 

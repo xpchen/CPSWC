@@ -22,6 +22,7 @@ TEMPLATE_SPEC = NarrativeTemplateSpec(
         "field.fact.project.industry_category",
         "field.fact.prevention.control_standard_level",
         "field.derived.investment.compensation_fee_amount",
+        "field.derived.disposal_site.level_assessment",
     ],
 )
 

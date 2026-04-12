@@ -311,21 +311,23 @@ artifacts:
 
   art.table.investment.compensation_fee:
     kind: table
-    canonical_name: 水土保持补偿费计费表
+    canonical_name: 投资附表口径补偿费表
     parent: art.table.investment_appendix
     requirement: always
+    status: deprecated_alias
+    note: |
+      Step 32 合并: 正文链路统一使用 art.table.compensation_fee_detail。
+      本条目保留为投资附表历史占位, 不再独立渲染。
+      See art.table.compensation_fee_detail for active implementation.
     content_spec: |
       跨省(区、市)项目分省(区、市)列出
-    # Step 11A: 本表从 live derived field + fact field 直接取数, 不再挂
-    # engine.InvestmentEstimationSubsystem 这个扩展命名空间空壳。
-    # 决议 8 双锚: derived field 提供 value, regulatory field 提供 rate, province_list 提供分省维度。
     data_source_refs:
-      - field.derived.investment.compensation_fee_amount   # 应缴金额 (万元, 由 cal.compensation.fee 派生)
-      - field.fact.regulatory.compensation_fee_rate        # 费率 (元/m², Step 11A 新增 live field)
-      - field.fact.land.permanent_area                     # 永久占地 (hm²)
-      - field.fact.land.temporary_area                     # 临时占地 (hm²)
-      - field.fact.location.province_list                  # 分省维度
-    produced_by_calculator: cal.compensation.fee           # Step 11A: 首次出现 calculator 生产关系
+      - field.derived.investment.compensation_fee_amount
+      - field.fact.regulatory.compensation_fee_rate
+      - field.fact.land.permanent_area
+      - field.fact.land.temporary_area
+      - field.fact.location.province_list
+    produced_by_calculator: cal.compensation.fee
     renderer: TableRenderer
 
   art.table.investment.unit_prices:

@@ -80,7 +80,7 @@ def render(facts: dict, derived: dict, triggered: set[str],
                 "field.fact.land.temporary_area",
                 "field.derived.investment.compensation_fee_amount",
                 "cal.compensation.fee",
-                "art.table.investment.compensation_fee",
+                "art.table.compensation_fee_detail",
             ],
             source_rule_refs=[
                 "rule.guangdong.fa_gai_2021_231",

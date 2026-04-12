@@ -32,6 +32,7 @@ SPEC = NarrativeTemplateSpec(
     input_fields=[
         "field.fact.land.county_breakdown",
         "field.fact.earthwork.spoil",
+        "field.derived.disposal_site.level_assessment",
     ],
 )
 

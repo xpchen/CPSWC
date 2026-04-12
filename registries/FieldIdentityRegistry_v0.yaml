@@ -171,6 +171,27 @@ fields:
       invalidation_targets:
         - proj.report_form.project_nature
 
+  field.fact.project.builder:
+    canonical_name: 建设单位
+    semantic_type: string
+    protection_level: PROTECTED
+    source: user_input
+    note: 建设单位名称, 用于特性表和管理责任章节
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.builder
+        - sec.management
+
+  field.fact.project.compiler:
+    canonical_name: 编制单位
+    semantic_type: string
+    protection_level: PROTECTED
+    source: user_input
+    note: 水土保持方案编制单位名称, 用于特性表
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.compiler
+
   # 注: 原 field.fact.project.stage 已移除。
   # 项目阶段与 compilation_intent / submission_stage 重复建模, 应由
   # SubmissionProfile (compilation_intent) + SubmissionLifecycle (stage)
@@ -279,6 +300,38 @@ fields:
         - proj.report_form.civil_investment
         - sec.overview.project_basic
 
+  field.fact.investment.measures_registry:
+    canonical_name: 措施清单明细
+    semantic_type: MeasureRecordList
+    protection_level: PROTECTED
+    source: investment_loader
+    note: |
+      list of {measure_id, fee_category, quantity, unit_price, amount_wan, source_attribution}。
+      由 investment_loader 从 CSV/YAML 导入后注入 facts。
+    lineage:
+      projection_target_refs:
+        - art.table.investment.total_summary
+        - art.table.investment.split_summary
+        - art.table.compensation_fee_detail
+        - sec.investment.summary
+
+  field.fact.investment.measures_summary:
+    canonical_name: 措施分类汇总
+    semantic_type: MeasureSummaryDict
+    protection_level: PROTECTED
+    source: investment_loader
+    note: |
+      {费类: {new, existing, total}} 汇总结构,
+      由 investment_loader 从 measures_registry 聚合得出。
+    lineage:
+      upstream_deps:
+        - field.fact.investment.measures_registry
+      projection_target_refs:
+        - art.table.investment.total_summary
+        - art.table.investment.split_summary
+        - sec.overview
+        - sec.investment.summary
+
   # -------- 工期与时点 --------
   field.fact.schedule.start_time:
     canonical_name: 开工时间
@@ -317,6 +370,23 @@ fields:
       projection_target_refs:
         - proj.spec_sheet.design_horizon_year
         - sec.soil_loss_prevention.design_horizon
+
+  # -------- 施工阶段 (扩展) --------
+  field.fact.schedule.phases:
+    canonical_name: 施��阶段序列
+    semantic_type: PhaseList
+    protection_level: PROTECTED
+    source: user_input
+    note: |
+      list of {name, start, end} 对象; 来自 intake 或 derive_phases() 自动推导。
+      如未提供则由 schedule_phases 模板从 start_time/end_time 推导��
+    lineage:
+      upstream_deps:
+        - field.fact.schedule.start_time
+        - field.fact.schedule.end_time
+      projection_target_refs:
+        - sec.project_overview.progress
+        - art.table.prediction.scope_period
 
   # -------- 占地 --------
   field.fact.land.total_area:
@@ -794,7 +864,34 @@ fields:
         - proj.report_form.reducible_loss
         - sec.soil_loss_prevention.benefit_analysis
 
-  # -------- 防治责任范围与目标 --------
+  # -------- 预测覆盖 (overrides) --------
+  field.fact.prediction.zone_modulus_overrides:
+    canonical_name: 分区侵蚀模数覆盖
+    semantic_type: ModulusOverrideDict
+    protection_level: PROTECTED
+    source: user_input
+    note: |
+      可选。分区级侵蚀��数覆盖, 格式 {zone_id: {construction: float, recovery: float}}。
+      优先级高于默认矩阵, 用于当地实测值校准。
+    lineage:
+      projection_target_refs:
+        - art.table.prediction.erosion_modulus
+        - sec.soil_loss_analysis.prediction_result
+
+  field.fact.prediction.disturbed_modulus_override:
+    canonical_name: 全项目扰动模数覆盖
+    semantic_type: ModulusOverride
+    protection_level: PROTECTED
+    source: user_input
+    note: |
+      可选。全项目级扰动侵蚀模数覆盖, 格式 {construction: float, recovery: float}。
+      优先级低于 zone_modulus_overrides, 高��默认矩阵。
+    lineage:
+      projection_target_refs:
+        - art.table.prediction.erosion_modulus
+        - sec.soil_loss_analysis.prediction_result
+
+  # -------- 防治责任范围与��标 --------
   field.fact.prevention.responsibility_range_area:
     canonical_name: 防治责任范围面积
     semantic_type: Area

@@ -106,6 +106,7 @@ SPEC_PREDICTION = NarrativeTemplateSpec(
     input_fields=[
         "field.fact.natural.original_erosion_modulus",
         "field.fact.land.county_breakdown",
+        "field.fact.land.total_area",
         "field.fact.schedule.start_time",
         "field.fact.schedule.end_time",
     ],

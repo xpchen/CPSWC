@@ -147,9 +147,9 @@ def load_all_registries(specs_dir: Path | None = None) -> dict:
     """加载全部 v0 registries, 返回 {name: parsed_yaml}"""
     d = specs_dir or SPECS_DIR
     files = {
-        "contracts":   d / "CPSWC_CORE_CONTRACTS.yaml",
+        "contracts":   GOVERNANCE_DIR / "CORE_CONTRACTS.yaml",
         "fields":      d / "FieldIdentityRegistry_v0.yaml",
-        "artifacts":   d / "CPSWC_ARTIFACT_REGISTRY_v0.yaml",
+        "artifacts":   d / "ArtifactRegistry_v0.yaml",
         "obligations": d / "ObligationSet_v0.yaml",
         "assurances":  d / "AssuranceRegistry_v0.yaml",
         "calculators": d / "CalculatorRegistry_v0.yaml",

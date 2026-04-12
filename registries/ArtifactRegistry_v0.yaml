@@ -431,6 +431,121 @@ artifacts:
       - engine.SpoilStabilityEngine
     renderer: TableRenderer
 
+  # Step 31A: Quick-Win Tables
+  art.table.prevention_target:
+    kind: table
+    canonical_name: 水土流失防治目标表
+    source: 2026_template_7_2
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.soil_loss_prevention.targets
+    data_source_refs:
+      - field.derived.target.weighted_comprehensive_target
+      - field.fact.prevention.control_standard_level
+    renderer: TableProjection
+
+  art.table.monitoring_points:
+    kind: table
+    canonical_name: 水土保持监测点位布设表
+    source: 2026_template_8_3
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.monitoring.point_layout
+    data_source_refs:
+      - field.fact.land.county_breakdown
+    renderer: TableProjection
+
+  art.table.compensation_fee_detail:
+    kind: table
+    canonical_name: 水土保持补偿费计费表
+    source: 2026_template_9_2
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.investment_estimation.compensation_fee
+    data_source_refs:
+      - field.fact.land.permanent_area
+      - field.fact.land.temporary_area
+      - field.fact.regulatory.compensation_fee_rate
+      - field.derived.investment.compensation_fee_amount
+    renderer: TableProjection
+
+  # Step 31B: Prediction Tables
+  art.table.prediction.scope_period:
+    kind: table
+    canonical_name: 水土流失预测范围及预测时段表
+    source: 2026_template_6_2
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.soil_loss_analysis.prediction_result
+    data_source_refs:
+      - field.fact.land.county_breakdown
+      - field.fact.schedule.start_time
+      - field.fact.schedule.end_time
+    renderer: TableProjection
+
+  art.table.prediction.erosion_modulus:
+    kind: table
+    canonical_name: 土壤侵蚀模数取值表
+    source: 2026_template_6_2
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.soil_loss_analysis.prediction_result
+    data_source_refs:
+      - field.fact.natural.original_erosion_modulus
+      - field.fact.land.county_breakdown
+    renderer: TableProjection
+
+  art.table.prediction.result:
+    kind: table
+    canonical_name: 水土流失预测成果表
+    source: 2026_template_6_2
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.soil_loss_analysis.prediction_result
+    data_source_refs:
+      - field.fact.land.county_breakdown
+      - field.fact.natural.original_erosion_modulus
+      - field.fact.schedule.start_time
+      - field.fact.schedule.end_time
+    renderer: TableProjection
+
+  art.table.prediction.summary:
+    kind: table
+    canonical_name: 水土流失预测汇总表
+    source: 2026_template_6_2
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.soil_loss_analysis.prediction_result
+    data_source_refs:
+      - field.fact.land.county_breakdown
+      - field.fact.natural.original_erosion_modulus
+    renderer: TableProjection
+
+  # Step 24: Spec Sheet (已有投影, 补登记)
+  art.table.spec_sheet:
+    kind: table
+    canonical_name: 水土保持工程特性表
+    source: 2026_template_1_2
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.overview.spec_sheet_end
+    data_source_refs:
+      - field.fact.project.name
+      - field.fact.land.total_area
+    renderer: TableProjection
+
+  # Step 15: 六项指标复核表 (已有投影, 补登记)
+  art.table.six_indicator_review:
+    kind: table
+    canonical_name: 水保方案六项指标完成情况复核
+    source: 2026_template_7_4
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.soil_loss_prevention.benefit_analysis
+    data_source_refs:
+      - field.derived.target.weighted_comprehensive_target
+    renderer: TableProjection
+
 # ============================================================
 # 5. 附图 (13 项明确命名 + 2 项条件)
 # ============================================================

@@ -937,7 +937,7 @@ SPEC_PREVENTION_TARGET = TableSpec(
     ],
     has_total_row=False,
     footnote="目标值来源: cal.target.weighted_comprehensive / GB/T 50434-2018",
-    section_id="sec.soil_loss_prevention.target_values",
+    section_id="sec.soil_loss_prevention.targets",
 )
 
 _TARGET_INDICATOR_LABELS = [
@@ -1100,7 +1100,7 @@ SPEC_COMPENSATION_DETAIL = TableSpec(
     ],
     has_total_row=True,
     footnote="计算依据: 粤发改价格〔2021〕231号 / cal.compensation.fee",
-    section_id="sec.investment.compensation_fee",
+    section_id="sec.investment_estimation.compensation_fee",
 )
 
 
@@ -1183,7 +1183,7 @@ SPEC_PREDICTION_SCOPE = TableSpec(
     ],
     has_total_row=True,
     footnote="数据来源: derive_prediction_units + derive_phases",
-    section_id="sec.erosion_prediction.scope",
+    section_id="sec.soil_loss_analysis.prediction_result",
 )
 
 
@@ -1242,7 +1242,7 @@ SPEC_EROSION_MODULUS = TableSpec(
     ],
     has_total_row=False,
     footnote="背景模数: field.fact.natural.original_erosion_modulus | 扰动模数: 标准矩阵或项目覆盖",
-    section_id="sec.erosion_prediction.modulus",
+    section_id="sec.soil_loss_analysis.prediction_result",
 )
 
 
@@ -1289,7 +1289,7 @@ SPEC_PREDICTION_RESULT = TableSpec(
     ],
     has_total_row=True,
     footnote="公式: loss = area_hm2/100 × modulus × months/12 | 新增 = 扰动流失 - 背景流失",
-    section_id="sec.erosion_prediction.result",
+    section_id="sec.soil_loss_analysis.prediction_result",
 )
 
 
@@ -1343,7 +1343,7 @@ SPEC_PREDICTION_SUMMARY = TableSpec(
     ],
     has_total_row=True,
     footnote="汇总自预测成果表",
-    section_id="sec.erosion_prediction.summary",
+    section_id="sec.soil_loss_analysis.prediction_result",
 )
 
 

@@ -43,6 +43,18 @@ from cpswc.narrative.templates.sec_4_topsoil import (
 )
 from cpswc.narrative.templates.sec_9_1_investment_summary import render as render_sec_9_1
 from cpswc.narrative.templates.sec_0_overview import render as render_sec_0
+from cpswc.narrative.templates.sec_2_3_climate_zoning import (
+    render_climate as render_sec_2_climate,
+    render_zoning as render_sec_2_zoning,
+)
+from cpswc.narrative.templates.sec_2_4_progress import render as render_sec_2_progress
+from cpswc.narrative.templates.sec_2_5_sensitive_areas import render as render_sec_2_sensitive
+from cpswc.narrative.templates.sec_3_1_site_selection import render as render_sec_3_1
+from cpswc.narrative.templates.sec_6_soil_loss import (
+    render_current_state as render_sec_6_1,
+    render_prediction as render_sec_6_2,
+)
+from cpswc.narrative.templates.sec_7_3_design_horizon import render as render_sec_7_horizon
 
 
 # ============================================================
@@ -67,6 +79,32 @@ _PILOT_TEMPLATES: dict[str, Any] = {
     "sec.topsoil.stripping": render_sec_4_1,
     "sec.topsoil.balance": render_sec_4_2,
     "sec.investment.summary": render_sec_9_1,
+    # Step 22 batch 1+2
+    "sec.project_overview.climate": render_sec_2_climate,
+    "sec.project_overview.water_soil_zoning": render_sec_2_zoning,
+    "sec.project_overview.progress": render_sec_2_progress,
+    "sec.project_overview.sensitive_areas": render_sec_2_sensitive,
+    "sec.evaluation.site_selection": render_sec_3_1,
+    "sec.soil_loss_analysis.current_state": render_sec_6_1,
+    "sec.soil_loss_analysis.prediction_result": render_sec_6_2,
+    "sec.soil_loss_prevention.design_horizon": render_sec_7_horizon,
+}
+
+# Parent chapter headers: section_id → 1-sentence intro text
+# 轻处理: 不单独写模板, 在 projection 循环中生成 FULL block
+_PARENT_INTROS: dict[str, str] = {
+    "sec.project_overview":
+        "本章介绍项目区自然概况、占地面积、土石方平衡及施工进度等基本情况。",
+    "sec.topsoil":
+        "本章论述项目表土资源的剥离、保存和回覆利用方案。",
+    "sec.disposal_site":
+        "本章论述项目弃渣和临时堆土的来源、去向及堆置方案。",
+    "sec.soil_loss_analysis":
+        "本章分析项目区水土流失现状，预测施工期新增水土流失量。",
+    "sec.soil_loss_prevention":
+        "本章论述水土流失防治责任范围、防治目标、措施布局及效益分析。",
+    "sec.investment":
+        "本章汇总水土保持工程投资估算，包括措施费、补偿费及分项明细。",
 }
 
 
@@ -220,6 +258,28 @@ def project_narrative(snapshot: dict) -> NarrativeProjectionResult:
                 render_status=RenderStatus.NOT_APPLICABLE,
             ))
             na_count += 1
+        elif sec_id in _PARENT_INTROS:
+            # Parent chapter headers: 1-sentence intro, no separate template
+            # evidence_refs 指向子节 section_id 以满足追溯约束
+            child_refs = [
+                sid for sid in _SECTION_CONDITIONALS
+                if sid.startswith(sec_id + ".") and sid != sec_id
+            ]
+            blocks.append(NarrativeBlock(
+                section_id=sec_id,
+                title=title,
+                render_status=RenderStatus.FULL,
+                paragraphs=[NarrativeParagraph(
+                    text=_PARENT_INTROS[sec_id],
+                    evidence_refs=child_refs or [sec_id],
+                    source_rule_refs=["rule.template_2026"],
+                )],
+                variant_id="default",
+                template_id="nt.parent_intro.v1",
+                template_version="v1",
+                normative_basis=["rule.template_2026"],
+            ))
+            full_count += 1
         else:
             blocks.append(NarrativeBlock(
                 section_id=sec_id,

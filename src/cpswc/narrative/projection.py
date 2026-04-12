@@ -33,6 +33,15 @@ from cpswc.narrative.templates.sec_7_2_targets import render as render_sec_7_2
 from cpswc.narrative.templates.sec_9_2_compensation import render as render_sec_9_2
 from cpswc.narrative.templates.sec_2_1_2_land_earthwork import render_2_1, render_2_2
 from cpswc.narrative.templates.sec_11_conclusion import render as render_sec_11
+from cpswc.narrative.templates.sec_3_evaluation import (
+    render_evaluation as render_sec_3,
+    render_earthwork_balance as render_sec_3_2,
+)
+from cpswc.narrative.templates.sec_4_topsoil import (
+    render_stripping as render_sec_4_1,
+    render_balance as render_sec_4_2,
+)
+from cpswc.narrative.templates.sec_9_1_investment_summary import render as render_sec_9_1
 
 
 # ============================================================
@@ -50,6 +59,12 @@ _PILOT_TEMPLATES: dict[str, Any] = {
     "sec.project_overview.land_occupation": render_2_1,
     "sec.project_overview.earthwork_balance": render_2_2,
     "sec.conclusion": render_sec_11,
+    # Step 21 P1 batch
+    "sec.evaluation": render_sec_3,
+    "sec.evaluation.earthwork_balance": render_sec_3_2,
+    "sec.topsoil.stripping": render_sec_4_1,
+    "sec.topsoil.balance": render_sec_4_2,
+    "sec.investment.summary": render_sec_9_1,
 }
 
 

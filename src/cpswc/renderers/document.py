@@ -296,7 +296,6 @@ def _render_compensation_fee_table(doc: Document, snapshot: dict, calc_results_d
 #   display_title:            中文标题
 #   render_policy:            always | shell_if_false | omit_if_false
 #   conditional_on_obligation: ob.* id (可空, render_policy=always 时空)
-#   embed_artifact_refs:      [art.*] 要在此节嵌入的 formal table
 #   children:                 子节点列表
 #   placeholder_text:         v0 骨架版的占位文字 (不是成熟散文)
 # ============================================================
@@ -387,8 +386,7 @@ _CHAPTER_TREE = [
              "display_title": "弃渣场（或临时堆土场）选址与堆置论证",
              "render_policy": "shell_if_false",
              "conditional_on_obligation": "ob.disposal_site.site_selection",
-             "placeholder_text": "（弃渣场位置、容量、级别评定、拦挡措施设计; 不设永久弃渣场的项目说明弃渣综合利用方案及临时堆土场安排）",
-             "embed_artifact_refs": []},
+             "placeholder_text": "（弃渣场位置、容量、级别评定、拦挡措施设计; 不设永久弃渣场的项目说明弃渣综合利用方案及临时堆土场安排）"},
         ],
     },
     {
@@ -484,19 +482,6 @@ _CHAPTER_TREE = [
 ]
 
 
-def _try_render_generic_table(doc: Document, table_id: str, snapshot: dict):
-    """尝试用 P0 通用表格协议渲染指定 table_id"""
-    try:
-        from cpswc.renderers.table_projections import TABLE_PROJECTIONS
-        from cpswc.renderers.table_protocol import render_data_table
-    except ImportError:
-        return
-    proj_fn = TABLE_PROJECTIONS.get(table_id)
-    if proj_fn:
-        table_data = proj_fn(snapshot)
-        render_data_table(doc, table_data)
-
-
 def _try_render_section_table(doc: Document, section_id: str, snapshot: dict):
     """检查某 section 是否有对应的自动生成表, 如有则渲染"""
     try:
@@ -583,17 +568,6 @@ def _render_section_node(doc: Document, node: dict, triggered: set[str],
                     trace_run.font.size = Pt(7)
                     trace_run.font.color.rgb = RGBColor(0xAA, 0xAA, 0xAA)
 
-            # Embed formal tables at this position if specified
-            embed_refs = node.get("embed_artifact_refs") or []
-            for art_ref in embed_refs:
-                if art_ref == "art.table.weighted_target_calculation":
-                    _render_weighted_target_table(doc, snapshot)
-                elif art_ref == "art.table.investment.compensation_fee":
-                    _render_compensation_fee_table(doc, snapshot, calc_results_dir)
-                else:
-                    # P0 generic table protocol
-                    _try_render_generic_table(doc, art_ref, snapshot)
-
             # Auto-embed: check if this section has a registered table projection
             _try_render_section_table(doc, sec_id, snapshot)
 
@@ -618,15 +592,6 @@ def _render_section_node(doc: Document, node: dict, triggered: set[str],
         run = p.add_run(placeholder)
         run.font.size = Pt(9)
         run.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
-
-    embed_refs = node.get("embed_artifact_refs") or []
-    for art_ref in embed_refs:
-        if art_ref == "art.table.weighted_target_calculation":
-            _render_weighted_target_table(doc, snapshot)
-        elif art_ref == "art.table.investment.compensation_fee":
-            _render_compensation_fee_table(doc, snapshot, calc_results_dir)
-        else:
-            _try_render_generic_table(doc, art_ref, snapshot)
 
     # Auto-embed for skeleton sections too
     _try_render_section_table(doc, sec_id, snapshot)
@@ -712,9 +677,8 @@ def render_narrative_skeleton(
     doc.add_page_break()
     _add_heading(doc, "附表", level=1)
     _add_footnote(doc,
-        "正文已嵌入的表格：防治目标表、六项指标复核表、补偿费计费表、"
-        "监测点位布设表、预测范围及时段表、侵蚀模数取值表、预测成果表、预测汇总表等。"
-        "其余附表 (AT-01 特性表, AT-03 投资附件等) 见 formal_tables_v0.docx。")
+        "本骨架版已在相关章节内自动嵌入当前可生成的正文表；"
+        "其余附表和专项估算表详见 formal_tables_v0.docx。")
     _add_footnote(doc,
         f"Snapshot: {snapshot.get('snapshot_id', '')} | "
         f"Version: {(frozen or {}).get('content_hash', 'N/A')[:16]}...")

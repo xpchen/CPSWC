@@ -41,7 +41,8 @@ except ImportError:
     print("ERROR: 缺少 PyYAML。请执行: pip install pyyaml", file=sys.stderr)
     sys.exit(2)
 
-SPECS_DIR = Path(__file__).resolve().parent
+from cpswc.paths import REGISTRIES_DIR, RESERVED_DIR, SAMPLES_DIR, GOVERNANCE_DIR, PROJECT_ROOT  # noqa
+SPECS_DIR = REGISTRIES_DIR  # backward compat alias
 
 # ------------------------------------------------------------------
 # 命名空间定义 (与 CPSWC_CORE_CONTRACTS.yaml 保持一致)
@@ -103,10 +104,10 @@ RESERVED_FILE_PATTERN = re.compile(
     r"(_v1_reserved|v1_reservations).*\.ya?ml$", re.IGNORECASE
 )
 
-def discover_reserved_files(specs_dir: Path) -> list[Path]:
+def discover_reserved_files(search_dir: Path) -> list[Path]:
     """扫描 specs/ 下所有匹配前向兼容预埋命名的文件, 返回 Path 列表。"""
     return sorted(
-        p for p in specs_dir.iterdir()
+        p for p in search_dir.iterdir()
         if p.is_file() and RESERVED_FILE_PATTERN.search(p.name)
     )
 
@@ -215,12 +216,12 @@ def walk_refs(obj: Any, path: str = ""):
 # ------------------------------------------------------------------
 def load_registries():
     files = {
-        "contracts":  SPECS_DIR / "CPSWC_CORE_CONTRACTS.yaml",
-        "fields":     SPECS_DIR / "FieldIdentityRegistry_v0.yaml",
-        "artifacts":  SPECS_DIR / "CPSWC_ARTIFACT_REGISTRY_v0.yaml",
-        "obligations": SPECS_DIR / "ObligationSet_v0.yaml",
-        "assurances": SPECS_DIR / "AssuranceRegistry_v0.yaml",
-        "calculators": SPECS_DIR / "CalculatorRegistry_v0.yaml",  # Step 11A
+        "contracts":  GOVERNANCE_DIR / "CORE_CONTRACTS.yaml",
+        "fields":     REGISTRIES_DIR / "FieldIdentityRegistry_v0.yaml",
+        "artifacts":  REGISTRIES_DIR / "ArtifactRegistry_v0.yaml",
+        "obligations": REGISTRIES_DIR / "ObligationSet_v0.yaml",
+        "assurances": REGISTRIES_DIR / "AssuranceRegistry_v0.yaml",
+        "calculators": REGISTRIES_DIR / "CalculatorRegistry_v0.yaml",  # Step 11A
     }
     loaded = {}
     missing = []
@@ -233,7 +234,7 @@ def load_registries():
 
     # 前向兼容预埋豁免条款: 不加载 *_v1_reserved*.yaml / *v1_reservations*.yaml
     # 但把它们记录下来, 报告里标注 v0 已识别但未纳入 lint
-    reserved_files = discover_reserved_files(SPECS_DIR)
+    reserved_files = discover_reserved_files(RESERVED_DIR)
     loaded["_reserved_files_detected"] = [p.name for p in reserved_files]
 
     return loaded, missing

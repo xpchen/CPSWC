@@ -33,7 +33,8 @@ except ImportError:
     sys.exit(2)
 
 
-SPECS_DIR = Path(__file__).resolve().parent
+from cpswc.paths import REGISTRIES_DIR, SAMPLES_DIR, GOVERNANCE_DIR, PROJECT_ROOT  # noqa
+SPECS_DIR = REGISTRIES_DIR  # backward compat alias
 
 
 # ==================================================================
@@ -573,7 +574,7 @@ _IMPLEMENTATIONS = {
 # ==================================================================
 def load_calculator_registry() -> dict:
     """读取 CalculatorRegistry_v0.yaml 并返回 dict"""
-    path = SPECS_DIR / "CalculatorRegistry_v0.yaml"
+    path = REGISTRIES_DIR / "CalculatorRegistry_v0.yaml"
     if not path.exists():
         raise CalculatorError("_loader", "missing_registry",
                               f"CalculatorRegistry_v0.yaml 未找到: {path}")
@@ -583,7 +584,7 @@ def load_calculator_registry() -> dict:
 
 def load_field_identity_registry() -> dict:
     """读取 FieldIdentityRegistry_v0.yaml 并返回 dict"""
-    path = SPECS_DIR / "FieldIdentityRegistry_v0.yaml"
+    path = REGISTRIES_DIR / "FieldIdentityRegistry_v0.yaml"
     if not path.exists():
         raise CalculatorError("_loader", "missing_fir",
                               f"FieldIdentityRegistry_v0.yaml 未找到: {path}")
@@ -637,7 +638,7 @@ def _cli() -> int:
     """独立运行: 对默认惠州样本执行全部 live calculator"""
     import json as _json
 
-    sample_path = SPECS_DIR / "CPSWC_SAMPLE_Huizhou_Housing_v0.json"
+    sample_path = SAMPLES_DIR / "huizhou_housing_v0.json"
     with sample_path.open(encoding="utf-8") as f:
         sample = _json.load(f)
 

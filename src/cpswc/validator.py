@@ -24,7 +24,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-SPECS_DIR = Path(__file__).resolve().parent
+from cpswc.paths import REGISTRIES_DIR, SAMPLES_DIR, GOVERNANCE_DIR, PROJECT_ROOT  # noqa
+SPECS_DIR = REGISTRIES_DIR  # backward compat alias
 
 ANSI = {
     "RED":   "\033[31m", "GRN": "\033[32m", "YEL": "\033[33m",
@@ -56,7 +57,7 @@ def _run_calculator_cross_check(
     loaded_registries: dict,
 ) -> tuple[bool, list[tuple[str, str]]]:
     """对 calculator 产出 vs sample 做双向 cross-check。返回 (ok, reports)"""
-    from cpswc_runtime import _get_field  # type: ignore
+    from cpswc.runtime import _get_field  # type: ignore
 
     calc_ok = True
     reports: list[tuple[str, str]] = []
@@ -217,7 +218,7 @@ def validate(sample_path: Path) -> int:
 
     # ---- Run project through runtime ----
     try:
-        from cpswc_runtime import run_project, load_all_registries  # type: ignore
+        from cpswc.runtime import run_project, load_all_registries  # type: ignore
     except Exception as e:
         print(f"ERROR: cpswc_runtime import 失败: {e}", file=sys.stderr)
         return 2
@@ -358,8 +359,8 @@ def validate(sample_path: Path) -> int:
 # Multi-sample mode (Step 11C)
 # ============================================================
 SAMPLE_PATHS = [
-    "CPSWC_SAMPLE_Huizhou_Housing_v0.json",
-    "CPSWC_SAMPLE_Disposal_HighRisk_v0.json",
+    "huizhou_housing_v0.json",
+    "disposal_highrisk_v0.json",
 ]
 
 
@@ -381,7 +382,7 @@ def main() -> int:
     overall_rc = 0
     per_sample_rc: list[tuple[str, int]] = []
     for rel in SAMPLE_PATHS:
-        sample_path = SPECS_DIR / rel
+        sample_path = SAMPLES_DIR / rel
         print()
         print(color(f"\u25b6 SAMPLE: {rel}", "BLD"))
         print()

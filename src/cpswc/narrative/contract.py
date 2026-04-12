@@ -11,7 +11,7 @@ Step 14-0: 定义正文投影层的数据契约。
   4. variant 必须静态注册, 不允许运行时拼接
 
 使用方式:
-  from narrative_contract import NarrativeParagraph, NarrativeBlock, validate_block
+  from cpswc.narrative.contract import NarrativeParagraph, NarrativeBlock, validate_block
 """
 
 from __future__ import annotations

@@ -11,7 +11,7 @@ Step 14-0: 把 RuntimeSnapshot 投影成 list[NarrativeBlock]。
   4. 返回 NarrativeProjectionResult, 含 blocks + 校验结果
 
 使用方式:
-  from narrative_projection import project_narrative
+  from cpswc.narrative.projection import project_narrative
   result = project_narrative(runtime_snapshot_dict)
   for block in result.blocks:
       print(block.section_id, block.render_status)
@@ -23,13 +23,12 @@ from pathlib import Path
 from typing import Any
 
 # Ensure specs/ is on path
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from narrative_contract import (
+from cpswc.narrative.contract import (
     NarrativeBlock, NarrativeParagraph, NarrativeProjectionResult, RenderStatus,
 )
-from narrative_templates.sec_1_1_basic_info import render as render_sec_1_1
-from narrative_templates.sec_5_disposal import render_5_1, render_5_2
+from cpswc.narrative.templates.sec_1_1_basic_info import render as render_sec_1_1
+from cpswc.narrative.templates.sec_5_disposal import render_5_1, render_5_2
 
 
 # ============================================================
@@ -219,12 +218,13 @@ if __name__ == "__main__":
     import json
     from pathlib import Path as P
 
+    from cpswc.paths import SAMPLES_DIR  # type: ignore
     sample_path = P(sys.argv[1]) if len(sys.argv) >= 2 else (
-        P(__file__).parent / "CPSWC_SAMPLE_Huizhou_Housing_v0.json"
+        SAMPLES_DIR / "huizhou_housing_v0.json"
     )
 
     # We need to run the runtime first to get a snapshot with _original_facts
-    from cpswc_runtime import run_project, _serialize_snapshot  # type: ignore
+    from cpswc.runtime import run_project, _serialize_snapshot  # type: ignore
     with sample_path.open() as f:
         project_input = json.load(f)
 

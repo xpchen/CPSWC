@@ -5,7 +5,7 @@ sec_1_1_basic_info — 1.1 项目基本情况 narrative template
 用于验证 facts → NarrativeParagraph → NarrativeBlock 的完整链路。
 """
 from __future__ import annotations
-from narrative_contract import (
+from cpswc.narrative.contract import (
     NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec, RenderStatus,
 )
 

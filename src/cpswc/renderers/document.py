@@ -18,7 +18,7 @@ document_renderer.py — CPSWC v0 Formal Table Renderer (Step 13B-1)
   - 表格格式: 中文行业惯例 (表头灰底加粗, 文字左对齐, 数字右对齐, 带标题和来源注脚)
 
 使用方式:
-  from document_renderer import render_formal_tables
+  from cpswc.renderers.document import render_formal_tables
   docx_paths = render_formal_tables(snapshot_dict, frozen_dict, calc_results_dir, output_dir)
 """
 
@@ -622,7 +622,7 @@ def render_narrative_skeleton(
                 narrative_lookup[sid] = nb
     else:
         try:
-            from narrative_projection import project_narrative  # type: ignore
+            from cpswc.narrative.projection import project_narrative  # type: ignore
             result = project_narrative(snapshot)
             for nb in result.blocks:
                 narrative_lookup[nb.section_id] = nb

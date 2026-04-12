@@ -14,7 +14,7 @@ Step 12B: 把 RuntimeSnapshot 渲染成单文件只读 HTML 工作台。
   - 6 个视图块: Summary / Facts+Derived / Calculators / Obligations / Drill-down / Freeze
 
 使用方式:
-  from workbench_renderer import render_workbench
+  from cpswc.renderers.workbench import render_workbench
   html = render_workbench(snapshot_dict, frozen_dict=None, version_dict=None)
   Path("workbench.html").write_text(html)
 """

@@ -5,6 +5,8 @@ __pycache__/
 .venv/
 venv/
 *.egg
+build/
+dist/
 
 # OS
 .DS_Store
@@ -20,5 +22,6 @@ Thumbs.db
 ~$*.docx
 
 # Build / output (generated at runtime, not source)
+/outputs/
 /tmp/
 *.zip

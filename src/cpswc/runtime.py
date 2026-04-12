@@ -47,7 +47,8 @@ except ImportError:
     sys.exit(2)
 
 
-SPECS_DIR = Path(__file__).resolve().parent
+from cpswc.paths import REGISTRIES_DIR, SAMPLES_DIR, GOVERNANCE_DIR, PROJECT_ROOT  # noqa
+SPECS_DIR = REGISTRIES_DIR  # backward compat alias
 
 # ============================================================
 # Dataclasses
@@ -302,7 +303,7 @@ def run_project(
     existing_derived = project_input.get("derived") or {}
 
     # Step 3: 运行 live calculators → 产出 derived fields
-    from calculator_engine import (  # type: ignore
+    from cpswc.calculator_engine import (  # type: ignore
         evaluate as calc_evaluate,
         CalculatorError,
     )
@@ -513,7 +514,7 @@ def _cli() -> int:
     import argparse
     parser = argparse.ArgumentParser(description="CPSWC v0 Runtime Service")
     parser.add_argument("input", nargs="?",
-                        default=str(SPECS_DIR / "CPSWC_SAMPLE_Huizhou_Housing_v0.json"),
+                        default=str(SAMPLES_DIR / "huizhou_housing_v0.json"),
                         help="项目 facts JSON 文件路径")
     parser.add_argument("--freeze", action="store_true",
                         help="输出 FrozenSubmissionInput (含 content hash)")
@@ -539,7 +540,7 @@ def _cli() -> int:
     snapshot = run_project(project_input)
 
     if args.package:
-        from submission_package_builder import build_package  # type: ignore
+        from cpswc.renderers.package_builder import build_package  # type: ignore
         pkg_path = build_package(project_input, args.package)
         print(f"Submission package built: {pkg_path}")
         return 0
@@ -550,7 +551,7 @@ def _cli() -> int:
 
     # --html: 生成 Workbench HTML (Step 12B)
     if args.html:
-        from workbench_renderer import render_workbench  # type: ignore
+        from cpswc.renderers.workbench import render_workbench  # type: ignore
         registries = load_all_registries()
 
         # 把 original facts 附到 snapshot dict 里供 renderer 使用

@@ -13,7 +13,7 @@ variant 选择逻辑:
   - 否则 → no_site
 """
 from __future__ import annotations
-from narrative_contract import (
+from cpswc.narrative.contract import (
     NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec, RenderStatus,
 )
 

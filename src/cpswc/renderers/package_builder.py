@@ -29,7 +29,7 @@ Workbench HTML 打成一个确定性的可导出、可归档、可回放的 subm
     - 不做 zip (先做目录; zip 是未来 2 行代码的事)
 
 使用方式:
-    from submission_package_builder import build_package
+    from cpswc.renderers.package_builder import build_package
     pkg_path = build_package(project_input, output_dir="/tmp/pkg")
 
 CLI:
@@ -46,7 +46,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-SPECS_DIR = Path(__file__).resolve().parent
+from cpswc.paths import REGISTRIES_DIR, SAMPLES_DIR, GOVERNANCE_DIR, PROJECT_ROOT  # noqa
+SPECS_DIR = REGISTRIES_DIR  # backward compat alias
 
 
 def _sha256(content: str) -> str:
@@ -83,14 +84,14 @@ def build_package(
         Path 到生成的 package 目录
     """
     # ---- Step 1: Run project ----
-    from cpswc_runtime import (  # type: ignore
+    from cpswc.runtime import (  # type: ignore
         run_project,
         freeze_submission,
         create_version,
         load_all_registries,
         _serialize_snapshot,
     )
-    from workbench_renderer import render_workbench  # type: ignore
+    from cpswc.renderers.workbench import render_workbench  # type: ignore
 
     snapshot = run_project(project_input, ruleset=ruleset, lifecycle=lifecycle)
     frozen = freeze_submission(snapshot)
@@ -182,7 +183,7 @@ def build_package(
     rendered_dir.mkdir(exist_ok=True)
 
     try:
-        from document_renderer import render_formal_tables, render_narrative_skeleton  # type: ignore
+        from cpswc.renderers.document import render_formal_tables, render_narrative_skeleton  # type: ignore
         snapshot_d = json.loads(snapshot_json)
         # Attach original facts for narrative projection + workbench
         snapshot_d["_original_facts"] = project_input.get("facts") or {}
@@ -271,7 +272,7 @@ def _cli() -> int:
     parser = argparse.ArgumentParser(
         description="CPSWC v0 Submission Package Builder")
     parser.add_argument("input", nargs="?",
-                        default=str(SPECS_DIR / "CPSWC_SAMPLE_Huizhou_Housing_v0.json"),
+                        default=str(SAMPLES_DIR / "huizhou_housing_v0.json"),
                         help="项目 facts JSON 文件路径")
     parser.add_argument("-o", "--output", default=None,
                         help="输出目录 (默认: /tmp/cpswc_pkg_<hash>)")

@@ -94,63 +94,104 @@ def render_current_state(facts: dict, derived: dict, triggered: set[str],
 # ── sec.soil_loss_analysis.prediction_result ─────────────────
 
 SPEC_PREDICTION = NarrativeTemplateSpec(
-    template_id="nt.sec_6_2.prediction_result.v1",
+    template_id="nt.sec_6_2.prediction_result.v2",
     section_id="sec.soil_loss_analysis.prediction_result",
-    template_version="v1",
-    template_author="cpswc_v0.5",
+    template_version="v2",
+    template_author="cpswc_v1",
     normative_basis=[
         "rule.template_2026.section_6",
         "standard.gb_50433_2018.section_6",
     ],
     supported_variants=["default"],
     input_fields=[
-        "field.fact.prediction.total_loss",
-        "field.fact.prediction.new_loss",
-        "field.fact.prediction.reducible_loss",
+        "field.fact.natural.original_erosion_modulus",
+        "field.fact.land.county_breakdown",
+        "field.fact.schedule.start_time",
+        "field.fact.schedule.end_time",
     ],
 )
 
 
 def render_prediction(facts: dict, derived: dict, triggered: set[str],
                       **kwargs) -> NarrativeBlock:
-    total = _v(facts, "field.fact.prediction.total_loss")
-    new_loss = _v(facts, "field.fact.prediction.new_loss")
-    reducible = _v(facts, "field.fact.prediction.reducible_loss")
+    from cpswc.prediction_engine import compute_prediction
 
-    p1 = NarrativeParagraph(
+    result = compute_prediction(facts)
+    bg_modulus = _v(facts, "field.fact.natural.original_erosion_modulus")
+    total_area = _v(facts, "field.fact.land.total_area")
+
+    paragraphs = []
+
+    # P1: Method and scope
+    unit_count = len(set(r.zone_id for r in result.zone_results))
+    paragraphs.append(NarrativeParagraph(
         text=(
-            f"根据类比法预测，项目建设期及自然恢复期水土流失总量为{total}，"
-            f"其中新增水土流失量{new_loss}。"
+            f"本项目采用类比法进行水土流失预测。"
+            f"预测范围为项目防治责任范围（{total_area}），"
+            f"共划分{unit_count}个预测单元。"
+            f"原地貌土壤侵蚀模数{bg_modulus}。"
         ),
         evidence_refs=[
-            "field.fact.prediction.total_loss",
-            "field.fact.prediction.new_loss",
+            "field.fact.natural.original_erosion_modulus",
+            "field.fact.land.total_area",
+            "field.fact.land.county_breakdown",
         ],
-        source_rule_refs=[
-            "rule.template_2026.section_6",
-        ],
-    )
+        source_rule_refs=["rule.template_2026.section_6"],
+    ))
 
-    p2 = NarrativeParagraph(
-        text=(
-            f"通过采取工程措施、植物措施和临时措施，"
-            f"可治理水土流失量{reducible}，"
-            f"防治效果明显。详见水土流失预测成果表。"
-        ),
-        evidence_refs=[
-            "field.fact.prediction.reducible_loss",
-            "art.table.soil_loss_prediction",
-        ],
-        source_rule_refs=[
-            "standard.gb_50433_2018.section_6",
-        ],
+    # P2: Results summary
+    summary_c = result.summary_by_period.get("施工期", {})
+    summary_r = result.summary_by_period.get("自然恢复期", {})
+
+    parts = []
+    parts.append(
+        f"预测结果表明：项目建设期及自然恢复期水土流失总量为 "
+        f"{result.total_loss_t:.2f} t，其中新增水土流失量 "
+        f"{result.total_new_loss_t:.2f} t。"
     )
+    if summary_c:
+        parts.append(
+            f"施工期新增流失量 {summary_c.get('new_loss_t', 0):.2f} t，"
+        )
+    if summary_r:
+        parts.append(
+            f"自然恢复期新增流失量 {summary_r.get('new_loss_t', 0):.2f} t。"
+        )
+
+    paragraphs.append(NarrativeParagraph(
+        text="".join(parts),
+        evidence_refs=[
+            "art.table.prediction.result",
+            "art.table.prediction.summary",
+        ],
+        source_rule_refs=["rule.template_2026.section_6"],
+    ))
+
+    # P3: Key findings
+    # Find the zone with highest new loss
+    if result.zone_results:
+        max_zone = max(
+            (r for r in result.zone_results if r.period == "施工期"),
+            key=lambda r: r.new_loss_t,
+            default=None,
+        )
+        if max_zone and max_zone.new_loss_t > 0:
+            paragraphs.append(NarrativeParagraph(
+                text=(
+                    f"施工期水土流失主要发生在{max_zone.zone_type}，"
+                    f"新增流失量 {max_zone.new_loss_t:.2f} t，"
+                    f"是水土流失防治的重点区域。"
+                    f"详见水土流失预测成果表和预测汇总表。"
+                ),
+                evidence_refs=["art.table.prediction.result"],
+                source_rule_refs=["rule.template_2026.section_6"],
+            ))
 
     return NarrativeBlock(
         section_id="sec.soil_loss_analysis.prediction_result",
         title="水土流失预测",
         render_status=RenderStatus.FULL,
-        paragraphs=[p1, p2],
+        paragraphs=paragraphs,
         variant_id="default",
         template_id=SPEC_PREDICTION.template_id,
         template_version=SPEC_PREDICTION.template_version,

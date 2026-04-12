@@ -920,6 +920,467 @@ def project_spec_sheet(snapshot: dict) -> TableData:
 
 
 # ============================================================
+# Step 31A-1: 防治目标表 (Prevention Target Table)
+# ============================================================
+# 对齐样稿: 01:T8-1 / 02:1.5-1
+# 列: 防治指标 / 等级标准值 / 加权目标值 / 说明
+# 数据来源: cal.target.weighted_comprehensive 已算出六率目标
+
+SPEC_PREVENTION_TARGET = TableSpec(
+    table_id="art.table.prevention_target",
+    title="水土流失防治目标表",
+    columns=[
+        TableColumn(key="indicator", header="防治指标", unit="", align="left", fmt="str"),
+        TableColumn(key="unit", header="单位", unit="", align="center", fmt="str"),
+        TableColumn(key="target_value", header="目标值", unit="", align="right", fmt="str"),
+        TableColumn(key="basis", header="取值依据", unit="", align="left", fmt="str"),
+    ],
+    has_total_row=False,
+    footnote="目标值来源: cal.target.weighted_comprehensive / GB/T 50434-2018",
+    section_id="sec.soil_loss_prevention.target_values",
+)
+
+_TARGET_INDICATOR_LABELS = [
+    ("control_degree", "水土流失治理度", "%"),
+    ("soil_loss_control_ratio", "土壤流失控制比", "—"),
+    ("spoil_protection_rate", "渣土防护率", "%"),
+    ("topsoil_protection_rate", "表土保护率", "%"),
+    ("vegetation_restoration_rate", "林草植被恢复率", "%"),
+    ("vegetation_coverage_rate", "林草覆盖率", "%"),
+]
+
+# GB/T 50434-2018 南方红壤区 (same as CalculatorRegistry_v0.yaml reference_data)
+# Used as fallback when weighted calculator didn't run (single-level without breakdown)
+_GBT50434_SOUTH_RED = {
+    "一级": {"control_degree": 98, "soil_loss_control_ratio": 0.9, "spoil_protection_rate": 97,
+             "topsoil_protection_rate": 92, "vegetation_restoration_rate": 98, "vegetation_coverage_rate": 25},
+    "二级": {"control_degree": 95, "soil_loss_control_ratio": 0.85, "spoil_protection_rate": 95,
+             "topsoil_protection_rate": 87, "vegetation_restoration_rate": 97, "vegetation_coverage_rate": 22},
+    "三级": {"control_degree": 90, "soil_loss_control_ratio": 0.8, "spoil_protection_rate": 92,
+             "topsoil_protection_rate": 82, "vegetation_restoration_rate": 95, "vegetation_coverage_rate": 19},
+}
+
+
+def project_prevention_target(snapshot: dict) -> TableData:
+    derived = snapshot.get("derived_fields") or {}
+    facts = snapshot.get("_original_facts") or {}
+
+    wt = derived.get("field.derived.target.weighted_comprehensive_target") or {}
+    level = facts.get("field.fact.prevention.control_standard_level")
+    zoning = facts.get("field.fact.natural.water_soil_zoning") or "—"
+
+    # Fallback: single-level direct lookup when weighted calc didn't run
+    if not wt and level and level in _GBT50434_SOUTH_RED:
+        wt = _GBT50434_SOUTH_RED[level]
+
+    # Determine basis text
+    breakdown = facts.get("field.fact.prevention.control_standard_level_breakdown")
+    if isinstance(breakdown, list) and len(breakdown) > 1:
+        basis = f"GB/T 50434-2018 {zoning} 面积加权"
+    elif level:
+        basis = f"GB/T 50434-2018 {zoning} {level}"
+    else:
+        basis = "GB/T 50434-2018"
+
+    rows = []
+    for key, label, unit in _TARGET_INDICATOR_LABELS:
+        val = wt.get(key) if isinstance(wt, dict) else None
+        if val is not None:
+            val_str = str(val)
+        else:
+            val_str = "—"
+        rows.append({
+            "indicator": label,
+            "unit": unit,
+            "target_value": val_str,
+            "basis": basis,
+        })
+
+    policy = TableRenderPolicy.RENDER_WITH_VALUES if any(
+        r["target_value"] != "—" for r in rows
+    ) else TableRenderPolicy.RENDER_WITH_PLACEHOLDER
+
+    return TableData(spec=SPEC_PREVENTION_TARGET, rows=rows, render_policy=policy)
+
+
+# ============================================================
+# Step 31A-2: 监测点位布设表 (Monitoring Point Layout Table)
+# ============================================================
+# 对齐样稿: 01:T9-1 / 02:6.4-1
+# 列: 序号 / 防治分区 / 监测内容 / 监测方法 / 频次(施工期) / 频次(恢复期)
+# 数据来源: county_breakdown zones + _MONITORING_MATRIX (sec_8_2 同源)
+
+SPEC_MONITORING_POINTS = TableSpec(
+    table_id="art.table.monitoring_points",
+    title="水土保持监测点位布设表",
+    columns=[
+        TableColumn(key="seq", header="序号", unit="", align="center", fmt="str"),
+        TableColumn(key="zone", header="防治分区", unit="", align="left", fmt="str"),
+        TableColumn(key="content", header="监测内容", unit="", align="left", fmt="str"),
+        TableColumn(key="method", header="监测方法", unit="", align="left", fmt="str"),
+        TableColumn(key="freq_construction", header="施工期频次", unit="", align="center", fmt="str"),
+        TableColumn(key="freq_recovery", header="恢复期频次", unit="", align="center", fmt="str"),
+    ],
+    has_total_row=False,
+    footnote="数据来源: field.fact.land.county_breakdown + 标准监测矩阵",
+    section_id="sec.monitoring.point_layout",
+)
+
+# Monitoring matrix (same source as sec_8_2_monitoring_content.py)
+_MONITORING_MATRIX_TABLE: list[tuple[str, str, str, str, str]] = [
+    ("主体", "扰动面积、地表径流、水土流失状况", "现场量测、定点照相", "月1次", "季1次"),
+    ("建筑", "扰动面积、地表径流、水土流失状况", "现场量测、定点照相", "月1次", "季1次"),
+    ("道路", "边坡稳定、排水设施完好性", "现场巡查、定点照相", "月1次", "季1次"),
+    ("广场", "地表径流、硬化完好性", "现场巡查", "月1次", "—"),
+    ("绿化", "植被恢复、覆盖度", "样方调查、定点照相", "—", "季1次"),
+    ("景观", "植被恢复、覆盖度", "样方调查、定点照相", "—", "季1次"),
+    ("临时堆土", "堆体稳定、拦挡完好性、苫盖情况", "现场巡查", "月2次", "—"),
+    ("施工生产", "场地排水、临时覆盖", "现场巡查", "月1次", "—"),
+    ("弃渣", "堆渣稳定性、拦挡完好性", "现场量测、位移观测", "月2次", "季1次"),
+]
+
+_DEFAULT_MONITORING_TABLE = ("扰动面积、水土流失状况", "现场量测、定点照相", "月1次", "季1次")
+
+
+def _match_zone_table(zone_type: str) -> tuple[str, str, str, str]:
+    for keyword, content, method, freq_c, freq_r in _MONITORING_MATRIX_TABLE:
+        if keyword in zone_type:
+            return content, method, freq_c, freq_r
+    return _DEFAULT_MONITORING_TABLE
+
+
+def project_monitoring_points(snapshot: dict) -> TableData:
+    facts = snapshot.get("_original_facts") or {}
+    breakdown = facts.get("field.fact.land.county_breakdown") or []
+
+    rows = []
+    if isinstance(breakdown, list) and breakdown:
+        for i, zone in enumerate(breakdown):
+            zone_type = zone.get("type", f"分区{i+1}")
+            content, method, freq_c, freq_r = _match_zone_table(zone_type)
+            rows.append({
+                "seq": str(i + 1),
+                "zone": zone_type,
+                "content": content,
+                "method": method,
+                "freq_construction": freq_c,
+                "freq_recovery": freq_r,
+            })
+    else:
+        rows.append({
+            "seq": "1",
+            "zone": "项目区",
+            "content": "扰动面积、水土流失状况",
+            "method": "现场量测、定点照相",
+            "freq_construction": "月1次",
+            "freq_recovery": "季1次",
+        })
+
+    policy = TableRenderPolicy.RENDER_WITH_VALUES
+    return TableData(spec=SPEC_MONITORING_POINTS, rows=rows, render_policy=policy)
+
+
+# ============================================================
+# Step 31A-3: 补偿费明细表 (Compensation Fee Detail Table)
+# ============================================================
+# 对齐样稿: 01:T10-2 / 02:7.1-1
+# 列: 占地类型 / 面积(hm²) / 面积(m²) / 费率(元/m²) / 金额(元) / 金额(万元)
+# 数据来源: cal.compensation.fee 的 intermediate 已有全部中间值
+
+SPEC_COMPENSATION_DETAIL = TableSpec(
+    table_id="art.table.compensation_fee_detail",
+    title="水土保持补偿费计费表",
+    columns=[
+        TableColumn(key="item", header="计费项目", unit="", align="left", fmt="str"),
+        TableColumn(key="area_hm2", header="面积", unit="hm²", align="right", fmt="4f"),
+        TableColumn(key="area_m2", header="面积", unit="m²", align="right", fmt="0f"),
+        TableColumn(key="rate", header="费率", unit="元/m²", align="right", fmt="2f"),
+        TableColumn(key="amount_yuan", header="金额", unit="元", align="right", fmt="2f"),
+        TableColumn(key="amount_wan", header="金额", unit="万元", align="right", fmt="4f"),
+    ],
+    has_total_row=True,
+    footnote="计算依据: 粤发改价格〔2021〕231号 / cal.compensation.fee",
+    section_id="sec.investment.compensation_fee",
+)
+
+
+def project_compensation_fee_detail(snapshot: dict) -> TableData:
+    facts = snapshot.get("_original_facts") or {}
+    derived = snapshot.get("derived_fields") or {}
+
+    # Reconstruct from facts (same inputs as cal.compensation.fee)
+    permanent_hm2 = _get(facts, "field.fact.land.permanent_area") or 0
+    temporary_hm2 = _get(facts, "field.fact.land.temporary_area") or 0
+    rate_fact = facts.get("field.fact.regulatory.compensation_fee_rate")
+    rate = _get(facts, "field.fact.regulatory.compensation_fee_rate") or 0
+    total_amount_wan = derived.get("field.derived.investment.compensation_fee_amount") or 0
+    total_amount_yuan = total_amount_wan * 10000
+
+    rows = []
+
+    # Row 1: permanent land
+    perm_m2 = permanent_hm2 * 10000
+    perm_yuan = perm_m2 * rate
+    perm_wan = round(perm_yuan / 10000, 4)
+    rows.append({
+        "item": "永久占地",
+        "area_hm2": permanent_hm2,
+        "area_m2": perm_m2,
+        "rate": rate,
+        "amount_yuan": perm_yuan,
+        "amount_wan": perm_wan,
+    })
+
+    # Row 2: temporary land (only if > 0)
+    if temporary_hm2 > 0:
+        temp_m2 = temporary_hm2 * 10000
+        temp_yuan = temp_m2 * rate
+        temp_wan = round(temp_yuan / 10000, 4)
+        rows.append({
+            "item": "临时占地",
+            "area_hm2": temporary_hm2,
+            "area_m2": temp_m2,
+            "rate": rate,
+            "amount_yuan": temp_yuan,
+            "amount_wan": temp_wan,
+        })
+
+    # Total row
+    total_hm2 = permanent_hm2 + temporary_hm2
+    total_m2 = total_hm2 * 10000
+    total_row = {
+        "item": "合计",
+        "area_hm2": total_hm2,
+        "area_m2": total_m2,
+        "rate": rate,
+        "amount_yuan": total_amount_yuan,
+        "amount_wan": total_amount_wan,
+    }
+
+    policy = TableRenderPolicy.RENDER_WITH_VALUES if rate > 0 else TableRenderPolicy.RENDER_WITH_PLACEHOLDER
+
+    return TableData(
+        spec=SPEC_COMPENSATION_DETAIL,
+        rows=rows,
+        total_row=total_row,
+        render_policy=policy,
+    )
+
+
+# ============================================================
+# Step 31B: Prediction Tables (4 tables)
+# ============================================================
+
+# ---- 31B-1: 预测范围及时段表 ----
+SPEC_PREDICTION_SCOPE = TableSpec(
+    table_id="art.table.prediction.scope_period",
+    title="水土流失预测范围及预测时段表",
+    columns=[
+        TableColumn(key="zone_type", header="预测单元", unit="", align="left", fmt="str"),
+        TableColumn(key="area_hm2", header="面积", unit="hm²", align="right", fmt="2f"),
+        TableColumn(key="construction_months", header="施工期", unit="月", align="right", fmt="str"),
+        TableColumn(key="recovery_months", header="自然恢复期", unit="月", align="right", fmt="str"),
+    ],
+    has_total_row=True,
+    footnote="数据来源: derive_prediction_units + derive_phases",
+    section_id="sec.erosion_prediction.scope",
+)
+
+
+def project_prediction_scope(snapshot: dict) -> TableData:
+    facts = snapshot.get("_original_facts") or {}
+    from cpswc.prediction_engine import compute_prediction
+    result = compute_prediction(facts)
+
+    # Deduplicate zones (each zone has 2 rows: construction + recovery)
+    zone_map: dict[str, dict] = {}
+    for r in result.zone_results:
+        key = r.zone_id
+        if key not in zone_map:
+            zone_map[key] = {
+                "zone_type": r.zone_type,
+                "area_hm2": r.area_hm2,
+                "construction_months": "",
+                "recovery_months": "",
+            }
+        if r.period == "施工期":
+            zone_map[key]["construction_months"] = str(r.months)
+        elif r.period == "自然恢复期":
+            zone_map[key]["recovery_months"] = str(r.months)
+
+    rows = list(zone_map.values())
+
+    total_area = sum(r["area_hm2"] for r in rows)
+    # All zones share same phase durations
+    c_months = rows[0]["construction_months"] if rows else ""
+    r_months = rows[0]["recovery_months"] if rows else ""
+    total_row = {
+        "zone_type": "合计",
+        "area_hm2": total_area,
+        "construction_months": c_months,
+        "recovery_months": r_months,
+    }
+
+    return TableData(
+        spec=SPEC_PREDICTION_SCOPE,
+        rows=rows,
+        total_row=total_row,
+        render_policy=TableRenderPolicy.RENDER_WITH_VALUES,
+    )
+
+
+# ---- 31B-2: 侵蚀模数取值表 ----
+SPEC_EROSION_MODULUS = TableSpec(
+    table_id="art.table.prediction.erosion_modulus",
+    title="土壤侵蚀模数取值表",
+    columns=[
+        TableColumn(key="zone_type", header="预测单元", unit="", align="left", fmt="str"),
+        TableColumn(key="background", header="背景侵蚀模数", unit="t/(km²·a)", align="right", fmt="0f"),
+        TableColumn(key="construction", header="施工期扰动模数", unit="t/(km²·a)", align="right", fmt="0f"),
+        TableColumn(key="recovery", header="恢复期扰动模数", unit="t/(km²·a)", align="right", fmt="0f"),
+        TableColumn(key="source", header="取值来源", unit="", align="left", fmt="str"),
+    ],
+    has_total_row=False,
+    footnote="背景模数: field.fact.natural.original_erosion_modulus | 扰动模数: 标准矩阵或项目覆盖",
+    section_id="sec.erosion_prediction.modulus",
+)
+
+
+def project_erosion_modulus(snapshot: dict) -> TableData:
+    facts = snapshot.get("_original_facts") or {}
+    from cpswc.prediction_engine import (
+        derive_prediction_units, resolve_disturbed_modulus, _get_val,
+    )
+
+    units = derive_prediction_units(facts)
+    bg = _get_val(facts, "field.fact.natural.original_erosion_modulus")
+
+    rows = []
+    for unit in units:
+        mod = resolve_disturbed_modulus(unit.zone_type, unit.zone_id, facts)
+        rows.append({
+            "zone_type": unit.zone_type,
+            "background": bg,
+            "construction": mod.construction,
+            "recovery": mod.recovery,
+            "source": mod.source_note,
+        })
+
+    return TableData(
+        spec=SPEC_EROSION_MODULUS,
+        rows=rows,
+        render_policy=TableRenderPolicy.RENDER_WITH_VALUES,
+    )
+
+
+# ---- 31B-3: 预测成果表 ----
+SPEC_PREDICTION_RESULT = TableSpec(
+    table_id="art.table.prediction.result",
+    title="水土流失预测成果表",
+    columns=[
+        TableColumn(key="zone_type", header="预测单元", unit="", align="left", fmt="str"),
+        TableColumn(key="period", header="预测时段", unit="", align="center", fmt="str"),
+        TableColumn(key="area_hm2", header="面积", unit="hm²", align="right", fmt="2f"),
+        TableColumn(key="months", header="时段", unit="月", align="right", fmt="str"),
+        TableColumn(key="disturbed_modulus", header="扰动模数", unit="t/(km²·a)", align="right", fmt="0f"),
+        TableColumn(key="background_modulus", header="背景模数", unit="t/(km²·a)", align="right", fmt="0f"),
+        TableColumn(key="disturbed_loss_t", header="流失量", unit="t", align="right", fmt="2f"),
+        TableColumn(key="new_loss_t", header="新增流失量", unit="t", align="right", fmt="2f"),
+    ],
+    has_total_row=True,
+    footnote="公式: loss = area_hm2/100 × modulus × months/12 | 新增 = 扰动流失 - 背景流失",
+    section_id="sec.erosion_prediction.result",
+)
+
+
+def project_prediction_result(snapshot: dict) -> TableData:
+    facts = snapshot.get("_original_facts") or {}
+    from cpswc.prediction_engine import compute_prediction
+    result = compute_prediction(facts)
+
+    rows = []
+    for r in result.zone_results:
+        rows.append({
+            "zone_type": r.zone_type,
+            "period": r.period,
+            "area_hm2": r.area_hm2,
+            "months": str(r.months),
+            "disturbed_modulus": r.disturbed_modulus,
+            "background_modulus": r.background_modulus,
+            "disturbed_loss_t": r.disturbed_loss_t,
+            "new_loss_t": r.new_loss_t,
+        })
+
+    total_row = {
+        "zone_type": "合计",
+        "period": "",
+        "area_hm2": result.total_area_hm2,
+        "months": "",
+        "disturbed_modulus": None,
+        "background_modulus": None,
+        "disturbed_loss_t": result.total_loss_t,
+        "new_loss_t": result.total_new_loss_t,
+    }
+
+    return TableData(
+        spec=SPEC_PREDICTION_RESULT,
+        rows=rows,
+        total_row=total_row,
+        render_policy=TableRenderPolicy.RENDER_WITH_VALUES,
+    )
+
+
+# ---- 31B-4: 预测汇总表 ----
+SPEC_PREDICTION_SUMMARY = TableSpec(
+    table_id="art.table.prediction.summary",
+    title="水土流失预测汇总表",
+    columns=[
+        TableColumn(key="period", header="预测时段", unit="", align="left", fmt="str"),
+        TableColumn(key="area_hm2", header="扰动面积", unit="hm²", align="right", fmt="2f"),
+        TableColumn(key="disturbed_loss_t", header="流失总量", unit="t", align="right", fmt="2f"),
+        TableColumn(key="background_loss_t", header="背景流失量", unit="t", align="right", fmt="2f"),
+        TableColumn(key="new_loss_t", header="新增流失量", unit="t", align="right", fmt="2f"),
+    ],
+    has_total_row=True,
+    footnote="汇总自预测成果表",
+    section_id="sec.erosion_prediction.summary",
+)
+
+
+def project_prediction_summary(snapshot: dict) -> TableData:
+    facts = snapshot.get("_original_facts") or {}
+    from cpswc.prediction_engine import compute_prediction
+    result = compute_prediction(facts)
+
+    rows = []
+    for period in ("施工期", "自然恢复期"):
+        s = result.summary_by_period.get(period)
+        if s:
+            rows.append({
+                "period": period,
+                "area_hm2": round(s["area_hm2"], 2),
+                "disturbed_loss_t": round(s["disturbed_loss_t"], 2),
+                "background_loss_t": round(s["background_loss_t"], 2),
+                "new_loss_t": round(s["new_loss_t"], 2),
+            })
+
+    total_row = {
+        "period": "合计",
+        "area_hm2": result.total_area_hm2,
+        "disturbed_loss_t": result.total_loss_t,
+        "background_loss_t": result.total_background_loss_t,
+        "new_loss_t": result.total_new_loss_t,
+    }
+
+    return TableData(
+        spec=SPEC_PREDICTION_SUMMARY,
+        rows=rows,
+        total_row=total_row,
+        render_policy=TableRenderPolicy.RENDER_WITH_VALUES,
+    )
+
+
+# ============================================================
 # Registry
 # ============================================================
 
@@ -937,4 +1398,11 @@ TABLE_PROJECTIONS = {
     "art.table.investment.appendix_existing": project_appendix_existing,  # Step 17
     "art.table.investment.appendix_fees": project_appendix_fees,  # Step 17
     "art.table.spec_sheet": project_spec_sheet,  # Step 24
+    "art.table.prevention_target": project_prevention_target,  # Step 31A
+    "art.table.monitoring_points": project_monitoring_points,  # Step 31A
+    "art.table.compensation_fee_detail": project_compensation_fee_detail,  # Step 31A
+    "art.table.prediction.scope_period": project_prediction_scope,  # Step 31B
+    "art.table.prediction.erosion_modulus": project_erosion_modulus,  # Step 31B
+    "art.table.prediction.result": project_prediction_result,  # Step 31B
+    "art.table.prediction.summary": project_prediction_summary,  # Step 31B
 }

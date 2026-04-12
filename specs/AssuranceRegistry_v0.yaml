@@ -1,0 +1,318 @@
+# CPSWC AssuranceRegistry v0
+#
+# 功能: 合规保障对象 (承诺 / 监测 / 视频监控 / 签字 / 盖章 / 地理合规) 的注册表
+# 约束: CPSWC_ARCHITECTURE_DECISIONS.md (前提 A 四层真源边界, 主张 B SubmissionPackageVersion)
+#      + CPSWC_CORE_CONTRACTS.yaml
+#      + FieldIdentityRegistry_v0.yaml
+#      + CPSWC_ARTIFACT_REGISTRY_v0.yaml
+#      + ObligationSet_v0.yaml
+#
+# 命名: as.<topic>.<short_name>
+# topic 建议收敛: signature / seal / commitment / monitoring / surveillance / geo / confidentiality
+#
+# AssuranceObject 与 Obligation 的区别:
+#   - Obligation 说的是"必须做什么" (义务)
+#   - Assurance  说的是"必须证明做了什么" (合规保障)
+# 一条 obligation 可以要求多条 assurance, 一条 assurance 也可以被多条 obligation 共享。
+#
+# v0 状态机: 两态, REQUIRED / PROVIDED
+#   - REQUIRED : obligation 触发, 等待用户完成线下动作并上传凭据
+#   - PROVIDED : 用户已上传/签署, 导出 gate 放行
+# v1 升级为六态: UNKNOWN / REQUIRED / PENDING / PROVIDED / VERIFIED / FROZEN
+
+version: v0
+generated_at: 2026-04-11
+applicable_species: [报告书]
+constraint_docs:
+  - CPSWC_ARCHITECTURE_DECISIONS.md
+  - CPSWC_CORE_CONTRACTS.yaml
+  - FieldIdentityRegistry_v0.yaml
+  - CPSWC_ARTIFACT_REGISTRY_v0.yaml
+  - ObligationSet_v0.yaml
+
+# ============================================================
+# 通用 schema
+# ============================================================
+# 每条 assurance 必须声明:
+#   assurance_id        — 本文件的 as.* 主键
+#   canonical_name      — 正式名称
+#   assurance_type      — signature | seal | commitment | monitoring |
+#                          surveillance | geo_compliance | confidentiality
+#   source_rule_id      — 规则依据 (rule.*)
+#   trigger             — always / conditional / driven_by_obligation
+#   required_by_refs    — 哪些 obligation 要求本保障 (反向索引, 便于查询)
+#   target_refs         — 作用对象 (art.* 或 sec.* 或 field.*)
+#   state_machine       — v0 两态, v1 将升级
+#   enforcement         — 导出 gate 动作 (BLOCK / WARN / INFO)
+#   verification        — 验证方式 (人工确认 / 文件校验 / 水印检测等)
+#   v0_action           — v0 如何履约 (人工上传扫描件 / 从表单填入 / 系统自动...)
+
+assurances:
+
+  # ============================================================
+  # 1. 签字类 (Signature)
+  # ============================================================
+  as.signature.responsibility_page:
+    assurance_id: as.signature.responsibility_page
+    canonical_name: 责任页亲笔签名
+    assurance_type: signature
+    source_rule_id: rule.f2018.responsibility_page_handwritten_signature
+    trigger:
+      mode: always
+      when: always
+      human: 责任页所有角色 (批准/核定/审查/校核/项目负责人/编写) 必须亲笔签名
+    required_by_refs:
+      - art.cover.responsibility_page
+    target_refs:
+      - art.cover.responsibility_page
+    depends_on_field_refs:
+      - field.fact.party.compile_unit
+    state_machine:
+      v0: [REQUIRED, PROVIDED]
+      current_default: REQUIRED
+    enforcement:
+      gate: BLOCK
+      scope: final_export
+      message: |
+        责任页尚未提供完整签名扫描件, 无法导出正式报批稿。
+        请按 "打印 → 手签 → 扫描回传" 流程完成所有角色亲笔签名。
+    verification:
+      method: manual_upload_plus_visual_check
+      v0: 用户上传责任页签字扫描件 (PDF), 系统不做 OCR, 由上传者自检
+    v0_action: |
+      1. 系统生成责任页模板 (含角色/参编章节分工)
+      2. 用户打印并收集所有角色亲笔签名
+      3. 扫描回传 PDF, 替换生成稿中的责任页占位
+      4. 触发 assurance 状态 REQUIRED → PROVIDED
+
+  # ============================================================
+  # 2. 盖章类 (Seal)
+  # ============================================================
+  as.seal.compile_unit_sealing:
+    assurance_id: as.seal.compile_unit_sealing
+    canonical_name: 编制单位盖章
+    assurance_type: seal
+    source_rule_id: rule.f2018.title_page_seal
+    trigger:
+      mode: always
+      when: always
+      human: |
+        扉页的建设单位和编制单位名称处必须加盖公章。
+        有多家编制单位时, 应分别加盖公章并在责任页明确牵头单位。
+    required_by_refs:
+      - art.cover.responsibility_page
+      - art.cover.title_page
+    target_refs:
+      - art.cover.title_page
+      - art.cover.responsibility_page
+    depends_on_field_refs:
+      - field.fact.party.compile_unit
+      - field.fact.party.construction_unit
+    state_machine:
+      v0: [REQUIRED, PROVIDED]
+      current_default: REQUIRED
+    enforcement:
+      gate: BLOCK
+      scope: final_export
+      message: |
+        扉页尚未提供公章扫描件, 无法导出正式报批稿。
+        若涉及多家编制单位, 请确保每家单位均已盖章。
+    verification:
+      method: manual_upload_plus_visual_check
+      v0: 用户上传盖章后的扉页 PDF
+    v0_action: |
+      1. 系统生成扉页
+      2. 用户打印并加盖编制单位 / 建设单位公章
+      3. 多家编制单位分别加盖
+      4. 扫描回传 PDF
+
+  # ============================================================
+  # 3. 承诺类 (Commitment)
+  # ============================================================
+  as.commitment.spoil_failure_report_truth:
+    assurance_id: as.commitment.spoil_failure_report_truth
+    canonical_name: 弃渣场失事影响专题分析报告真实性承诺
+    assurance_type: commitment
+    source_rule_id: rule.t2026.spoil_failure_report_commitment
+    trigger:
+      mode: driven_by_obligation
+      driven_by_refs:
+        - ob.disposal_site.failure_analysis
+      human: |
+        触发条件随 ob.disposal_site.failure_analysis:
+          弃渣场位于沟谷/山区/丘陵 OR 周边及下游存在敏感因素
+        建设单位应作出对失事影响专题分析报告真实性与论证结论全面负责的承诺。
+    required_by_refs:
+      - ob.disposal_site.failure_analysis
+      - art.subreport.spoil_failure_analysis
+    target_refs:
+      - art.subreport.spoil_failure_analysis
+    depends_on_field_refs:
+      - field.fact.party.construction_unit
+      - field.fact.disposal_site.level_assessment
+      - field.fact.construction.temp_topsoil_site
+    state_machine:
+      v0: [REQUIRED, PROVIDED]
+      current_default: REQUIRED
+    enforcement:
+      gate: BLOCK
+      scope: final_export
+      message: |
+        弃渣场失事影响专题分析报告已触发, 但建设单位真实性承诺书尚未提供。
+        请由建设单位法定代表人签署承诺书 (含公章), 扫描回传。
+    verification:
+      method: manual_upload_plus_field_consistency
+      v0: |
+        用户上传承诺书 PDF;
+        系统校验承诺书中"建设单位名称"与 field.fact.party.construction_unit.name 一致。
+    v0_action: |
+      1. 系统生成承诺书模板 (含建设单位信息预填)
+      2. 建设单位法定代表人签字 + 加盖建设单位公章
+      3. 扫描回传, 作为附件装入专题册
+    v0_note: |
+      v0 不自动生成失事影响专题分析报告本身, 仅生成承诺书模板。
+      专题报告由专业机构另行编制并上传 PDF (作为 art.subreport.spoil_failure_analysis)。
+
+  # ============================================================
+  # 4. 地理合规类 (Geo Compliance)
+  # ============================================================
+  as.geo.cgcs2000_compliance:
+    assurance_id: as.geo.cgcs2000_compliance
+    canonical_name: 防治责任范围矢量数据 CGCS2000 坐标系合规
+    assurance_type: geo_compliance
+    source_rule_id: rule.t2026.shapefile_cgcs2000_required
+    trigger:
+      mode: always
+      when: always
+      human: |
+        2026 模板附件 2 明确要求防治责任范围矢量图采用 shapefile 格式,
+        坐标系统为 2000 国家大地坐标系 (CGCS2000)。
+        任何其他坐标系 (WGS84, 地方独立坐标系等) 必须在上传时转换。
+    required_by_refs:
+      - art.figure.F_04_responsibility_range
+    target_refs:
+      - art.figure.F_04_responsibility_range
+      - field.fact.location.redline_geometry_ref
+    depends_on_field_refs:
+      - field.fact.location.redline_geometry_ref
+    state_machine:
+      v0: [REQUIRED, PROVIDED]
+      current_default: REQUIRED
+    enforcement:
+      gate: BLOCK
+      scope: final_export
+      message: |
+        防治责任范围 shapefile 的坐标系不是 CGCS2000 或 PRJ 文件缺失, 无法导出。
+        请通过 GeoPipeline 的坐标系转换工具将矢量数据转换为 CGCS2000,
+        或在上传时声明原始坐标系并确认转换。
+    verification:
+      method: automatic_prj_file_check
+      v0: |
+        上传 shapefile 时, 系统读取 .prj 文件并检测 EPSG 代码,
+        若非 CGCS2000 (EPSG:4490 / 4479 / 4549 ...) 则提示转换。
+        转换完成后状态置 PROVIDED。
+    v0_action: |
+      1. 用户上传 shapefile (含 .shp/.shx/.dbf/.prj)
+      2. GeoPipeline 检测 .prj 坐标系
+      3. 若非 CGCS2000, 系统弹出转换确认对话框 (含精度提示)
+      4. 用户确认后执行 pyproj 转换, 结果写回 GeoStore
+
+  as.geo.downstream_coverage_verified:
+    assurance_id: as.geo.downstream_coverage_verified
+    canonical_name: 弃渣场位置图下游影响范围覆盖已核实
+    assurance_type: geo_compliance
+    source_rule_id: rule.t2026.spoil_site_map_downstream_coverage
+    trigger:
+      mode: driven_by_obligation
+      driven_by_refs:
+        - ob.disposal_site.location_map
+      human: |
+        2026 模板附件 1 要求取土场/弃渣场/临时堆土场位置图
+        "必须能够反映周边及下游影响范围内的地形及敏感因素信息"。
+        由专家或 GeoPipeline 核实影响范围半径已覆盖到位。
+    required_by_refs:
+      - ob.disposal_site.location_map
+      - art.figure.F_12_borrow_and_disposal_location
+    target_refs:
+      - art.figure.F_12_borrow_and_disposal_location
+    depends_on_field_refs:
+      - field.fact.construction.temp_topsoil_site
+      - field.fact.location.redline_geometry_ref
+    state_machine:
+      v0: [REQUIRED, PROVIDED]
+      current_default: REQUIRED
+    enforcement:
+      gate: BLOCK
+      scope: final_export
+      message: |
+        F-12 取土场/弃渣场位置图尚未核实下游影响范围覆盖。
+        请确认地形底图与敏感因素图层覆盖范围足够, 并在界面上勾选 "已核实"。
+    verification:
+      method: manual_checkbox_plus_auto_buffer
+      v0: |
+        v0 简化实现:
+          - 系统基于弃渣场位置生成默认 500m / 1000m 缓冲圈
+          - 将缓冲圈与底图叠加, 生成 F-12 预览
+          - 专家人工勾选"下游覆盖已核实"
+        v1 升级: 自动提取沟谷下游地形, 与已知敏感要素图层做空间相交分析
+    v0_action: |
+      1. GeoPipeline 生成 F-12 默认预览 (弃渣场点 + 地形 + 敏感要素 + 缓冲圈)
+      2. 专家在界面上审阅预览并勾选 "已核实"
+      3. 系统记录 verified_by + verified_at, 置 PROVIDED
+
+# ============================================================
+# Registry 自身的 lint 规则
+# ============================================================
+registry_lints:
+  - id: AS_001
+    rule: 每条 assurance 必须声明 assurance_id / canonical_name / assurance_type / source_rule_id / trigger / state_machine / enforcement
+    severity: ERROR
+    scope: all assurances
+
+  - id: AS_002
+    rule: assurance_id 必须与 yaml key 一致
+    severity: ERROR
+    scope: all assurances
+
+  - id: AS_003
+    rule: driven_by_obligation 模式下 driven_by_refs 必须在 ObligationSet 中 resolve
+    severity: ERROR
+    scope: assurances with trigger.mode == driven_by_obligation
+
+  - id: AS_004
+    rule: required_by_refs 中的 ob.* 必须在 ObligationSet 中 resolve; art.* 必须在 ArtifactRegistry 中 resolve
+    severity: ERROR
+    scope: all assurances
+
+  - id: AS_005
+    rule: enforcement.gate 必须是 BLOCK / WARN / INFO
+    severity: ERROR
+    scope: all assurances
+
+# ============================================================
+# v0 覆盖与缺位
+# ============================================================
+v0_coverage:
+  total_assurances: 5
+  by_type:
+    signature: 1        # as.signature.responsibility_page
+    seal: 1             # as.seal.compile_unit_sealing
+    commitment: 1       # as.commitment.spoil_failure_report_truth
+    geo_compliance: 2   # as.geo.cgcs2000_compliance + as.geo.downstream_coverage_verified
+
+  covers_pending_refs:
+    - as.signature.responsibility_page
+    - as.seal.compile_unit_sealing
+    - as.geo.cgcs2000_compliance
+    - as.geo.downstream_coverage_verified
+    - as.commitment.spoil_failure_report_truth
+
+v0_excluded_assurances:
+  - path: as.monitoring.video_stream_integration
+    reason: 3 级以上弃渣场的视频监控 v0 不做视频流接入
+  - path: as.confidentiality.classified_project
+    reason: v0 不支持涉密项目
+  - path: as.monitoring.national_major_realtime
+    reason: 国家重大项目的智能化/信息化全过程实时监控 v0 不做
+  - path: as.commitment.external_topsoil_source_declaration
+    reason: v0 外借表土来源仅作为附件, 不单列承诺书

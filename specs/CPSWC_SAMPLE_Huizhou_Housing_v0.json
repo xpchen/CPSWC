@@ -1,0 +1,625 @@
+{
+  "$schema": "CPSWC_SAMPLE_v0",
+  "sample_id": "sample.huizhou_housing_v0",
+  "sample_meta": {
+    "purpose": "v0 集成测试输入 - 纯合成样本, 非真实项目",
+    "disclaimer": "项目名称 / 坐标 / 单位信息 / 具体数字 均为合成, 仅用于 CPSWC registry 集成测试",
+    "physical_realism": "用地/投资/土石方数据参考自惠州真实房地产/城建项目的典型区间 (memory: project_huizhou_physical_ranges.md)",
+    "natural_realism": "气候/土壤/侵蚀参数采用惠州冲积平原典型值 (memory: project_guangdong_huizhou_context.md)",
+    "generated_at": "2026-04-11",
+    "applicable_ruleset": "2026_template + 2018_format + 2024_estimation + guangdong_package",
+    "species": "报告书",
+    "compilation_intent": "NEW",
+    "industry_category": 29,
+    "designed_to_trigger_obligations": [
+      "ob.schedule.dual_line_gantt_chart",
+      "ob.monitoring.baseline_monitoring",
+      "ob.monitoring.point_layout",
+      "ob.topsoil.balance_required",
+      "ob.sensitive_overlay.multi_admin_breakdown",
+      "ob.evaluation.weighted_target_required",
+      "ob.unavoidability.redline_conflict",
+      "ob.borrow_site.external_purchase_evidence",
+      "ob.disposal_site.site_selection",
+      "ob.disposal_site.location_map",
+      "ob.disposal_site.separate_prevention_zone",
+      "ob.disposal_site.reuse_evidence",
+      "ob.topsoil.reuse_evidence",
+      "ob.evaluation.dual_source_earthwork_justification"
+    ],
+    "designed_to_NOT_trigger_obligations": [
+      "ob.disposal_site.geology_report",
+      "ob.disposal_site.stability_monitoring",
+      "ob.disposal_site.video_surveillance",
+      "ob.borrow_site.land_use_approval",
+      "ob.disposal_site.failure_analysis",
+      "ob.disposal_site.land_use_approval",
+      "ob.topsoil.soil_improvement_required",
+      "ob.topsoil.external_topsoil_source"
+    ],
+    "designed_to_require_assurances": [
+      "as.signature.responsibility_page",
+      "as.seal.compile_unit_sealing",
+      "as.geo.cgcs2000_compliance",
+      "as.geo.downstream_coverage_verified"
+    ],
+    "designed_to_NOT_require_assurances": [
+      "as.commitment.spoil_failure_report_truth"
+    ],
+    "annotations": {
+      "_schema_note": "annotations 容器存放说明性元数据, 非 fact field, 不进 FieldIdentityRegistry, 不参与 validator 触发逻辑. 用于记录 sample 背景/换算/引用等对后续阅读有价值但不应污染事实层的信息.",
+      "compensation_fee": {
+        "standard_ref": "粤发改价格〔2021〕231 号 / 粤水规范字〔2026〕1 号",
+        "applicable_since": "2022-04-11 (231 号执行) + 2026-03-01 (1 号确认)",
+        "applicable_until": "2031-03-01 (2026 年 1 号有效期 5 年)",
+        "rate": "0.6 元/m² (一般性生产建设项目, 一次性计征)",
+        "rate_value": 0.6,
+        "rate_unit": "元/m²",
+        "calculation": "95,000 m² (9.5 hm²) × 0.6 元/m² = 57,000 元 = 5.7 万元",
+        "expected_amount_wan": 5.7,
+        "expected_amount_unit": "万元",
+        "historical_sample_rate": "~0.06 元/m² (样稿 2/3 中观察到, 对应 2022 年前旧标准)",
+        "new_vs_old_ratio": "10x (2022 年新标准是旧标准的 10 倍)",
+        "calculator_status": "migrated_to_v0_live — cal.compensation.fee (Step 11A)",
+        "_verification_source": "derived_field_should_match",
+        "_verification_target": "field.derived.investment.compensation_fee_amount",
+        "_verification_calculator": "cal.compensation.fee",
+        "_verification_tolerance_wan": 0.01,
+        "_note": "Step 11A 起, 本 annotation 从'说明性注释'升级为'可校验断言'. validator 跑 cal.compensation.fee 后, 必须双向 cross-check: (a) annotation.rate_value 与 calculator 输入 rate 一致; (b) calculator 输出值 与 annotation.expected_amount_wan 一致 (在 _verification_tolerance_wan 内). 任一方偏离即 FAIL. 这是捕捉 0.06 vs 0.6 十倍偏差类错误的最后一道保险丝."
+      },
+      "disposal_site_cleanup_11c": {
+        "_note": "Step 11C: 从 disposal_site.level_assessment 移除 TS01/TS02 (原属 misfiling, 它们已在 temp_topsoil_site 正确登记, 且不是 GB 51018 意义下的弃渣场). Huizhou 低风险样本无真正弃渣场, level_assessment 空列表自洽.",
+        "_cleanup_date": "2026-04-11",
+        "_previous_content_summary": "2 条 record (TS01 表土堆场 + TS02 临时中转场, 原标 \"2级\", 值不符合 GB 51018)",
+        "_retained_in": "field.fact.construction.temp_topsoil_site"
+      }
+    }
+  },
+  "facts": {
+    "field.fact.project.name": "惠州市大亚湾澳头湾畔花园住宅小区项目(合成样本)",
+    "field.fact.project.code": "2610-441322-04-01-SAMPLE01",
+    "field.fact.project.industry_category": 29,
+    "field.fact.project.nature": "新建",
+    "field.fact.location.river_basin_agency": "东江流域管理局",
+    "field.fact.location.province_list": [
+      "广东省"
+    ],
+    "field.fact.location.prefecture_list": [
+      "惠州市"
+    ],
+    "field.fact.location.county_list": [
+      "惠阳区",
+      "大亚湾开发区"
+    ],
+    "field.fact.location.redline_geometry_ref": {
+      "geo_store_id": "geo.sample.huizhou_housing_v0.redline",
+      "crs": "CGCS2000",
+      "epsg": 4490,
+      "source": "virtual (合成样本不含真实 shapefile)",
+      "approximate_center": {
+        "longitude": 114.6234,
+        "latitude": 22.7521
+      }
+    },
+    "field.fact.investment.total_investment": {
+      "value": 95000,
+      "unit": "万元",
+      "precision": 0.01
+    },
+    "field.fact.investment.civil_investment": {
+      "value": 62000,
+      "unit": "万元",
+      "precision": 0.01
+    },
+    "field.fact.schedule.start_time": "2026-09",
+    "field.fact.schedule.end_time": "2028-06",
+    "field.fact.schedule.design_horizon_year": 2029,
+    "field.fact.land.total_area": {
+      "value": 9.5,
+      "unit": "hm²",
+      "precision": 0.01
+    },
+    "field.fact.land.permanent_area": {
+      "value": 8.2,
+      "unit": "hm²",
+      "precision": 0.01
+    },
+    "field.fact.land.temporary_area": {
+      "value": 1.3,
+      "unit": "hm²",
+      "precision": 0.01
+    },
+    "field.fact.regulatory.compensation_fee_rate": {
+      "value": 0.6,
+      "unit": "元/m²",
+      "_source": "粤发改价格〔2021〕231 号 (Step 11A 首批 live regulatory field)"
+    },
+    "field.fact.land.county_breakdown": [
+      {
+        "county": "惠阳区",
+        "nature": "永久",
+        "type": "住宅用地",
+        "area": {
+          "value": 7.1,
+          "unit": "hm²"
+        }
+      },
+      {
+        "county": "惠阳区",
+        "nature": "临时",
+        "type": "施工生产生活区",
+        "area": {
+          "value": 0.8,
+          "unit": "hm²"
+        }
+      },
+      {
+        "county": "大亚湾开发区",
+        "nature": "永久",
+        "type": "住宅用地",
+        "area": {
+          "value": 1.1,
+          "unit": "hm²"
+        }
+      },
+      {
+        "county": "大亚湾开发区",
+        "nature": "临时",
+        "type": "临时堆土场+施工道路",
+        "area": {
+          "value": 0.5,
+          "unit": "hm²"
+        }
+      }
+    ],
+    "field.fact.earthwork.excavation": {
+      "value": 8.5,
+      "unit": "万m³",
+      "precision": 0.01
+    },
+    "field.fact.earthwork.fill": {
+      "value": 6.8,
+      "unit": "万m³",
+      "precision": 0.01
+    },
+    "field.fact.earthwork.borrow": {
+      "value": 0.5,
+      "unit": "万m³",
+      "precision": 0.01
+    },
+    "field.fact.earthwork.borrow_source_type": "外购",
+    "field.fact.earthwork.self_reuse": {
+      "value": 5.0,
+      "unit": "万m³",
+      "precision": 0.01
+    },
+    "field.fact.earthwork.spoil": {
+      "value": 3.5,
+      "unit": "万m³",
+      "precision": 0.01
+    },
+    "field.fact.earthwork.comprehensive_reuse": {
+      "value": 2.0,
+      "unit": "万m³",
+      "precision": 0.01
+    },
+    "field.fact.topsoil.excavation": {
+      "value": 0.3,
+      "unit": "万m³",
+      "precision": 0.01
+    },
+    "field.fact.topsoil.fill": {
+      "value": 0.15,
+      "unit": "万m³",
+      "precision": 0.01
+    },
+    "field.fact.topsoil.stripable_area": {
+      "value": 3.5,
+      "unit": "hm²",
+      "precision": 0.01
+    },
+    "field.fact.topsoil.stripable_volume": {
+      "value": 0.3,
+      "unit": "万m³",
+      "precision": 0.01
+    },
+    "field.fact.natural.landform_type": "冲积平原",
+    "field.fact.natural.climate_type": "亚热带季风气候",
+    "field.fact.natural.soil_erosion_type": "水力侵蚀",
+    "field.fact.natural.soil_erosion_intensity": "轻度",
+    "field.fact.natural.original_erosion_modulus": {
+      "value": 500,
+      "unit": "t/(km²·a)"
+    },
+    "field.fact.natural.allowable_loss": {
+      "value": 500,
+      "unit": "t/(km²·a)"
+    },
+    "field.fact.natural.water_soil_zoning": "南方红壤区",
+    "field.fact.natural.key_prevention_treatment_areas": [],
+    "field.fact.natural.other_sensitive_areas": [
+      {
+        "area_type": "生态保护红线",
+        "name": "惠州市生态保护红线(惠阳片区)",
+        "spatial_relation": "项目西侧红线擦边, 约 0.08 hm² 落入缓冲区, 未实质占用核心区",
+        "approval_status": "已通过惠阳区自然资源局不可避让论证预审, 待水保方案审批一并确认"
+      }
+    ],
+    "field.fact.prediction.total_loss": {
+      "value": 350,
+      "unit": "t",
+      "precision": 1
+    },
+    "field.fact.prediction.new_loss": {
+      "value": 280,
+      "unit": "t",
+      "precision": 1
+    },
+    "field.fact.prediction.reducible_loss": {
+      "value": 250,
+      "unit": "t",
+      "precision": 1
+    },
+    "field.fact.prevention.responsibility_range_area": {
+      "value": 9.5,
+      "unit": "hm²",
+      "precision": 0.01
+    },
+    "field.fact.prevention.control_standard_level": "一级",
+    "field.fact.prevention.control_standard_level_breakdown": [
+      {
+        "zone_id": "Z1",
+        "zone_name": "惠阳区主体住宅区",
+        "standard_level": "一级",
+        "area": {
+          "value": 7.9,
+          "unit": "hm²"
+        }
+      },
+      {
+        "zone_id": "Z2",
+        "zone_name": "大亚湾开发区配套用地",
+        "standard_level": "二级",
+        "area": {
+          "value": 1.6,
+          "unit": "hm²"
+        }
+      }
+    ],
+    "field.fact.prevention.treated_loss_area": {
+      "value": 9.45,
+      "unit": "hm²",
+      "precision": 0.01,
+      "_note": "placeholder stub; v0 由人工按措施布设确定; 接近总责任范围表示基本全覆盖"
+    },
+    "field.fact.prevention.total_loss_area": {
+      "value": 9.5,
+      "unit": "hm²",
+      "precision": 0.01,
+      "_note": "placeholder stub; v0 简化为等于责任范围"
+    },
+    "field.fact.prevention.should_restore_area": {
+      "value": 2.4,
+      "unit": "hm²",
+      "precision": 0.01,
+      "_note": "placeholder stub; 可绿化区域 (绿地+缓坡), v0 按主体设计绿地率估算"
+    },
+    "field.fact.prevention.planned_vegetation_area": {
+      "value": 2.38,
+      "unit": "hm²",
+      "precision": 0.01,
+      "_note": "placeholder stub; 植物措施规划面积"
+    },
+    "field.fact.prevention.protected_topsoil_volume": {
+      "value": 0.28,
+      "unit": "万m³",
+      "precision": 0.01,
+      "_note": "placeholder stub; 剥离 0.30 - 损耗 0.02 ≈ 0.28"
+    },
+    "field.fact.prevention.protected_spoil_volume": {
+      "value": 3.48,
+      "unit": "万m³",
+      "precision": 0.01,
+      "_note": "placeholder stub; 含拦挡(1.28) + 临时防护(0.20) + 综合利用(2.00)"
+    },
+    "field.fact.construction.living_area": [
+      {
+        "name": "主施工生产生活区",
+        "location": {
+          "x": 114.6235,
+          "y": 22.7518,
+          "crs": "CGCS2000"
+        },
+        "area": {
+          "value": 0.65,
+          "unit": "hm²"
+        },
+        "purpose": "办公 / 生活 / 材料堆场 / 机械停放",
+        "vertical_layout": "场地整平后硬化, 周边排水沟 120m + 沉沙池 1 座"
+      }
+    ],
+    "field.fact.construction.road": [
+      {
+        "name": "施工主入口道路",
+        "nature": "新建",
+        "length": {
+          "value": 320,
+          "unit": "m"
+        },
+        "width": {
+          "value": 6,
+          "unit": "m"
+        },
+        "area": {
+          "value": 0.192,
+          "unit": "hm²"
+        },
+        "structure": "水泥稳定碎石基层 + 沥青面层"
+      }
+    ],
+    "field.fact.construction.temp_topsoil_site": [
+      {
+        "name_or_id": "TS01",
+        "location": {
+          "x": 114.6238,
+          "y": 22.7525,
+          "crs": "CGCS2000"
+        },
+        "type": "表土堆场",
+        "area": {
+          "value": 0.15,
+          "unit": "hm²"
+        },
+        "storage_volume": {
+          "value": 0.03,
+          "unit": "万m³"
+        },
+        "storage_duration": "开工至设计水平年 (约 30 个月)",
+        "source": "项目内部表土剥离 (东区基坑开挖)",
+        "flow_to": "就地回覆至项目绿化区",
+        "outside_permanent_land": false,
+        "_note": "位于项目永久占地范围内 → outside_permanent_land=false, 不触发 AF-3"
+      },
+      {
+        "name_or_id": "TS02",
+        "location": {
+          "x": 114.6232,
+          "y": 22.7515,
+          "crs": "CGCS2000"
+        },
+        "type": "临时中转场",
+        "area": {
+          "value": 0.1,
+          "unit": "hm²"
+        },
+        "storage_volume": {
+          "value": 0.1,
+          "unit": "万m³"
+        },
+        "storage_duration": "施工期临时使用, 约 6 个月",
+        "source": "项目内部渣土转运",
+        "flow_to": "综合利用到周边市政道路回填",
+        "outside_permanent_land": false,
+        "_note": "位于项目永久占地范围内 → outside_permanent_land=false, 不触发 AF-3"
+      }
+    ],
+    "field.fact.disposal_site.failure_analysis_required": false,
+    "field.fact.disposal_site.level_assessment": [],
+    "field.fact.party.compile_unit": {
+      "name": "惠州市绿景水土保持咨询服务有限公司 (参考单位, 非真实委托)",
+      "legal_representative": "(合成)",
+      "unified_social_credit_code": "9144130000SAMPLE01",
+      "address": "广东省惠州市惠城区江北 (虚构地址)",
+      "contact_person": "(合成)",
+      "phone": "0752-0000000",
+      "email": "sample@example.com"
+    },
+    "field.fact.party.construction_unit": {
+      "name": "惠州市澳头湾畔房地产开发有限公司 (合成)",
+      "legal_representative": "(合成)",
+      "unified_social_credit_code": "9144130000SAMPLE02",
+      "address": "广东省惠州市大亚湾开发区 (虚构地址)",
+      "contact_person": "(合成)",
+      "phone": "0752-0000001",
+      "email": "sample-builder@example.com"
+    }
+  },
+  "derived": {
+    "field.derived.earthwork.excavation_utilization_ratio": {
+      "value": 58.82,
+      "unit": "%",
+      "derivation": "self_reuse(5.00) / excavation(8.50) * 100",
+      "_note": "v0 派生字段, 由 Calculator 自动计算"
+    },
+    "field.derived.earthwork.comprehensive_reuse_ratio": {
+      "value": 57.14,
+      "unit": "%",
+      "derivation": "comprehensive_reuse(2.00) / spoil(3.50) * 100"
+    },
+    "field.derived.target.control_degree": {
+      "value": 98,
+      "unit": "%",
+      "target_by_standard": "南方红壤区一级标准 = 98",
+      "actual_derived": 99.47,
+      "derivation": "treated_loss_area(9.45) / total_loss_area(9.50) * 100"
+    },
+    "field.derived.target.soil_loss_control_ratio": {
+      "value": 1.0,
+      "target_by_standard": "一级 = 1.0",
+      "derivation": "allowable_loss(500) / new_erosion_modulus"
+    },
+    "field.derived.target.spoil_protection_rate": {
+      "value": 99,
+      "unit": "%",
+      "施工期目标": 95,
+      "水平年目标": 97,
+      "derivation": "protected_spoil_volume(3.48) / spoil(3.50) * 100"
+    },
+    "field.derived.target.topsoil_protection_rate": {
+      "value": 93,
+      "unit": "%",
+      "target_by_standard": "一级 = 92",
+      "derivation": "protected_topsoil_volume(0.28) / stripable_volume(0.30) * 100"
+    },
+    "field.derived.target.vegetation_restoration_rate": {
+      "value": 99,
+      "unit": "%",
+      "target_by_standard": "一级 = 98",
+      "derivation": "planned_vegetation_area(2.38) / should_restore_area(2.40) * 100"
+    },
+    "field.derived.target.vegetation_coverage_rate": {
+      "value": 25,
+      "unit": "%",
+      "_note": "按项目主体设计绿地率确定, 不是固定值",
+      "derivation": "planned_vegetation_area(2.38) / responsibility_range_area(9.50) * 100"
+    },
+    "field.derived.target.weighted_comprehensive_target": {
+      "_verification_source": "derived_field_should_match",
+      "_verification_calculator": "cal.target.weighted_comprehensive",
+      "_verification_target": "field.derived.target.weighted_comprehensive_target",
+      "_verification_tolerances": {
+        "percent_fields": 0.5,
+        "ratio_fields": 0.01
+      },
+      "trigger": "涉及两个及以上防治标准等级",
+      "derivation_note": "按 GB/T 50434 表 4.0.2-5 南方红壤区表值 × breakdown 面积权重 (Z1 一级 7.9 hm² / Z2 二级 1.6 hm²)",
+      "corrected_by": "cal.target.weighted_comprehensive (Step 11B)",
+      "correction_basis": "GB/T 50434-2018 表 4.0.2-5 南方红壤区 + area-weighted calculation",
+      "correction_date": "2026-04-11",
+      "control_degree": 97.49,
+      "soil_loss_control_ratio": 0.89,
+      "spoil_protection_rate": 96.66,
+      "topsoil_protection_rate": 91.16,
+      "vegetation_restoration_rate": 97.83,
+      "vegetation_coverage_rate": 24.49,
+      "_previous_values_were_incorrect": true,
+      "_previous_values_audit": {
+        "_audit_note": "Step 11B 前 sample 手填值, 与 GB/T 50434 面积加权结果不符。保留作为历史审计证据, 不参与 validator 断言。",
+        "_captured_at": "2026-04-11",
+        "previous_values": {
+          "control_degree": 98,
+          "soil_loss_control_ratio": 1.0,
+          "spoil_protection_rate": 98.8,
+          "topsoil_protection_rate": 92,
+          "vegetation_restoration_rate": 98,
+          "vegetation_coverage_rate": 24
+        },
+        "diff_analysis": {
+          "control_degree": {
+            "old": 98,
+            "new": 97.49,
+            "delta": -0.51,
+            "explanation": "旧值取 一级=98 未加权"
+          },
+          "soil_loss_control_ratio": {
+            "old": 1.0,
+            "new": 0.89,
+            "delta": -0.11,
+            "explanation": "旧值 1.0 超出 GB/T 50434 一级(0.90)/二级(0.85) 范围, 违反国标"
+          },
+          "spoil_protection_rate": {
+            "old": 98.8,
+            "new": 96.66,
+            "delta": -2.14,
+            "explanation": "旧值非加权结果, 疑似从实际值(99)降位"
+          },
+          "topsoil_protection_rate": {
+            "old": 92,
+            "new": 91.16,
+            "delta": -0.84,
+            "explanation": "旧值取 一级=92 未加权"
+          },
+          "vegetation_restoration_rate": {
+            "old": 98,
+            "new": 97.83,
+            "delta": -0.17,
+            "explanation": "旧值取 一级=98 未加权 (但差异在 ±0.5 容差内)"
+          },
+          "vegetation_coverage_rate": {
+            "old": 24,
+            "new": 24.49,
+            "delta": 0.49,
+            "explanation": "旧值向下取整, 新值保留 2 位小数"
+          }
+        }
+      }
+    }
+  },
+  "expected_gate_state": {
+    "description": "v0 集成验收: 把本样本灌入 ProjectSemanticGraph 后, 预期的导出 gate 状态",
+    "triggered_obligations_count": 13,
+    "critical_required_assurances": [
+      {
+        "id": "as.signature.responsibility_page",
+        "state": "REQUIRED",
+        "gate": "BLOCK"
+      },
+      {
+        "id": "as.seal.compile_unit_sealing",
+        "state": "REQUIRED",
+        "gate": "BLOCK"
+      },
+      {
+        "id": "as.geo.cgcs2000_compliance",
+        "state": "REQUIRED",
+        "gate": "BLOCK"
+      },
+      {
+        "id": "as.geo.downstream_coverage_verified",
+        "state": "REQUIRED",
+        "gate": "BLOCK"
+      }
+    ],
+    "not_required_assurances": [
+      {
+        "id": "as.commitment.spoil_failure_report_truth",
+        "state": "UNKNOWN",
+        "reason": "failure_analysis_required = false (冲积平原 + 无下游敏感要素)"
+      }
+    ],
+    "required_artifacts_count_by_kind": {
+      "spec_sheet": 1,
+      "cover": 4,
+      "table": "5+11 (投资子表)",
+      "figure": 13,
+      "attachment": "3 (AF_1 + AF_2 + AF_4 + AF_6)",
+      "subreport": 0
+    },
+    "must_have_attachments": [
+      "AF_1_project_approval (always)",
+      "AF_2_unavoidability_justification (unavoidability triggered)",
+      "AF_4_external_earth_purchase (borrow + 外购 triggered)",
+      "AF_6_reuse_evidence (disposal_site.reuse_evidence + topsoil.reuse_evidence triggered)"
+    ],
+    "must_NOT_have_attachments": [
+      "AF_3_land_use_confirmation (所有临时堆土场在永久占地内 + 借方非自设)",
+      "AF_5_geology_report (所有弃渣场级别 ≤ 2 级)"
+    ],
+    "must_NOT_have_subreports": [
+      "spoil_failure_analysis (failure_analysis_required = false)"
+    ]
+  },
+  "sample_assertions": {
+    "description": "将来的 sample validator 可以把这些 assertion 作为黄金验证条件",
+    "facts": {
+      "total_area_greater_than_5hm2_means_report_book": true,
+      "multi_county_triggers_admin_breakdown": true,
+      "borrow_positive_AND_source_is_external_triggers_AF4": true,
+      "borrow_positive_AND_source_is_external_does_NOT_trigger_AF3": true,
+      "all_disposal_sites_level_2_does_NOT_trigger_geology_report": true,
+      "all_disposal_sites_level_2_does_NOT_trigger_stability_monitoring": true,
+      "all_disposal_sites_level_2_does_NOT_trigger_video_surveillance": true,
+      "topsoil_excavation_greater_than_fill_triggers_topsoil_reuse_evidence": true,
+      "topsoil_excavation_greater_than_fill_does_NOT_trigger_soil_improvement": true,
+      "two_standard_levels_triggers_weighted_target_calculation": true,
+      "no_key_prevention_area_but_sensitive_area_hit_triggers_unavoidability": true,
+      "plain_terrain_no_downstream_does_NOT_trigger_failure_analysis": true,
+      "borrow_and_spoil_both_positive_triggers_dual_source_justification": true
+    },
+    "derived_values": {
+      "excavation_utilization_ratio": 58.82,
+      "comprehensive_reuse_ratio": 57.14,
+      "species_by_threshold_rule": "报告书 (total_area >= 5hm²)"
+    }
+  }
+}

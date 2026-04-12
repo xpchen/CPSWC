@@ -1,0 +1,388 @@
+# CPSWC Provenance Classification
+#
+# 依据: CPSWC_ARCHITECTURE_DECISIONS.md 决议 8 Source Provenance & Normative Authority
+#
+# 本文件定义"来源分类规则", 不是"来源白名单"。设计哲学:
+#   白名单会随业务增长被不断申请扩充, 政治成本高, 维护靠人情。
+#   分类规则是"满足什么条件的来源归入 L3 / L5 / L9", 维护成本
+#   从"名单增删"变成"规则更新", 更可持续。
+#
+# 文件性质:
+#   - 就地生效 (v0 起即约束 v0 生效规则), 不走 reserved 通道
+#   - cross_registry_lint.py 会读取本文件作为 SOURCE_AUTH_001 的参考
+#   - 新增样稿 / 规则 / calculator 的 review 环节必须引用本文件
+#
+# 生效范围:
+#   - obligation / field / artifact / assurance 的 source 字段
+#   - calculator contract 的 source_rule_ref 字段
+#   - sample.* 的 sample_usage_mode
+#   - v1 region override 的 authority_class
+#   - v1 calculator inputs 的 normative_basis
+# ============================================================
+
+version: provenance_v0.1
+generated_at: 2026-04-11
+governance_doc: CPSWC_ARCHITECTURE_DECISIONS.md # 决议 8
+core_contracts_ref: CPSWC_CORE_CONTRACTS.yaml # source_provenance 节
+
+# ============================================================
+# 1. authority_class 分类规则
+# ============================================================
+# 每一类给出"判定条件"和"判定反例", 避免单纯凭直觉归类。
+# 冲突消解顺序由 CPSWC_CORE_CONTRACTS.yaml 的 source_provenance 节定义。
+# ============================================================
+
+authority_class_definitions:
+
+  - class: statute
+    precedence_rank: 1
+    label_cn: 法律
+    criteria: |
+      由全国人大或其常委会通过的法律。
+      典型: 中华人民共和国水土保持法 / 环境保护法 / 行政许可法。
+    non_examples: |
+      - 国务院行政法规 (归 regulation)
+      - 水利部部门规章 (归 regulation)
+      - 省人大立法 (归 regulation, 即使标题含"法")
+    required_metadata:
+      - full_title
+      - issuing_authority: "全国人大 | 全国人大常委会"
+      - issue_date
+      - effective_since
+      - version_or_revision
+    provenance_verified_required: true
+
+  - class: regulation
+    precedence_rank: 2
+    label_cn: 行政法规 / 部门规章 / 地方规章
+    criteria: |
+      由国务院 / 部委 / 省级人大 / 省级政府发布的规章。
+      典型:
+        - 水利部令第 53 号 (生产建设项目水土保持方案管理办法)
+        - 广东省水土保持条例
+        - 办水保 109 / 133 / 160 / 177 号等规范性文件
+    non_examples: |
+      - 部委公开指南 (归 authoritative_guide)
+      - 省级政府内部纪要 (归 meeting_memo)
+    required_metadata:
+      - full_title
+      - issuing_authority
+      - issue_number
+      - effective_since
+      - jurisdiction_scope
+    provenance_verified_required: true
+
+  - class: mandatory_standard
+    precedence_rank: 3
+    label_cn: 强制性标准
+    criteria: |
+      强制性国家标准 / 行业标准 / 地方标准。标准编号**不含 /T**。
+      典型:
+        - GB 50433-2018 生产建设项目水土保持技术标准
+        - GB 51018-2014 水土保持工程设计规范
+    non_examples: |
+      - GB/T 50434-2018 (含 /T, 是推荐性标准, 归 recommended_standard)
+      - SL/T 804-2020 (含 /T, 归 recommended_standard)
+      - NB/T 35111-2018 (含 /T, 归 recommended_standard)
+    required_metadata:
+      - standard_number
+      - full_title
+      - publication_year
+      - issuing_authority
+    provenance_verified_required: true
+
+  - class: official_approval
+    precedence_rank: 4
+    label_cn: 正式批复文件
+    criteria: |
+      省 / 市 / 县级发改委 / 主管部门等发布的具有法定效力的批复文件。
+      典型:
+        - 粤发改价格〔2021〕231 号 (水土保持补偿费标准)
+        - 粤水规范字〔2026〕1 号
+      关键识别特征: 具有正式文号, 在特定辖区内产生法律约束力。
+    non_examples: |
+      - 主管部门公开技术要点 (归 authoritative_guide)
+      - 主管部门内部座谈纪要 (归 meeting_memo)
+    precedence_note: |
+      official_approval (rank 4) **高于** recommended_standard (rank 5),
+      因为省级正式批复在该省辖区内有法定效力, 而推荐性国标是 "宜",
+      不是 "应"。
+      但仍然低于 mandatory_standard (rank 3), 因为强制性国标是
+      全国性法定底线。
+    required_metadata:
+      - document_number
+      - issuing_authority
+      - effective_since
+      - jurisdiction_scope
+    provenance_verified_required: true
+
+  - class: recommended_standard
+    precedence_rank: 5
+    label_cn: 推荐性标准
+    criteria: |
+      推荐性国家 / 行业 / 地方标准。标准编号**含 /T** (GB/T, NB/T, SL/T, DB/T).
+      典型:
+        - GB/T 50434-2018 生产建设项目水土流失防治标准
+        - NB/T 35111-2018 水电工程水土保持弃渣场设计规范
+        - SL/T 804-2020 (关于淤地坝的部分)
+    non_examples: |
+      - 不含 /T 的 GB 系列 (归 mandatory_standard)
+      - 主管部门公开指南 (归 authoritative_guide)
+    required_metadata:
+      - standard_number
+      - full_title
+      - publication_year
+      - issuing_authority
+    provenance_verified_required: true
+
+  - class: authoritative_guide
+    precedence_rank: 6
+    label_cn: 主管部门公开指南 / 技术要点
+    criteria: |
+      水利部 / 省级水利厅 / 市级水务局公开发布的技术指南 / 要点文件。
+      关键特征: 公开, 可查证, 但**不具有独立法定效力**, 作为解释性文件。
+      典型:
+        - 水利部水土保持司 XXX 技术要点
+        - 生产建设项目水土保持方案编制指南 (非强制性)
+    non_examples: |
+      - 已形成行政规范的文件 (如 177 号, 归 regulation)
+      - 内部口径纪要 (归 meeting_memo)
+    required_metadata:
+      - document_title
+      - issuing_authority
+      - publication_date
+      - public_access_url_or_archive
+    provenance_verified_required: true
+
+  - class: meeting_memo
+    precedence_rank: 7
+    label_cn: 主管部门内部纪要 / 座谈口径
+    criteria: |
+      主管部门在非公开场合 (审查会、座谈会、内部会议) 形成的
+      口径纪要。**进入系统时必须同时携带** meeting_memo_metadata
+      (见下方 mandatory_traceability 节), 否则禁止入库。
+    enforcement: |
+      meeting_memo 级来源不得作为 CRITICAL obligation 的唯一上游依据。
+      必须在 v1 内升级为 official_approval / authoritative_guide, 否则
+      在 v2 升级为 ERROR。
+    required_metadata:
+      - meeting_date
+      - meeting_location
+      - host_authority
+      - participants_with_title
+      - memo_anchor  # 指向可追溯的纪要文本存档
+      - superseded_monitor  # 监测是否被更高级别来源取代
+    provenance_verified_required: true  # 留痕后才算 verified
+
+  - class: expert_consensus
+    precedence_rank: 8
+    label_cn: 行业专家共识
+    criteria: |
+      由多位具备执业资格的行业专家形成的一致口径, 非主管部门纪要。
+      典型: 学会 / 协会发布的技术意见, 大型项目评审会形成的共识口径。
+    required_metadata:
+      - consensus_date
+      - participants_with_professional_qualification  # 至少 3 名
+      - consensus_document_anchor
+      - scope_of_applicability
+    provenance_verified_required: true
+    usage_limits: |
+      不得驱动 CRITICAL 级 obligation。
+      可作为 PROTECTED 级 obligation 的辅助依据, 但必须同时声明
+      更高级别的 normative_basis_refs 作为主依据。
+
+  - class: expert_individual
+    precedence_rank: 9
+    label_cn: 单一专家经验
+    criteria: |
+      单一专家 (注册工程师 / 教授 / 审查专家) 的个人口径。
+    required_metadata:
+      - expert_name  # 实名
+      - expert_qualification  # 执业资格 / 职称
+      - interview_or_memo_date
+      - interview_or_memo_location
+      - recording_or_signed_memo_anchor  # 录音或签字纪要的可追溯指针
+      - superseded_monitor  # 被更高级别来源取代的监测机制
+    provenance_verified_required: true
+    usage_limits: |
+      不得作为任何 obligation 的唯一上游依据。
+      只能作为辅助参考进入 inspiration_only 通道, 不得直接入生效规则。
+      必须在 v1 前被更高级别来源取代, 否则在 v2 移出系统。
+
+# ============================================================
+# 2. prohibited_source_types (硬禁令)
+# ============================================================
+# 这一节是决议 8 硬规则 4 的具体落地。
+# 本节列出的所有类型, 即使内容完全正确, 也一律归入
+# sample_usage_mode = prohibited_entirely, 不得以任何形式入库。
+# 本节不接受例外申请, 不接受"反正内容没错"的辩护。
+# ============================================================
+
+prohibited_source_types:
+
+  - id: prohib.unsigned_pdf_scan
+    title: 无责任署名的 PDF / 扫描件
+    rule: |
+      任何**缺失下列任一信息**的 PDF / 扫描件, 一律归入 prohibited_entirely:
+        - 责任署名 (作者 / 发布机构 / 制作单位)
+        - 制作时间 (年月)
+        - 版本号 / 修订号
+    rationale: |
+      这是行业最常见的污染源。设计院内部流传的"历史样本汇编"、
+      "XX 院内部培训资料"、"某项目经验总结 v??.pdf", 一般都是
+      不知道哪年哪月扫描的 PDF, 没有责任人, 没有版本。
+      这类文件是"匿名培训材料 → LLM 训练 → 错误结论 → 规则污染"
+      这条链路的入口。
+    exception_policy: |
+      不接受例外。
+      即使专家声称"这份资料我用了 10 年都没问题", 也必须先找到
+      对应的正式发布版本 (或重新按流程发布), 才能入库。
+    enforcement:
+      v0: SOURCE_AUTH_001 本批次发 INFO (如果误入)
+      v1: 升 WARN
+      v2: 升 ERROR
+
+  - id: prohib.rejected_sample
+    title: 曾被审查退回的问题样稿
+    rule: |
+      任何曾被主管部门审查退回的样稿, 即使后续被纠正, 原样稿文件
+      本身仍归入 prohibited_entirely。纠正后的版本必须作为独立
+      sample 重新入库, 并明确标注 supersedes 关系。
+    rationale: |
+      问题样稿的表达方式 / 措辞 / 计算方式中往往包含"刚好能绕过
+      审查"的错误模式。LLM 在 few-shot 时容易学到这些模式。
+
+  - id: prohib.anonymous_training_material
+    title: 匿名整理的培训材料
+    rule: |
+      任何无明确制作方 / 授课人 / 发布日期的"培训课件"、
+      "学习材料"、"经验汇编" 一律归入 prohibited_entirely。
+    rationale: |
+      匿名材料的正确性无法追溯, 错误无法纠正, 是知识库的系统性风险。
+
+  - id: prohib.unverified_ocr
+    title: 未经校对的 OCR 识别文本
+    rule: |
+      OCR 识别后未经人工校对的文本, 即使原件可追溯, 也归入
+      prohibited_entirely。校对后必须留下校对记录才能入库。
+    rationale: |
+      OCR 误识别的数字 (如 0.6 被识别成 0.06) 是"10 倍补偿费偏差"
+      类事故的典型来源。
+
+  - id: prohib.screenshot_only
+    title: 仅有截图没有可追溯原文
+    rule: |
+      仅以截图形式出现的规则 / 数字 / 结论, 没有对应可追溯原文的,
+      一律归入 prohibited_entirely。
+    rationale: |
+      截图无法版本追踪, 无法验证是否被后续修订取代。
+
+# ============================================================
+# 3. mandatory_traceability (留痕强制条款)
+# ============================================================
+# 任何 L7 / L8 / L9 级来源进入系统时必须满足的留痕要求。
+# 没有留痕的"专家说过"一律视为 L9_expert_individual, 且
+# provenance_verified: false。
+# 这条不是为了堵死老师傅经验, 而是为了让沉淀机制有门可走。
+# ============================================================
+
+mandatory_traceability:
+
+  principle: |
+    留痕才能用。不是"谁说的就算", 而是"谁说的 + 何时何地 + 可追溯凭证"。
+    这条是给"组织能力沉淀"留门, 不是关门 (见决议 8 与 v1 reservations
+    中的 contribution_lineage 槽位)。
+
+  applies_to:
+    - authority_class: meeting_memo (L7)
+    - authority_class: expert_consensus (L8)
+    - authority_class: expert_individual (L9)
+
+  required_minimum:
+    - recorded_date:        ISO 日期
+    - recorded_location:    地点
+    - source_identity:      实名 + 执业资格 / 职称 (至少 1 人)
+    - evidence_anchor:      录音 / 签字纪要 / 会议照片 / 邮件存档的可追溯指针
+    - superseded_monitor:   后续被更高级别来源取代时的替换机制
+
+  provenance_verified_rule: |
+    留痕齐全 → provenance_verified = true
+    留痕不全 → provenance_verified = false, 且不得驱动 CRITICAL 级 obligation
+
+  review_cadence: |
+    所有 provenance_verified = false 的来源, 在每次规则集版本升级
+    (RulesetVersion, 见决议 5) 时必须复查: 要么补齐留痕, 要么被
+    更高级别来源取代, 要么从系统移出。
+
+# ============================================================
+# 4. sample_usage_mode 硬约束
+# ============================================================
+# 对应 Core Contracts source_provenance.core_fields.sample_usage_mode
+# ============================================================
+
+sample_usage_mode_rules:
+
+  no_default: |
+    样稿入库必须显式标注三档之一, 没有默认值。未标注者不允许入库。
+    这条由 SOURCE_AUTH_001 在 v1 升级为 ERROR 级强制。
+
+  modes:
+
+    authority:
+      rule: 永不允许
+      rationale: |
+        样稿即使内容完全正确, 也不是规则来源。规则必须从规范 / 法规 /
+        标准 / 正式批复中产生。样稿最多作为交叉验证参考。
+
+    inspiration_only:
+      rule: |
+        可作为启发式输入 (LLM few-shot / RAG / 模板灵感), 但两条约束必须同时满足:
+          (a) 不得作为任何生效规则的唯一依据
+          (b) 由启发式路径生成的最终输出, 其字面表达必须能在
+              source_rule_ref / fact field / calculator 输出中找到
+              对应权威锚点
+        无法找到锚点的字面表达视为污染, 进入 overlay 的 stale 状态
+        或直接被拒绝合入。
+      mirror_rule: |
+        本条 (b) 是决议 7 overlay 防腐禁令的镜像规则。决议 7 管人工
+        手改引入的污染, 本规则管 LLM 生成引入的污染。
+
+    prohibited_entirely:
+      rule: 完全禁止入系统任何路径
+      triggers:
+        - 归入 prohibited_source_types 任一类
+        - 曾被审查退回的样稿
+        - 包含已知错误未更正的样稿
+
+# ============================================================
+# 5. v0 → v1 → v2 迁移路径
+# ============================================================
+
+migration_path:
+
+  v0_this_batch:
+    - ProvenanceClassification.yaml 就地生效
+    - SOURCE_AUTH_001 按宽松口径扫描, 仅对明显缺失发 INFO
+    - 新增对象必须满足 provenance 准入纪律 (双锚 + authority_class)
+    - 旧对象不强制回填 authority_class / sample_usage_mode / 等新字段
+
+  v1_target:
+    - SOURCE_AUTH_001 升为 WARN
+    - v0 旧对象需在本阶段完成 authority_class 回填
+    - sample_usage_mode 成为强制标注
+    - region override 激活, 继承本文件的冲突消解规则
+
+  v2_target:
+    - SOURCE_AUTH_001 升为 ERROR
+    - 所有旧对象必须双锚齐全
+    - meeting_memo / expert_consensus / expert_individual 级来源
+      必须全部 provenance_verified = true
+
+# ============================================================
+# 6. 变更记录
+# ============================================================
+changelog:
+  - date: 2026-04-11
+    version: provenance_v0.1
+    summary: 初版创建 (决议 8 来源铁律包)
+    by: cpswc_architect

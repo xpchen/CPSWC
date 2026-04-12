@@ -1,0 +1,878 @@
+# CPSWC Artifact Registry v0
+#
+# 功能: 报告书所有法定制品 (附表/附图/附件/专题册) 的权威注册表
+# 约束: CPSWC_ARCHITECTURE_DECISIONS.md (决议 2, 3) + CPSWC_CORE_CONTRACTS.yaml
+#
+# 命名: art.<kind>.<short_name>, 参见 contracts.id_namespaces.artifact
+# kind enum: table | figure | attachment | subreport | spec_sheet | cover
+#
+# 本文件是 ObligationSet_v0 的 required_artifact_refs 的查找表。
+# 任何 obligation 引用的 artifact, 必须在本文件中可解析, 否则 CORE_CONTRACTS_001 报错。
+#
+# 来源:
+#   - 2026 模板附件 1 报告书编制内容 (附表/附件/附图清单)
+#   - 2018 格式规定 (封面/扉页/责任页等装订件)
+#   - 广东/惠州地方口径 (待扩展)
+
+version: v0
+generated_at: 2026-04-11
+applicable_species: [报告书]
+constraint_docs:
+  - CPSWC_ARCHITECTURE_DECISIONS.md
+  - CPSWC_CORE_CONTRACTS.yaml
+
+# ============================================================
+# 制品通用 schema
+# ============================================================
+# 每个 artifact 必须声明:
+#   id              — 本文件的 art.* 主键
+#   kind            — table / figure / attachment / subreport / spec_sheet / cover
+#   canonical_name  — 正式名称
+#   source          — 规则依据
+#   requirement     — always / conditional
+#   condition       — (if conditional) 触发条件 (指向 obligation_id 或描述)
+#   applicable_species — 适用文档物种
+#   chapter_ref     — 出现章节 (stable_id)
+#   content_spec    — 内容依据 (模板文号 + 章节)
+#   format_spec     — 格式依据 (2018 格式或 2026 附件 2)
+#   data_source_refs — 数据来源 (指向 field.* 或 engine.*)
+#   renderer        — 渲染器类型
+#   output_formats  — 输出格式 enum
+#   delivery_mode   — 交付包中位置 (inline / bound / single_copy)
+
+# ============================================================
+# 1. 封面 / 扉页 / 责任页 (装订件)
+# ============================================================
+artifacts:
+
+  art.cover.report_book_cover:
+    kind: cover
+    canonical_name: 水土保持方案报告书封面
+    source: 2026_template_annex_2
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: null
+    content_spec: 2026 模板附件 2 第二条
+    format_spec:
+      paper: A4
+      color: 湖蓝色
+      title_font: {face: 宋体, size: 二号, bold: true}
+      title_last_line: 水土保持方案报告书
+      title_last_line_font: {face: 黑体, size: 小初}
+      bottom_items: [建设单位全称, 编制单位全称, 编写年月]
+      bottom_font: {face: 宋体, size: 三号}
+    data_source_refs:
+      - field.fact.project.name
+      - field.fact.party.construction_unit
+      - field.fact.party.compile_unit
+    renderer: CoverRenderer
+    output_formats: [pdf, docx]
+    delivery_mode: single_copy  # 单面打印
+
+  art.cover.title_page:
+    kind: cover
+    canonical_name: 扉页
+    source: 2026_template_annex_2
+    requirement: always
+    applicable_species: [报告书]
+    content_spec: 2026 模板附件 2 第三条 (版式要求与封面相同)
+    format_spec:
+      layout: same_as_cover
+      seal: 建设单位 + 编制单位名称处加盖公章
+      multi_party: 多家编制单位的, 应分别加盖公章
+    data_source_refs:
+      - field.fact.project.name
+      - field.fact.party.construction_unit
+      - field.fact.party.compile_unit
+    renderer: CoverRenderer
+    output_formats: [pdf, docx]
+    delivery_mode: single_copy
+
+  art.cover.responsibility_page:
+    kind: cover
+    canonical_name: 责任页
+    source: 2026_template_annex_2
+    requirement: always
+    applicable_species: [报告书]
+    content_spec: 2026 模板附件 2 第四条
+    format_spec:
+      roles_order: [批准, 核定, 审查, 校核, 项目负责人, 编写]
+      sign_mode: 亲笔签名
+      approver_constraint: 批准人员中须有编制单位有关负责同志
+      writer_grouping: 编写人员按其参编章节分别列明
+      report_name_font: {face: 黑体, size: 三号}
+      role_labels_font: 黑体
+      other_font_size: 四号
+      name_and_task_font: 宋体
+      multi_org_lead: 多家编制单位的须明确牵头单位, 按编制单位和参编章节分别列明
+    data_source_refs:
+      - field.fact.project.name
+      - field.fact.party.compile_unit
+    required_assurance_refs:
+      - as.signature.responsibility_page
+      - as.seal.compile_unit_sealing
+    renderer: ResponsibilityPageRenderer
+    output_formats: [pdf, docx]
+    delivery_mode: single_copy
+
+  art.cover.toc:
+    kind: cover
+    canonical_name: 目录
+    source: 2026_template_annex_2
+    requirement: always
+    applicable_species: [报告书]
+    content_spec: 生成两级目录
+    format_spec:
+      levels: 2
+      heading_font: {face: 黑体, size: 三号}
+      other_font: {face: 仿宋, size: 四号}
+      spacing: 标准字符间距和行间距
+    data_source_refs: []  # 由章节树派生, 不直接引用 field
+    renderer: TocRenderer
+    output_formats: [pdf, docx]
+
+# ============================================================
+# 2. 特性表 (法定汇总表)
+# ============================================================
+
+  art.spec_sheet:
+    kind: spec_sheet
+    canonical_name: 水土保持方案特性表
+    source: 2026_template_annex_1_table_1
+    requirement: always
+    applicable_species: [报告书, 整体变更报告书]
+    chapter_ref: sec.overview.spec_sheet_end   # 附综合说明末
+    content_spec: |
+      2026 模板附件 1 表 1
+      包含: 项目名称代码, 涉及流域省市县, 项目规模(总投资/土建投资),
+            开完工时间/设计水平年, 三类占地, 土石方六元组,
+            涉及重点预防治理区/敏感区, 地貌/侵蚀类型强度/容许流失,
+            防治责任范围面积/容许流失/新增流失/可减少流失,
+            防治目标六率, 防治措施及数量分区表,
+            投资/监测/独立/监理/补偿费分项, 单位信息
+    format_spec:
+      embedded: true
+      paper: A4 (可加大)
+      within_chapter: 综合说明末
+    data_source_refs:
+      # 特性表的所有字段都经由 proj.spec_sheet.* 投影派生, 不直接引 field.*
+      projection_root: proj.spec_sheet
+    renderer: SpecSheetRenderer
+    output_formats: [pdf, docx]
+    lint_rules:
+      - 特性表字段必须与 FieldIdentityRegistry 中声明 proj.spec_sheet.* 投影的所有 field 一致
+      - 任何 field 投影到 proj.spec_sheet.* 但本表未渲染该行, 视为 lint ERROR
+
+# ============================================================
+# 3. 附表 (3 项)
+# ============================================================
+
+  art.table.responsibility_range_by_admin_division:  # AT-01
+    kind: table
+    canonical_name: 防治责任范围统计表
+    source: 2026_template_annex_1
+    requirement: conditional
+    condition:
+      trigger_obligation_id: ob.sensitive_overlay.multi_admin_breakdown
+      human: 涉及两个及以上行政区时
+    applicable_species: [报告书]
+    chapter_ref: sec.soil_loss_prevention.responsibility_range_by_county
+    content_spec: 按县级行政区列明防治责任范围面积
+    format_spec:
+      appendix_position: 正文后附表
+    data_source_refs:
+      - field.fact.location.county_list
+      - field.fact.land.county_breakdown
+      - field.fact.prevention.responsibility_range_area
+    renderer: TableRenderer
+    output_formats: [pdf, docx]
+
+  art.table.weighted_target_calculation:  # AT-02
+    kind: table
+    canonical_name: 水土流失防治指标计算表
+    source: 2026_template_annex_1
+    requirement: conditional
+    condition:
+      trigger_obligation_id: ob.evaluation.weighted_target_required
+      human: 涉及两个及以上防治标准等级时
+    applicable_species: [报告书]
+    chapter_ref: sec.soil_loss_prevention.targets
+    content_spec: 按面积(体积)加权计算综合指标值
+    format_spec:
+      appendix_position: 正文后附表
+    data_source_refs:
+      - field.fact.prevention.control_standard_level_breakdown
+      - field.derived.target.weighted_comprehensive_target
+      - field.fact.natural.water_soil_zoning   # Step 11B: 决定适用哪张 GB/T 50434 表
+    produced_by_calculator: cal.target.weighted_comprehensive  # Step 11B
+    renderer: TableRenderer
+    output_formats: [pdf, docx]
+
+  art.table.investment_appendix:  # AT-03
+    kind: table
+    canonical_name: 投资附件
+    source: 2026_template_annex_1
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.investment.summary
+    content_spec: |
+      2026 模板 9.1.2 要求的估算成果, 含以下 10 表:
+        1. 投资估算总表
+        2. 工程措施估算表
+        3. 植物措施估算表
+        4. 临时措施估算表
+        5. 水土保持监测措施估算表
+        6. 分年度投资估算表
+        7. 独立费用计算表
+        8. 水土保持补偿费计算表
+        9. 工程单价汇总表
+        10. 施工机械台时费汇总表 (+ 主要材料单价汇总表)
+    format_spec:
+      appendix_position: 正文后附件区
+    data_source_refs:
+      - engine.InvestmentEstimationSubsystem
+    renderer: InvestmentTableBundleRenderer
+    output_formats: [pdf, docx, xlsx]
+    sub_tables:
+      - art.table.investment.total_summary
+      - art.table.investment.engineering_measures
+      - art.table.investment.plant_measures
+      - art.table.investment.temporary_measures
+      - art.table.investment.monitoring_measures
+      - art.table.investment.annual_breakdown
+      - art.table.investment.independent_fees
+      - art.table.investment.compensation_fee
+      - art.table.investment.unit_prices
+      - art.table.investment.machine_hours
+      - art.table.investment.material_prices
+
+  # ---- 投资子表 (10+1 张) ----
+  art.table.investment.total_summary:
+    kind: table
+    canonical_name: 投资估算总表
+    parent: art.table.investment_appendix
+    requirement: always
+    data_source_refs: [engine.InvestmentEstimationSubsystem]
+    renderer: TableRenderer
+
+  art.table.investment.engineering_measures:
+    kind: table
+    canonical_name: 工程措施估算表
+    parent: art.table.investment_appendix
+    requirement: always
+    data_source_refs: [engine.InvestmentEstimationSubsystem]
+    renderer: TableRenderer
+
+  art.table.investment.plant_measures:
+    kind: table
+    canonical_name: 植物措施估算表
+    parent: art.table.investment_appendix
+    requirement: always
+    data_source_refs: [engine.InvestmentEstimationSubsystem]
+    renderer: TableRenderer
+
+  art.table.investment.temporary_measures:
+    kind: table
+    canonical_name: 临时措施估算表
+    parent: art.table.investment_appendix
+    requirement: always
+    data_source_refs: [engine.InvestmentEstimationSubsystem]
+    renderer: TableRenderer
+
+  art.table.investment.monitoring_measures:
+    kind: table
+    canonical_name: 水土保持监测措施估算表
+    parent: art.table.investment_appendix
+    requirement: always
+    data_source_refs: [engine.InvestmentEstimationSubsystem]
+    renderer: TableRenderer
+
+  art.table.investment.annual_breakdown:
+    kind: table
+    canonical_name: 分年度投资估算表
+    parent: art.table.investment_appendix
+    requirement: always
+    data_source_refs:
+      - engine.InvestmentEstimationSubsystem
+      - field.fact.schedule.start_time
+      - field.fact.schedule.end_time
+    renderer: TableRenderer
+
+  art.table.investment.independent_fees:
+    kind: table
+    canonical_name: 独立费用计算表
+    parent: art.table.investment_appendix
+    requirement: always
+    content_spec: |
+      按水总[2024]323 号计算
+      含: 建设管理费 / 水土保持监理费 / 科研勘测设计费
+    data_source_refs: [engine.InvestmentEstimationSubsystem]
+    renderer: TableRenderer
+
+  art.table.investment.compensation_fee:
+    kind: table
+    canonical_name: 水土保持补偿费计算表
+    parent: art.table.investment_appendix
+    requirement: always
+    content_spec: |
+      跨省(区、市)项目分省(区、市)列出
+    # Step 11A: 本表从 live derived field + fact field 直接取数, 不再挂
+    # engine.InvestmentEstimationSubsystem 这个扩展命名空间空壳。
+    # 决议 8 双锚: derived field 提供 value, regulatory field 提供 rate, province_list 提供分省维度。
+    data_source_refs:
+      - field.derived.investment.compensation_fee_amount   # 应缴金额 (万元, 由 cal.compensation.fee 派生)
+      - field.fact.regulatory.compensation_fee_rate        # 费率 (元/m², Step 11A 新增 live field)
+      - field.fact.land.permanent_area                     # 永久占地 (hm²)
+      - field.fact.land.temporary_area                     # 临时占地 (hm²)
+      - field.fact.location.province_list                  # 分省维度
+    produced_by_calculator: cal.compensation.fee           # Step 11A: 首次出现 calculator 生产关系
+    renderer: TableRenderer
+
+  art.table.investment.unit_prices:
+    kind: table
+    canonical_name: 工程单价汇总表
+    parent: art.table.investment_appendix
+    requirement: always
+    data_source_refs: [engine.InvestmentEstimationSubsystem]
+    renderer: TableRenderer
+
+  art.table.investment.machine_hours:
+    kind: table
+    canonical_name: 施工机械台时费汇总表
+    parent: art.table.investment_appendix
+    requirement: always
+    data_source_refs: [engine.InvestmentEstimationSubsystem]
+    renderer: TableRenderer
+
+  art.table.investment.material_prices:
+    kind: table
+    canonical_name: 主要材料单价汇总表
+    parent: art.table.investment_appendix
+    requirement: always
+    data_source_refs: [engine.InvestmentEstimationSubsystem]
+    renderer: TableRenderer
+
+# ============================================================
+# 4. 正文内嵌表 (不是附表, 是正文章节内的表)
+# ============================================================
+
+  art.table.total_land_occupation:
+    kind: table
+    canonical_name: 工程总占地表
+    source: 2026_template_2_3
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.project_overview.land_occupation
+    content_spec: 按项目组成/建设内容/施工组织分别明确占地性质/类型/面积
+    data_source_refs:
+      - field.fact.land.total_area
+      - field.fact.land.permanent_area
+      - field.fact.land.temporary_area
+    renderer: TableRenderer
+
+  art.table.land_occupation_by_county:
+    kind: table
+    canonical_name: 分县占地表
+    source: 2026_template_2_3
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.project_overview.land_occupation
+    content_spec: 按县级行政区分别列明占地
+    data_source_refs:
+      - field.fact.land.county_breakdown
+    renderer: TableRenderer
+
+  art.table.earthwork_balance:
+    kind: table
+    canonical_name: 土石方(不含表土)平衡表
+    source: 2026_template_2_4
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.project_overview.earthwork_balance
+    data_source_refs:
+      - field.fact.earthwork.excavation
+      - field.fact.earthwork.fill
+      - field.fact.earthwork.borrow
+      - field.fact.earthwork.self_reuse
+      - field.fact.earthwork.spoil
+      - field.fact.earthwork.comprehensive_reuse
+    renderer: TableRenderer
+
+  art.table.topsoil_balance:
+    kind: table
+    canonical_name: 表土平衡表
+    source: 2026_template_4_4_3
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.topsoil.balance
+    data_source_refs:
+      - field.fact.topsoil.excavation
+      - field.fact.topsoil.fill
+      - field.fact.topsoil.stripable_volume
+      - field.fact.topsoil.stripable_area
+    renderer: TableRenderer
+
+  art.table.spoil_summary:
+    kind: table
+    canonical_name: 弃渣场和临时堆土场设置汇总表
+    source: 2026_template_5_2
+    requirement: conditional
+    condition:
+      trigger_obligation_id: ob.disposal_site.site_selection
+      human: 设置弃渣场或临时堆土场
+    applicable_species: [报告书]
+    chapter_ref: sec.disposal_site.site_selection
+    content_spec: |
+      各弃渣场/临时堆土场: 名称编号/位置/类型/占地/汇水面积/容量/
+                          堆渣量/最大高度/级别/堆置方案/恢复利用方向/
+                          敏感因素/评价结论
+    data_source_refs:
+      - field.fact.construction.temp_topsoil_site
+      - engine.SpoilStabilityEngine
+    renderer: TableRenderer
+
+# ============================================================
+# 5. 附图 (13 项明确命名 + 2 项条件)
+# ============================================================
+
+  art.figure.F_01_location:
+    kind: figure
+    canonical_name: 项目地理位置图
+    source: 2026_template_annex_1_figures
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.appendix.figures
+    content_spec: 项目在区域内的地理位置
+    format_spec:
+      paper: A4 (可加大)
+      output_format: JPEG
+    data_source_refs:
+      - field.fact.location.redline_geometry_ref
+      - field.fact.location.county_list
+      - engine.GeoPipeline
+    renderer: GeoLocationMapRenderer
+    output_formats: [jpeg, pdf]
+
+  art.figure.F_02_river_system:
+    kind: figure
+    canonical_name: 项目区水系图
+    source: 2026_template_annex_1_figures
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.appendix.figures
+    data_source_refs:
+      - field.fact.location.redline_geometry_ref
+      - engine.GeoPipeline
+    renderer: GeoOverlayMapRenderer
+    output_formats: [jpeg, pdf]
+
+  art.figure.F_03_soil_erosion:
+    kind: figure
+    canonical_name: 项目区土壤侵蚀图
+    source: 2026_template_annex_1_figures
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.appendix.figures
+    data_source_refs:
+      - field.fact.natural.soil_erosion_type
+      - field.fact.natural.soil_erosion_intensity
+      - engine.GeoPipeline
+    renderer: GeoOverlayMapRenderer
+    output_formats: [jpeg, pdf]
+
+  art.figure.F_04_responsibility_range:
+    kind: figure
+    canonical_name: 水土流失防治责任范围图
+    source: 2026_template_annex_1_figures
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.appendix.figures
+    content_spec: 必须提供完整的防治责任范围 shapefile 格式矢量数据
+    format_spec:
+      vector_format: shapefile
+      coordinate_system: CGCS2000   # 2000 国家大地坐标系, 强制
+      raster_format: JPEG
+    data_source_refs:
+      - field.fact.location.redline_geometry_ref
+      - field.fact.prevention.responsibility_range_area
+      - engine.GeoPipeline
+    renderer: ResponsibilityRangeRenderer
+    output_formats: [jpeg, pdf, shapefile]
+    required_assurance_refs:
+      - as.geo.cgcs2000_compliance
+
+  art.figure.F_05_overall_layout:
+    kind: figure
+    canonical_name: 工程总体平面布置图
+    source: 2026_template_annex_1_figures
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.appendix.figures
+    data_source_refs:
+      - field.fact.location.redline_geometry_ref
+      - field.fact.construction.living_area
+      - field.fact.construction.road
+      - engine.GeoPipeline
+    renderer: OverallLayoutRenderer
+    output_formats: [jpeg, pdf]
+    variants:
+      F_05a_road_rail_profile:
+        when: industry in [1, 2]
+        adds: 平、纵断面缩图
+      F_05b_pipeline_section:
+        when: industry in [24] or has_pipeline
+        adds: 管沟开挖和施工作业带断面图
+
+  art.figure.F_06_monitoring_points:
+    kind: figure
+    canonical_name: 监测点布置图
+    source: 2026_template_annex_1_figures
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.appendix.figures
+    data_source_refs:
+      - engine.MonitoringPlanner
+    renderer: GeoOverlayMapRenderer
+    output_formats: [jpeg, pdf]
+
+  art.figure.F_07_vegetation_distribution:
+    kind: figure
+    canonical_name: 防治责任范围内林草植被分布图
+    source: 2026_template_annex_1_figures
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.appendix.figures
+    data_source_refs:
+      - field.fact.natural.landform_type
+      - field.fact.prevention.responsibility_range_area
+      - engine.GeoPipeline
+    renderer: GeoOverlayMapRenderer
+    output_formats: [jpeg, pdf]
+
+  art.figure.F_08_topsoil_survey:
+    kind: figure
+    canonical_name: 表土资源调查点位布设图
+    source: 2026_template_annex_1_figures
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.appendix.figures
+    data_source_refs:
+      - engine.GeoPipeline
+    renderer: GeoOverlayMapRenderer
+    output_formats: [jpeg, pdf]
+
+  art.figure.F_09_topsoil_stripping_range:
+    kind: figure
+    canonical_name: 项目区表土分布与剥离范围图
+    source: 2026_template_annex_1_figures
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.appendix.figures
+    data_source_refs:
+      - field.fact.topsoil.stripable_area
+      - engine.GeoPipeline
+    renderer: GeoOverlayMapRenderer
+    output_formats: [jpeg, pdf]
+
+  art.figure.F_10_measures_layout:
+    kind: figure
+    canonical_name: 分区防治措施总体布局图
+    source: 2026_template_annex_1_figures
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.appendix.figures
+    data_source_refs:
+      - field.fact.prevention.responsibility_range_area
+      - engine.GeoPipeline
+    renderer: MeasuresLayoutRenderer
+    output_formats: [jpeg, pdf]
+
+  art.figure.F_11_typical_design:
+    kind: figure
+    canonical_name: 典型设计图
+    source: 2026_template_annex_1_figures
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.appendix.figures
+    content_spec: 按各防治分区各类水土保持措施的典型设计
+    data_source_refs: []
+    renderer: TypicalDesignRenderer
+    output_formats: [jpeg, pdf, dwg]
+    v0_note: v0 由用户上传 CAD/JPG, 系统不自动绘制
+
+  art.figure.F_12_borrow_and_disposal_location:
+    kind: figure
+    canonical_name: 取土场和弃渣场(含临时堆土场)位置图
+    source: 2026_template_annex_1_figures
+    requirement: conditional
+    condition:
+      trigger_obligation_id: ob.disposal_site.location_map
+      human: 设置取土场 / 弃渣场 / 临时堆土场
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.appendix.figures
+    content_spec: |
+      必须含地形和影像。
+      图件必须反映周边及下游影响范围内的地形及敏感因素信息。
+    data_source_refs:
+      - field.fact.construction.temp_topsoil_site
+      - engine.GeoPipeline
+    renderer: SpoilSiteMapRenderer
+    output_formats: [jpeg, pdf]
+    required_assurance_refs:
+      - as.geo.downstream_coverage_verified
+
+  art.figure.F_13_vertical_layout:
+    kind: figure
+    canonical_name: 竖向布置图
+    source: 2026_template_annex_1_figures
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.appendix.figures
+    data_source_refs: []
+    renderer: VerticalLayoutRenderer
+    output_formats: [jpeg, pdf]
+
+  art.figure.schedule_gantt:
+    kind: figure
+    canonical_name: 施工进度双线横道图
+    source: 2026_template_7_8
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.soil_loss_prevention.construction_schedule
+    content_spec: |
+      水保措施 vs 主体工程双线横道图。
+      对应主体单项工程施工时序。
+    data_source_refs:
+      - field.fact.schedule.start_time
+      - field.fact.schedule.end_time
+    renderer: GanttChartRenderer
+    output_formats: [svg, pdf, jpeg]
+
+# ============================================================
+# 6. 附件 (7 项, 对应 2026 模板附件清单)
+# ============================================================
+
+  art.attachment.AF_1_project_approval:
+    kind: attachment
+    canonical_name: 项目立项或相关支撑性文件
+    source: 2026_template_annex_1_attachments
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.appendix.attachments
+    content_spec: 立项批复/核准/备案文件
+    delivery_mode: bound   # 装订进正文后
+    output_formats: [pdf]
+    v0_input: 用户上传
+
+  art.attachment.AF_2_unavoidability_justification:
+    kind: attachment
+    canonical_name: 不可避让论证情况及结论
+    source: 2026_template_annex_1_attachments
+    requirement: conditional
+    condition:
+      trigger_obligation_id: ob.unavoidability.redline_conflict
+      human: 无法避让水土流失重点预防区和重点治理区, 或水土流失严重、生态脆弱区域
+    applicable_species: [报告书]
+    chapter_ref: sec.appendix.attachments
+    content_spec: 符合性与必要性论证, 减缓措施及成效
+    delivery_mode: bound
+    output_formats: [pdf]
+
+  art.attachment.AF_3_land_use_confirmation:
+    kind: attachment
+    canonical_name: 取土场/弃渣场/永久占地范围外临时堆土场 权属确认意见
+    source: 2026_template_annex_1_attachments
+    requirement: conditional
+    condition:
+      trigger_obligation_ids:
+        - ob.borrow_site.land_use_approval
+        - ob.disposal_site.land_use_approval
+      human: 涉及取土场/弃渣场或永久占地范围外临时堆土场
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.appendix.attachments
+    content_spec: 相关管理部门及土地权属单位(个人)确认意见
+    delivery_mode: bound
+    output_formats: [pdf]
+
+  art.attachment.AF_4_external_earth_purchase:
+    kind: attachment
+    canonical_name: 外购土石方支撑材料
+    source: 2026_template_annex_1_attachments
+    requirement: conditional
+    condition:
+      trigger_obligation_id: ob.borrow_site.external_purchase_evidence
+      human: 涉及外购土石方
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.appendix.attachments
+    content_spec: |
+      外购意向协议及出售方土源支撑材料,
+      或周边外购土源调查结果 + 建设单位和主体设计单位的确认材料
+    delivery_mode: bound
+    output_formats: [pdf]
+
+  art.attachment.AF_5_geology_report:
+    kind: attachment
+    canonical_name: 地质勘察报告结论
+    source: 2026_template_annex_1_attachments
+    requirement: conditional
+    condition:
+      trigger_obligation_id: ob.disposal_site.geology_report
+      human: 4 级及以上弃渣场
+    applicable_species: [报告书]
+    chapter_ref: sec.appendix.attachments
+    delivery_mode: bound
+    output_formats: [pdf]
+
+  art.attachment.AF_6_reuse_evidence:
+    kind: attachment
+    canonical_name: 弃渣综合利用或表土再利用支撑性材料
+    source: 2026_template_annex_1_attachments
+    requirement: conditional
+    condition:
+      trigger_obligation_ids:
+        - ob.disposal_site.reuse_evidence
+        - ob.topsoil.reuse_evidence
+      human: 涉及弃渣综合利用或表土再利用
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.appendix.attachments
+    delivery_mode: bound
+    output_formats: [pdf]
+
+  art.attachment.AF_7_other_supporting:
+    kind: attachment
+    canonical_name: 其他支撑性材料
+    source: 2026_template_annex_1_attachments
+    requirement: optional
+    applicable_species: [报告书]
+    chapter_ref: sec.appendix.attachments
+    content_spec: 用于支撑报告书相关内容的其他材料
+    delivery_mode: bound
+    output_formats: [pdf]
+
+# ============================================================
+# 7. 专题册 (单独装订, 不入正文)
+# ============================================================
+
+  art.subreport.spoil_failure_analysis:
+    kind: subreport
+    canonical_name: 弃渣场(含临时堆土场)失事影响专题分析报告
+    source: 2026_template_5_2
+    requirement: conditional
+    condition:
+      trigger_obligation_id: ob.disposal_site.failure_analysis
+      human: |
+        弃渣场周边及下游有 [居民/村庄/城镇/基础设施/河流/水库大坝/
+                           水利工程/灌排干渠(沟)] 敏感因素,
+        或弃渣场设置在 [沟谷/山区/丘陵区]
+    applicable_species: [报告书]
+    chapter_ref: null   # 不在正文, 单册另附
+    content_spec: |
+      模拟不同重现期洪水冲刷 / 类似地区历史最大极端降雨 /
+      整体失事 / 多重不利叠加情况下的:
+        - 滑出渣量 / 滑移距离 / 滑移速度
+        - 堆积范围 / 堆积深度
+        - 沟道及失事影响范围纵剖面图
+      充分考虑极端暴雨/地质灾害, 论证对下游人民群众生命财产、
+      基础设施、河流沟谷行洪安全的影响
+    format_spec:
+      delivery: 单册另附
+      binding: 独立装订
+    data_source_refs:
+      - engine.SpoilStabilityEngine
+      - field.fact.construction.temp_topsoil_site
+    required_assurance_refs:
+      - as.commitment.spoil_failure_report_truth   # 建设单位真实性承诺
+    renderer: SubReportRenderer
+    output_formats: [pdf, docx]
+    v0_input: |
+      v0 阶段本专题不自动生成, 由用户上传 PDF 作为单册附件。
+      系统仍须验证承诺书已签署。
+
+# ============================================================
+# Registry 自身的 lint 规则
+# ============================================================
+registry_lints:
+  - id: ART_001
+    rule: 每个 artifact 必须声明 id/kind/canonical_name/source/requirement
+    severity: ERROR
+    scope: all artifacts
+
+  - id: ART_002
+    rule: conditional artifact 必须声明 condition.trigger_obligation_id (或 trigger_obligation_ids)
+    severity: ERROR
+    scope: artifacts with requirement == conditional
+
+  - id: ART_003
+    rule: 所有 trigger_obligation_id 必须在 ObligationSet_v0.yaml 中 resolve
+    severity: ERROR
+    scope: condition blocks
+    note: 交叉验收时启用
+
+  - id: ART_004
+    rule: 所有 data_source_refs 中的 field.* 必须在 FieldIdentityRegistry 中 resolve
+    severity: ERROR
+    scope: artifact.data_source_refs
+
+  - id: ART_005
+    rule: 所有 required_assurance_refs 必须在 AssuranceRegistry 中 resolve
+    severity: ERROR
+    scope: artifact.required_assurance_refs
+    note: AssuranceRegistry_v0 尚未产出, 此规则 v0 阶段挂起
+
+  - id: ART_006
+    rule: chapter_ref 必须是合法 stable section id (sec.*)
+    severity: ERROR
+    scope: artifact.chapter_ref (非 null 时)
+
+# ============================================================
+# v0 输出优先级 (给文件 1 决议三 v0 必做清单的 #8 GeoPipeline_v0 定优先级)
+# ============================================================
+v0_auto_generated:
+  # v0 阶段由系统自动生成
+  - art.figure.F_01_location
+  - art.figure.F_04_responsibility_range
+  - art.figure.F_12_borrow_and_disposal_location
+  - art.table.earthwork_balance
+  - art.table.topsoil_balance
+  - art.table.total_land_occupation
+  - art.table.investment_appendix   # 含 10+1 子表
+  - art.spec_sheet
+  - art.cover.report_book_cover
+  - art.cover.title_page
+  - art.cover.responsibility_page
+  - art.cover.toc
+  - art.figure.schedule_gantt
+
+v0_user_upload:
+  # v0 阶段由用户上传, 系统仅做格式校验与装配
+  - art.figure.F_02_river_system
+  - art.figure.F_03_soil_erosion
+  - art.figure.F_05_overall_layout
+  - art.figure.F_06_monitoring_points
+  - art.figure.F_07_vegetation_distribution
+  - art.figure.F_08_topsoil_survey
+  - art.figure.F_09_topsoil_stripping_range
+  - art.figure.F_10_measures_layout
+  - art.figure.F_11_typical_design
+  - art.figure.F_13_vertical_layout
+  - art.attachment.AF_1_project_approval
+  - art.attachment.AF_2_unavoidability_justification
+  - art.attachment.AF_3_land_use_confirmation
+  - art.attachment.AF_4_external_earth_purchase
+  - art.attachment.AF_5_geology_report
+  - art.attachment.AF_6_reuse_evidence
+  - art.attachment.AF_7_other_supporting
+  - art.subreport.spoil_failure_analysis
+
+# ============================================================
+# v0 范围之外的制品 (反升级条款保护)
+# ============================================================
+v0_excluded_artifacts:
+  - path: art.figure.F_05a_road_rail_profile
+    reason: v0 不支持公路铁路行业 (线性工程)
+  - path: art.figure.F_05b_pipeline_section
+    reason: v0 不支持管道项目
+  - path: art.subreport.dam_silt_analysis
+    reason: v0 不涉及黄河流域淤地坝
+  - path: art.table.yearly_production_spoil
+    reason: v0 不支持矿山生产期措施

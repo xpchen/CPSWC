@@ -1,0 +1,353 @@
+# CPSWC Penalty Warning Table (v1 Reserved)
+#
+# 本文件是 "前向兼容预埋豁免条款" (CPSWC_ARCHITECTURE_DECISIONS.md) 下的预埋文件。
+# v0 lint 不加载本文件; v0 的 ReviewLoopEngine 不消费本文件。
+#
+# 用途:
+#   1. 作为水土保持违法行为处罚映射的权威 single source of truth
+#   2. 为 v1 的 ReviewLoopEngine 提供"从未满足 obligation → 违法条款 → 罚款预警"的映射
+#   3. 作为 CPSWC v0 审查覆盖度的自检表 (v0_coverage_status 字段)
+#
+# 源: 水利部办公厅 2019-07-30 印发《水土保持违法行为违法情节及行政处罚自由裁量权参照执行标准》
+# 文件位置: CPSWC_refs/01_国家法律规章/13_水土保持违法行为行政处罚自由裁量权参照执行标准.pdf
+# 上位法: 《中华人民共和国水土保持法》 (2010 修订)
+#
+# 结构说明:
+#   violation_id:           11 类编号 (water_law_violation_01 ~ 11)
+#   water_law_article:      水保法条款号 (如 "第 25 条")
+#   legal_basis_text:       法条原文简引 (≤30 字)
+#   scenario:               违法情形描述 (原文摘录)
+#   severity_level:         轻微 / 一般 / 较重 / 严重 (4 档)
+#   fine_range:             罚款区间 (每档一条)
+#   fine_formula:           可选; 对于按基数乘倍数的 (如补偿费 1~3 倍), 给出公式
+#   linked_obligations:     支持三态引用:
+#                             v0:<id>            v0 已覆盖
+#                             v1_reserved:<id>   v1 预埋覆盖
+#                             none               尚无 obligation 覆盖 (需 v0_gap_note 说明)
+#   linked_calculators:     罚款计算需要的 Calculator id
+#   v0_coverage_status:     fully_covered | partially_covered | not_covered
+#   v0_gap_note:            未覆盖原因和升级计划
+
+version: v1_reserved_v0.1
+generated_at: 2026-04-11
+governance_doc: CPSWC_ARCHITECTURE_DECISIONS.md # 前向兼容预埋豁免条款
+v0_lint_status: excluded
+source_doc: 01_国家法律规章/13_水土保持违法行为行政处罚自由裁量权参照执行标准.pdf
+source_issue_date: 2019-07-30
+upper_law: 中华人民共和国水土保持法 (2010 修订)
+
+# ============================================================
+# 11 类违法行为
+# ============================================================
+violations:
+
+  water_law_violation_01:
+    violation_id: 1
+    water_law_article: 第 17 条第 2 款 + 第 47 条
+    legal_basis_text: 崩塌滑坡危险区和泥石流易发区内禁止从事可能造成水土流失的活动
+    scenario: |
+      在崩塌滑坡危险区和泥石流易发区取土、挖砂、采石等可能造成水土流失的活动
+    severity_levels:
+      - level: 轻微
+        fine_range: 没收违法所得, 对个人处 1 千元以下罚款, 对单位处 1 万元以下罚款
+      - level: 一般
+        fine_range: 没收违法所得, 对个人处 1 千元以上 3 千元以下罚款, 对单位处 1 万元以上 5 万元以下罚款
+      - level: 较重
+        fine_range: 没收违法所得, 对个人处 3 千元以上 5 千元以下罚款, 对单位处 5 万元以上 10 万元以下罚款
+      - level: 严重
+        fine_range: 没收违法所得, 对个人处 5 千元以上 1 万元以下罚款, 对单位处 10 万元以上 20 万元以下罚款
+    linked_obligations:
+      - v0:ob.unavoidability.redline_conflict
+    linked_calculators: []
+    v0_coverage_status: partially_covered
+    v0_gap_note: |
+      v0 的 ob.unavoidability.redline_conflict 只覆盖生态保护红线, 不覆盖崩塌/滑坡/泥石流危险区判定。
+      CPSWC v0 不做地质灾害易发区 GIS 叠加, 靠专家人工判断 + field.fact.natural.other_sensitive_areas 填写。
+      v1 扩展: 加 field.fact.geohazard.* 字段族, 或接入地质灾害 GIS 图层。
+
+  water_law_violation_02:
+    violation_id: 2
+    water_law_article: 第 19 条第 2 款 + 第 48 条
+    legal_basis_text: 禁止在 25 度以上陡坡地种植农作物, 开垦陡坡地应种植林草
+    scenario: |
+      在禁止开垦坡度以上陡坡地开垦种植农作物; 在禁止开垦陡坡地范围内采取种植农作物以外的方式从事生产经营活动, 未采取水土保持措施
+    severity_levels:
+      - level: 轻微
+        fine_range: 可以对个人处每平方米一元以下罚款, 对单位处每平方米一元以上二元以下罚款
+      - level: 一般
+        fine_range: 可以对个人处每平方米一元以上二元以下罚款, 对单位处每平方米二元以上四元以下罚款
+      - level: 较重
+        fine_range: 可以对个人处每平方米二元以上三元以下罚款, 对单位处每平方米四元以上六元以下罚款
+      - level: 严重
+        fine_range: 可以对个人处每平方米三元以上五元以下罚款, 对单位处每平方米六元以上八元以下罚款
+    linked_obligations:
+      - none
+    linked_calculators: []
+    v0_coverage_status: not_covered
+    v0_gap_note: |
+      v0 不涉及陡坡地农作物种植场景 (v0 行业范围是 29 房地产 + 30 其他城建, 不含农业开垦)。
+      该违法行为针对农业/林业生产活动, 与 CPSWC 的生产建设项目审查主线不直接相关。
+      v2 若扩到农业项目时再补。
+
+  water_law_violation_03:
+    violation_id: 3
+    water_law_article: 第 31 条 + 第 51 条
+    legal_basis_text: 采石采矿爆破等活动应采取水土保持措施, 不得破坏植被
+    scenario: |
+      采矿爆破、在水土流失重点防治区和治理区破坏植被、地貌, 采石、采矿, 破坏植被开发土地、甘草、麻黄等植物资源
+    severity_levels:
+      - level: 轻微
+        fine_range: 采取补救措施, 没收违法所得, 可以对违法面积一倍以下所在地县以上人民政府水行政主管部门责令停止违法行为
+      - level: 一般
+        fine_range: 采取补救措施, 没收违法所得, 可以对违法面积处所在地县以上人民政府水行政主管部门责令停止违法行为, 采矿面积一千平方米以下的可处违法所得一倍以上三倍以下的罚款
+      - level: 较重
+        fine_range: 采取补救措施, 没收违法所得, 可以对违法所得四倍以下所在地县以上人民政府水行政主管部门责令停止违法行为, 采矿面积一千平方米以上五千平方米以下的可处违法所得三倍以上五倍以下的罚款
+      - level: 严重
+        fine_range: 采取补救措施, 没收违法所得, 可以对违法所得五倍以上所在地县以上人民政府水行政主管部门责令停止违法行为, 采矿面积五千平方米以上的可处违法所得五倍以上的罚款
+    linked_obligations:
+      - none
+    linked_calculators: []
+    v0_coverage_status: not_covered
+    v0_gap_note: |
+      v0 不涉及矿山/采石/甘草等植物资源开发 (v0 行业限制为房地产/城建)。
+      v2 扩到矿山行业时补。
+
+  water_law_violation_04:
+    violation_id: 4
+    water_law_article: 第 22 条第 2 款 + 第 50 条
+    legal_basis_text: 水土流失重点预防区和治理区实行严格保护, 禁止违规开矿采石
+    scenario: |
+      在水土流失重点预防区和重点治理区陡坡开垦种植农作物, 或者在禁止开垦、开发的植物保护区和植物保护带内, 开垦、开发、禁止在能力条件下开发, 开展其他活动造成水土流失的
+    severity_levels:
+      - level: 轻微
+        fine_range: 采取停止违法行为, 限期治理, 由县级以上地方人民政府水行政主管部门依法令停止违法行为, 对每平方米一元以上二元以下的罚款
+      - level: 一般
+        fine_range: 采取停止违法行为, 限期治理, 由县级以上地方人民政府水行政主管部门依法令停止违法行为, 对每平方米二元以上三元以下的罚款
+      - level: 较重
+        fine_range: 采取停止违法行为, 限期治理, 由县级以上地方人民政府水行政主管部门依法令停止违法行为, 对每平方米三元以上四元以下的罚款
+      - level: 严重
+        fine_range: 采取停止违法行为, 限期治理, 由县级以上地方人民政府水行政主管部门依法令停止违法行为, 对每平方米四元以上五元以下的罚款
+    linked_obligations:
+      - v0:ob.unavoidability.redline_conflict
+    linked_calculators: []
+    v0_coverage_status: partially_covered
+    v0_gap_note: |
+      v0 的 unavoidability.redline_conflict 能触发重点区域命中检查。
+      但 v0 不做"陡坡开垦"判定 (这是农业行为), v0 行业范围内不太会遇到。
+      对生产建设项目的"重点区域违法采石/采矿/采砂", v0 行业范围内也不涉及。
+
+  water_law_violation_05:
+    violation_id: 5
+    water_law_article: 第 25 条 + 第 53 条第 1 款
+    legal_basis_text: 生产建设项目水保方案未经批准, 生产建设单位开工建设的
+    scenario: |
+      依法应当编制水土保持方案的生产建设项目, 未编制水土保持方案或者编制的水土保持方案未经水行政主管部门批准, 生产建设项目开工建设的
+    severity_levels:
+      - level: 轻微
+        fine_range: 责令停止违法行为, 限期补办手续, 由县级以上人民政府水行政主管部门处 5 万元以下的罚款
+      - level: 一般
+        fine_range: 责令停止违法行为, 限期补办手续, 由县级以上人民政府水行政主管部门处 5 万元以上 15 万元以下的罚款
+      - level: 较重
+        fine_range: 责令停止违法行为, 限期补办手续, 由县级以上人民政府水行政主管部门处 15 万元以上 35 万元以下的罚款
+      - level: 严重
+        fine_range: 责令停止违法行为, 限期补办手续, 由县级以上人民政府水行政主管部门处 35 万元以上 50 万元以下的罚款
+    linked_obligations:
+      - v1_reserved:ob.submission.form_review_only
+    linked_calculators: []
+    v0_coverage_status: fully_covered
+    v0_gap_note: |
+      v0 是一个"协助建设单位合规编制方案"的工具, 本质上能阻止这类违法发生。
+      CPSWC 生成的方案只要走完 gate, 就默认已经编制+准备报批; 实际提交仍需建设单位自己完成。
+      因此 v0 对这条违法的前置防御能力是"完全覆盖", 但 CPSWC 不能替用户提交。
+
+  water_law_violation_06:
+    violation_id: 6
+    water_law_article: 第 27 条 + 第 53 条第 2 款
+    legal_basis_text: 生产建设项目地点/规模/建设单位发生重大变化, 修改方案应当报原审批机关批准
+    scenario: |
+      生产建设项目的地点、规模发生重大变化, 修改水土保持方案, 水土保持方案实施过程中, 水土保持措施需要作出重大变更的, 应当经原审批机关批准, 对水土保持方案实施过程中作出的重大变更, 未经审批机关批准而实施的
+    severity_levels:
+      - level: 轻微
+        fine_range: 由五万元以下的罚款
+      - level: 一般
+        fine_range: 由五万元以上十五万元以下的罚款
+      - level: 较重
+        fine_range: 由十五万元以上三十五万元以下的罚款
+      - level: 严重
+        fine_range: 由三十五万元以上五十万元以下的罚款
+    linked_obligations:
+      - v1_reserved:ob.submission.form_review_only # FULL_CHANGE / SPOIL_SUPPLEMENT path
+    linked_calculators: []
+    v0_coverage_status: not_covered
+    v0_gap_note: |
+      v0 只支持 compilation_intent = NEW, 不支持 FULL_CHANGE / SPOIL_SUPPLEMENT。
+      variant 变更流程是 v1 工作。
+      当前反升级条款禁止在 v0 做变更流程。
+
+  water_law_violation_07:
+    violation_id: 7
+    water_law_article: 第 27 条 + 第 54 条
+    legal_basis_text: 水土保持设施应当与主体工程同时投产或者使用, 未验收或验收不合格投产使用的
+    scenario: |
+      水土保持设施未经验收或者经验收不合格, 生产建设项目投产使用的
+    severity_levels:
+      - level: 轻微
+        fine_range: 由五万元以下的罚款
+      - level: 一般
+        fine_range: 由五万元以上十五万元以下的罚款
+      - level: 较重
+        fine_range: 由十五万元以上三十五万元以下的罚款
+      - level: 严重
+        fine_range: 由三十五万元以上五十万元以下的罚款
+    linked_obligations:
+      - v1_reserved:ob.verification.9_rejection_criteria
+      - v1_reserved:ob.verification.completion_meeting
+    linked_calculators: []
+    v0_coverage_status: not_covered
+    v0_gap_note: |
+      v0 不涉及验收流程。
+      v1 对应 133 号自主验收规程的 7 项合格条件 + 9 项不通过情形, 已预埋在 v1_reservations.yaml。
+
+  water_law_violation_08:
+    violation_id: 8
+    water_law_article: 第 28 条 + 第 55 条
+    legal_basis_text: 废弃土石渣应当堆放在水土保持方案确定的专门存放地
+    scenario: |
+      生产建设活动中产生的弃土、弃石、弃渣等未堆放在水土保持方案确定的专门存放地; 在专门存放地以外的区域堆放弃土、弃石、弃渣等造成或可能造成严重水土流失
+    severity_levels:
+      - level: 轻微
+        fine_range: 可以处倾倒数量每立方米十元以上十五万元以下的罚款
+      - level: 一般
+        fine_range: 可以处倾倒数量每立方米十五元以上十二万元以下的罚款
+      - level: 较重
+        fine_range: 按倾倒数量处每立方米十五元以上十八元以下的罚款
+      - level: 严重
+        fine_range: 按倾倒数量处每立方米十八元以上二十元以下的罚款
+    linked_obligations:
+      - v0:ob.disposal_site.site_selection
+      - v0:ob.disposal_site.land_use_approval
+    linked_calculators: []
+    v0_coverage_status: partially_covered
+    v0_gap_note: |
+      v0 覆盖"方案阶段已规定弃渣场位置并附权属确认"。
+      但 v0 无法阻止"施工阶段实际倾倒到方案外"这类事后违法, 这是监管阶段的事。
+      v1 的 construction phase obligation 可以加"弃渣实际位置与方案一致性检查"。
+
+  water_law_violation_09:
+    violation_id: 9
+    water_law_article: 第 32 条 + 第 57 条
+    legal_basis_text: 拒不缴纳水土保持补偿费的, 按应缴数额的 1~3 倍罚款
+    scenario: |
+      拒不缴纳水土保持补偿费的
+    severity_levels:
+      - level: 轻微
+        fine_range: 按应缴纳数量处以水土保持补偿费零点五倍以上一点五倍以下的罚款
+        fine_formula: "fine = 应缴数额 × (0.5 ~ 1.5)"
+      - level: 一般
+        fine_range: 按应缴纳数量处以水土保持补偿费一点五倍以上二点五倍以下的罚款
+        fine_formula: "fine = 应缴数额 × (1.5 ~ 2.5)"
+      - level: 较重
+        fine_range: 按应缴纳数量处以水土保持补偿费二点五倍以上三倍以下的罚款
+        fine_formula: "fine = 应缴数额 × (2.5 ~ 3.0)"
+      - level: 严重
+        fine_range: 按应缴纳数量处以水土保持补偿费三倍以下的罚款
+        fine_formula: "fine = 应缴数额 × 3.0 (上限)"
+    linked_obligations:
+      - v1_reserved:ob.commitment.application_promise # 承诺第 4 条 "按时足额缴纳补偿费"
+    linked_calculators:
+      - CompensationFeeCalculator # v1 预期, 见 feedback_calculator_contracts_draft.md
+    v0_coverage_status: partially_covered
+    v0_gap_note: |
+      v0 现在没有 CompensationFeeCalculator, 但已经有补偿费 0.6 元/m² 的单价依据 (reference_regulations_top_level.md 粤发改段)。
+      v0 可以在 sample 里做 annotation 层面的计算 (已做: sample_meta.annotations.compensation_fee)。
+      v1 实装 Calculator 后, 这条违法的罚款预警可以给出精确区间 (应缴 × 0.5 ~ 3.0 倍)。
+      这是本表最适合"自动化罚款预警"的典型条目。
+
+  water_law_violation_10:
+    violation_id: 10
+    water_law_article: 第 42 条 + 第 58 条
+    legal_basis_text: 被监督检查的单位或个人应当如实提供情况和资料, 不得拒绝、阻挠或者弄虚作假
+    scenario: |
+      接受检查单位或个人不如实提供有关文件、资料, 拒绝、阻挠水行政主管部门或水土流失综合治理机构依法进行的监督检查, 拒绝、阻挠、拖延、隐瞒、弄虚作假等违法行为的
+    severity_levels:
+      - level: 轻微
+        fine_range: 要求被检查单位或者个人提供有关资料, 责令停止违法行为, 补正, 可以对拒不补正或不按水土保持方案 (一) 违法所得的违法所得处一倍以下的罚款
+      - level: 一般
+        fine_range: 要求提供资料, 责令补正, 可以对拒不补正或不按方案处违法所得一倍以上二倍以下的罚款
+      - level: 较重
+        fine_range: 要求提供资料, 责令补正, 可以对拒不补正处违法所得二倍以上三倍以下的罚款
+      - level: 严重
+        fine_range: 要求提供资料, 责令补正, 可以对拒不补正处违法所得三倍以上的罚款
+    linked_obligations:
+      - none
+    linked_calculators: []
+    v0_coverage_status: not_covered
+    v0_gap_note: |
+      v0 不做监督检查流程 (这是事后监管, 不属于方案编制阶段)。
+      v1 的 post_verification phase 可能涉及。
+
+  water_law_violation_11:
+    violation_id: 11
+    water_law_article: 第 33 条第 1 款 + 第 56 条
+    legal_basis_text: 生产建设活动结束后, 应当对表土进行分层剥离保存利用, 对开挖面和存放地采取覆土植被恢复措施
+    scenario: |
+      对生产建设活动结束后的表土不进行分层剥离、保存和利用的; 对废弃土、石、渣场采取过保封、防洪排水等措施, 在防洪排水结束后, 未及时在采取挡护、防洪排水等措施, 未及时对开挖面或存放地在林草植被以覆土, 恢复植被或以其他方式复垦复绿
+    severity_levels:
+      - level: 轻微
+        fine_range: 责令限期补办手续, 限期清理, 限期整改等违法行为, 不限期补办手续等, 根据违法情节及程度给予不相应处罚措施
+      - level: 一般
+        fine_range: 责令限期补办手续, 限期清理, 限期整改等违法行为, 不限期补办手续等, 根据违法情节及程度给予不相应处罚措施
+      - level: 较重
+        fine_range: 责令限期补办手续, 限期清理, 限期整改等违法行为, 不限期补办手续等, 根据违法情节及程度给予不相应处罚措施
+      - level: 严重
+        fine_range: 责令限期补办手续, 限期清理, 限期整改等违法行为, 不限期补办手续等, 根据违法情节及程度给予不相应处罚措施
+    linked_obligations:
+      - v0:ob.topsoil.balance_required
+      - v0:ob.topsoil.reuse_evidence
+    linked_calculators: []
+    v0_coverage_status: partially_covered
+    v0_gap_note: |
+      v0 对"方案阶段的表土剥离/堆存/回覆规划"有完整 obligation 覆盖。
+      但 v0 不能监督"施工结束后是否实际执行", 这是监管阶段。
+      v1 的 verification phase 可以加"表土实际处置情况核查"。
+
+# ============================================================
+# 覆盖度统计 (自检表核心)
+# ============================================================
+coverage_summary:
+  total_violations: 11
+  by_v0_coverage:
+    fully_covered: 1 # #5 未编报审批 (CPSWC 的主线价值)
+    partially_covered: 5 # #1 崩塌滑坡, #4 重点区域, #8 弃渣场外倾倒, #9 拒缴补偿费, #11 表土事后
+    not_covered: 5 # #2 陡坡种植, #3 采石采矿, #6 重大变更, #7 验收不合格, #10 拒绝检查
+
+  v0_product_positioning: |
+    v0 的核心价值在于**前置防御第 5 类违法**(未编报审批方案开工)。
+    部分覆盖的 5 类里, 有 4 类在 v1 会通过扩展 verification / construction phase 得到完整覆盖。
+    完全未覆盖的 5 类中, 有 4 类 (第 2/3/6/10 类) 超出 CPSWC 定位 (农业开垦/矿山/变更流程/监督检查)。
+    真正"本应覆盖但 v0 没做"的只有第 7 类 (验收), 这在 v1 的 133 号 obligation 里已预埋。
+
+# ============================================================
+# v1 Review warning text generation 伪代码 (规划用途)
+# ============================================================
+# 未来 v1 的 ReviewLoopEngine 将按下列模式生成警告:
+#
+# for each v0 obligation that is designed_to_trigger but not satisfied:
+#   matching_violations = penalty_table.find_by_linked(v0:<ob_id>)
+#   for each violation:
+#     fine_estimate = compute_from_severity_and_formula(violation, project_facts)
+#     warning = f"未满足 {ob_id} 可能构成水保法 {violation.water_law_article} 违法, "
+#               f"对应处罚区间 {fine_estimate}"
+#     emit_warning(warning, severity=violation.severity_level)
+#
+# 这个伪代码放在这里, 是为了让 v1 ReviewLoopEngine 动手时有**明确的输入规格**。
+
+# ============================================================
+# 待办项 (v0 阶段不做, 记在这里以便追溯)
+# ============================================================
+todo_v1_enhancements:
+  - 为每个 v0_coverage_status == partially_covered 的违法, 明确 gap 补齐方案
+  - 加 industry_filter 字段 (某些违法只在特定行业适用, 如第 3 类只在矿山)
+  - 加 geography_filter 字段 (某些违法只在特定区域适用, 如第 4 类在重点预防治理区)
+  - 与广东省级/惠州市级的地方罚款标准交叉验证 (若有细化)
+  - 接入 SubmissionLifecycle, 让不同 phase 下展示不同的违法预警

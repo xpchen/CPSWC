@@ -1,0 +1,587 @@
+# CPSWC Core Contracts v0
+#
+# 目的: 在业务 schema 开写之前, 锁定 key 命名 + 跨对象引用规则 + 时态语义
+# 本文件不定义业务字段, 只定义命名空间、引用语法与 lint 规约
+#
+# 引用宪法: CPSWC_ARCHITECTURE_DECISIONS.md
+# 约束对象: FieldIdentityRegistry_v0.yaml, ObligationSet_v0.yaml, 及后续所有 _v0+ schema
+#
+# 变更本文件等同修改工程规约, 须走决议文档的反升级条款
+
+version: v0
+generated_at: 2026-04-11
+
+# ============================================================
+# 1. 命名风格
+# ============================================================
+naming_style:
+  object_types:      PascalCase            # ProjectSemanticGraph, FieldIdentityRegistry
+  fields:            snake_case            # fact_deps, source_rule_id
+  ids:               prefixed_snake_case   # field.fact.investment.total_investment, proj.spec_sheet.total_investment
+  enum_values:       SCREAMING_SNAKE_CASE  # REQUIRED, PROVIDED, BLOCK_OVERRIDABLE
+  file_version:      _v0                   # FieldIdentityRegistry_v0.yaml
+
+# ============================================================
+# 2. 列表命名规则 (区分跨对象引用 vs 对象内列表)
+# ============================================================
+list_naming:
+  cross_object_refs:
+    suffix: _refs
+    rule:  指向其他对象主键的列表, 一律用 _refs 后缀
+    examples:
+      - required_artifact_refs    # 引用 art.* 主键
+      - projection_target_refs    # 引用其他 field.* 或 narrative.* 主键
+      - fact_dep_refs             # 引用 field.* 主键
+      - obligation_dep_refs       # 引用 ob.* 主键
+
+  in_object_lists:
+    suffix: none                  # 裸复数, 不加后缀
+    rule:  对象自身拥有的内嵌列表, 不加后缀
+    examples:
+      - tables                    # ArtifactRegistry 中的表列表
+      - sub_sections              # TemplateNode 中的子节列表
+      - upstream_deps             # FieldIdentity 中的派生输入 (这是对象拥有的)
+
+  naming_anti_pattern:
+    - name: required_artifacts_list
+      reason: 已有 _refs 规则, 不得再加 _list 后缀
+    - name: fact_deps_array
+      reason: 禁用类型暗示后缀 (_array / _map / _obj)
+
+# ============================================================
+# 3. 时态命名规则 (防止 required / expected / pending / provided 混淆)
+# ============================================================
+tense_semantics:
+  required_X:
+    semantic: 规则判定上必须具备 X 义务才算满足
+    scope:    obligation 与 gate 判定
+    examples: [required_artifact_refs, required_assurance_refs]
+
+  expected_X:
+    semantic: 预期值, 用于 lint 或对比校验
+    scope:    CI / 验证
+    examples: [expected_field_count, expected_derivation]
+
+  pending_X:
+    semantic: 已触发但未完成, 等待用户动作
+    scope:    生命周期状态
+    examples: [pending_signatures, pending_uploads]
+
+  provided_X:
+    semantic: 已由用户或系统提交
+    scope:    assurance / evidence state
+    examples: [provided_evidence_refs]
+
+  actual_X:
+    semantic: 运行时实际值, 用于与 expected 对比
+    scope:    验证输出
+    examples: [actual_field_count]
+
+  anti_pattern:
+    - mixing_required_and_needed: 禁止同时使用 required_X 与 needed_X
+    - mixing_provided_and_submitted: 禁止同时使用 provided_X 与 submitted_X
+
+# ============================================================
+# 4. ID 命名空间 (所有主键的格式)
+# ============================================================
+# 主键格式统一为: <prefix>.<path>
+# 路径部分用 snake_case, 层级用 . 分隔
+id_namespaces:
+
+  field:
+    prefix: "field."
+    format: "field.<domain>.<field_name>"
+    domain_segment_enum:
+      - fact              # 基础事实 (专家/系统录入)
+      - derived           # 派生量 (由 derivation 算出)
+    note: |
+      field.* 命名空间只承载"语义字段本体", 不承载投影目标。
+      特性表/报告表等投影目标独立用 proj.* 命名空间。
+    examples:
+      - field.fact.construction.total_earthwork
+      - field.fact.investment.total_investment
+      - field.derived.excavation_utilization_ratio
+      - field.derived.weighted_comprehensive_target
+
+  projection:
+    prefix: "proj."
+    format: "proj.<form>.<field_name>"
+    form_segment_enum:
+      - spec_sheet        # 特性表投影位
+      - report_form       # 报告表投影位
+    note: |
+      proj.* 是"法定投影位", 与 field.* 是跨对象引用关系。
+      同一个 field 可投影到多个 proj, 也可同时投影到 sec.* / narr.* / art.*。
+      invalidation 方向: field 变动 -> 所有指向它的 proj/sec/narr/art 标 stale 或 regenerate.
+    examples:
+      - proj.spec_sheet.total_investment
+      - proj.spec_sheet.total_earthwork_excavation
+      - proj.report_form.total_investment
+      - proj.report_form.soil_erosion_modulus
+
+  obligation:
+    prefix: "ob."
+    format: "ob.<topic>.<short_name>"
+    topic_segment_enum:
+      - disposal_site       # 弃渣场
+      - borrow_site         # 取土场 / 外购土源
+      - topsoil             # 表土
+      - monitoring          # 监测
+      - surveillance        # 视频监控
+      - commitment          # 承诺书
+      - unavoidability      # 不可避让论证
+      - evaluation          # 评价
+      - investment          # 投资估算
+      - schedule            # 施工进度
+      - signature           # 签字 (亲笔签名)
+      - seal                # 盖章 (公章)
+      - sensitive_overlay   # 敏感区叠加
+    examples:
+      - ob.disposal_site.stability_monitoring
+      - ob.disposal_site.video_surveillance
+      - ob.borrow_site.external_purchase_evidence
+      - ob.commitment.spoil_failure_report_truth
+      - ob.unavoidability.redline_conflict
+      - ob.seal.compile_unit_sealing
+
+  artifact:
+    prefix: "art."
+    format: "art.<kind>.<short_name>"
+    kind_segment_enum:
+      - table          # 内嵌表或附表
+      - figure         # 附图
+      - attachment     # 附件 (AF-1 ... AF-7)
+      - subreport      # 专题册 (失事影响专题等)
+      - spec_sheet     # 特殊: 特性表
+    examples:
+      - art.figure.F_01_location
+      - art.figure.F_04_responsibility_range
+      - art.attachment.AF_5_geology_report
+      - art.subreport.spoil_failure_analysis
+      - art.spec_sheet
+
+  assurance:
+    prefix: "as."
+    format: "as.<topic>.<short_name>"
+    examples:
+      - as.commitment.spoil_failure_report_truth
+      - as.signature.responsibility_page
+      - as.seal.compile_unit
+      - as.video_surveillance.spoil_level_3_and_above
+
+  section:
+    prefix: "sec."
+    format: "sec.<path.dot.path>"
+    note:   决议 3 要求的 stable section id, 用于 Template 与 Narrative 对齐
+    examples:
+      - sec.overview
+      - sec.project_overview.construction.diversion
+      - sec.disposal_site.site_selection
+      - sec.investment.estimation_result
+
+  narrative_node:
+    prefix: "narr."
+    format: "narr.<section_id_tail>.<para_id>"
+    note:   narrative node 是 section 内的段落级对象
+    examples:
+      - narr.overview.natural.p1
+      - narr.project_overview.earthwork_balance.conclusion
+
+  rule:
+    prefix: "rule."
+    format: "rule.<source>.<short_name>"
+    source_segment_enum:
+      - t2026        # 2026 模板
+      - f2018        # 2018 格式规定
+      - e2024        # 2024 估算规定
+      - gd           # 广东省包
+      - hz           # 惠州市包
+    examples:
+      - rule.t2026.spoil_level_3_monitoring
+      - rule.t2026.unavoidability_trigger
+      - rule.t2026.dual_line_gantt_chart
+      - rule.f2018.cover_color_lake_blue
+
+  sample:
+    prefix: "sample."
+    format: "sample.<project_id>"
+    examples:
+      - sample.huizhou_housing_v0
+
+# ============================================================
+# 5. 跨对象引用规则 (防止数据重复与副本漂移)
+# ============================================================
+cross_object_references:
+  rule:
+    统一: 所有跨对象引用必须用 id 字符串, 不得嵌入对象副本
+  rationale:
+    - 副本漂移 (embedded copy stale) 是配置文件的最大坑
+    - id 引用让 lint 可以检测 dangling
+
+  anti_pattern:
+    description: 在 Obligation 里嵌入完整 Artifact 对象
+    bad_example: |
+      ob.disposal_site.stability_monitoring:
+        required_artifacts:
+          - id: art.figure.F_12
+            name: "弃渣场位置图"
+            description: "含地形和影像"
+            renderer: GISRenderer
+            # ... 整段 Artifact 定义被复制进来
+
+  correct_pattern:
+    description: 用 id 引用, 被引对象只定义一次
+    good_example: |
+      ob.disposal_site.stability_monitoring:
+        required_artifact_refs:
+          - art.figure.F_12
+
+  dangling_detection:
+    lint_id: CORE_CONTRACTS_001
+    severity: ERROR
+    check:   所有带 _refs 后缀的字段, 每个元素必须在对应 namespace 中找到
+    error_msg: "跨对象引用 {ref} 未在 {target_namespace} 中找到 (dangling reference)"
+
+# ============================================================
+# 6. Projection 契约 (决议 4 的具体兑现)
+# ============================================================
+projection_contract:
+  rule: |
+    Field 到各投影位必须声明 projection_target_refs
+    projection 是 Fact → SpecSheet/ReportForm/Narrative/Artifact 的唯一合法路径
+
+  field_must_declare:
+    projection_target_refs:
+      type:        list of id strings (跨对象引用)
+      id_domains:  [proj.*, sec.*, narr.*, art.*]
+      rule: |
+        每个元素必须是一个合法 id 字符串, 指向 proj.* / sec.* / narr.* / art.* 命名空间下的主键。
+        禁止使用 { projection, path } 结构对象, 禁止嵌入副本。
+      examples:
+        - proj.spec_sheet.total_investment
+        - proj.report_form.total_investment
+        - sec.investment.estimation_result
+        - narr.investment.summary.p1
+        - art.table.investment_summary
+        - art.spec_sheet
+
+  invalidation_rule: |
+    当 field.value 变动时:
+      1. 查 projection_target_refs 的所有 id
+      2. 对每个 proj.spec_sheet.* / proj.report_form.* 目标: 同一事务内必须同步更新 (不异步)
+      3. 对每个 sec.* / narr.* 目标: 标 stale, 等待专家或系统确认
+      4. 对每个 art.* 目标: 标 regenerate_required
+      5. 对作为派生输入的 field (通过 derivation.upstream_deps 反查): 触发派生重算
+         (v0 全量重算, v1 增量)
+
+  hardcoded_number_detection:
+    lint_id: CORE_CONTRACTS_003
+    severity: ERROR
+    scope:   narrative templates, artifact templates
+    rationale: 决议 4 禁止 narrative/artifact 模板硬编码数字
+    detector: regex '[0-9]+(\.[0-9]+)?\s*(hm²|m³|万元|m|t|%)'
+    fix:      必须改成 `{{ field.xxx | format(...) }}` 形式的 projection 引用
+
+# ============================================================
+# 7. Protection Level (field 与 obligation 共用)
+# ============================================================
+# 决议 4 与 保留主张 A 的共同基础
+# 既给 field 用, 也给 obligation 用, 保证 Narrative override 分级的一致性
+
+protection_levels:
+  CRITICAL:
+    description:  量化事实 / 级别 / 关键布尔结论 / 法定承诺
+    gate_action:  BLOCK
+    field_examples:
+      - 所有 Quantity 类型字段 (面积/体积/质量/货币)
+      - 弃渣场级别 / 防治标准等级
+      - 派生指标 (挖方利用率, 六率)
+      - 关键布尔结论 (是否涉及敏感区)
+    obligation_examples:
+      - commitment 类 (承诺书)
+      - monitoring 类 (稳定监测)
+      - surveillance 类 (视频监控)
+
+  PROTECTED:
+    description:  坐标/时间/性质描述
+    gate_action:  BLOCK_OVERRIDABLE   # 审核角色可豁免
+    field_examples:
+      - 坐标、行政区划
+      - 开完工时间、设计水平年
+      - 建设性质、建设内容描述
+
+  ADVISORY:
+    description:  描述性字段, 定性判断
+    gate_action:  WARN
+    field_examples:
+      - 地貌/气候/植被的描述段落
+      - 论证结论的定性部分 ("基本合理" "满足要求")
+
+  EDITORIAL:
+    description:  纯编辑性专业判断, 无直接依赖
+    gate_action:  INFO
+    field_examples:
+      - 专家建议类表述 ("建议后续加强...")
+
+  enforcement:
+    lint_id: CORE_CONTRACTS_007
+    rule: 每个 FieldIdentity / Obligation 必须明确声明 protection_level, 不得省略
+
+# ============================================================
+# 8. 冻结语义 (FrozenSubmissionInput_v0 与 v1 命名不变)
+# ============================================================
+freeze_semantics:
+  fact_snapshot:
+    v0_form: flat JSON blob (原始值序列化)
+    v1_form: content-addressed hash + 可解引用
+    name_invariant: true
+    rationale: v0 → v1 升级时字段名不换, 只换载荷实现
+
+  obligation_payload_resolved:
+    v0_form: Set with full resolved fields (每条 obligation 展开决议 2 的六字段)
+    v1_form: obligation graph commit reference
+    name_invariant: true
+    note: |
+      此字段仅出现在 FrozenSubmissionInput, 代表"冻结瞬间的义务解析快照"。
+      运行时的活对象用 obligation_set (v0) / obligation_graph (v1), 不同名。
+
+  manifest_suffix:
+    rule:  任何清单式冻结对象一律用 _manifest 后缀
+    usages:
+      - artifact_manifest
+      - assurance_manifest
+      - geo_layer_manifest
+      - rendered_output_manifest
+
+# ============================================================
+# 9. Lint 规则索引
+# ============================================================
+# 所有 lint 规则的机器可读清单, CI 从此处加载
+# ============================================================
+# 9.5 Source Provenance (决议 8 来源铁律)
+# ============================================================
+# 本节把 v0 已有的描述性 source_rule_id / source 字段提升为机器可读的
+# 来源契约。新增生效对象必须满足 provenance 准入纪律 (见决议 8)。
+# v0 旧对象按宽松口径 (SOURCE_AUTH_001) 渐进迁移。
+# ============================================================
+source_provenance:
+
+  purpose: |
+    定义"知识从哪来"的机器可读结构, 防止样稿/口耳相传/匿名资料
+    污染生效规则。与决议 6 的 governance_block 和决议 7 的
+    overlay 防腐禁令共同构成 v0→v1 的三层防腐网。
+
+  core_fields:
+    source_rule_id:
+      type: string | list[string]
+      desc: |
+        指向 rule.* id 或规范条款锚点 (如 'GB 50433-2018 §4.2.1',
+        '粤发改价格〔2021〕231 号'). v0 已有字段, 本决议保留语义不变。
+      required_on: [obligation, field.fact, field.derived, artifact, assurance, calculator]
+      v0_status: 已落地
+
+    authority_class:
+      type: enum
+      enum_values:
+        - statute
+        - regulation
+        - mandatory_standard
+        - official_approval
+        - recommended_standard
+        - authoritative_guide
+        - meeting_memo
+        - expert_consensus
+        - expert_individual
+      desc: |
+        来源类别标签。九类稳定命名, 新增类别时既有标签不动。
+        不承载排序语义 — 排序由 precedence_rank 独立字段承担。
+      required_on: [new entities after 2026-04-11]
+      v0_status: 新引入, 旧对象按宽松口径不强制回填
+
+    precedence_rank:
+      type: integer (1..N)
+      desc: |
+        严格总序。数字越小优先级越高。v0 默认 9 档:
+          1 statute
+          2 regulation
+          3 mandatory_standard
+          4 official_approval     # 高于 recommended_standard
+          5 recommended_standard  # GB/T, NB/T, SL/T 等
+          6 authoritative_guide
+          7 meeting_memo
+          8 expert_consensus
+          9 expert_individual
+        新增 authority_class 时可在既有位次之间插入 (如 3.5), 或
+        全局重排 (需走 RFC)。
+      conflict_resolution: |
+        两个 override 冲突时:
+          1) 比 precedence_rank, 小者胜
+          2) 同级比 effective_since, 新者胜
+          3) 同级同期比 issued_by_scope, 贴近本项目适用地域者胜
+          4) 最后人工仲裁, 结论记入 authority_chain_audit
+
+    sample_usage_mode:
+      type: enum
+      enum_values:
+        - authority            # 永不允许
+        - inspiration_only     # 可启发, 但不可作权威; 字面表达须有锚点
+        - prohibited_entirely  # 完全禁止入系统
+      desc: |
+        样稿入库模式。没有默认值, 未标注者不允许入库。
+      applies_to: [sample.*]
+      enforcement: |
+        inspiration_only 样稿参与 LLM few-shot/RAG 时, 生成结果的任何
+        字面表达必须能在 source_rule_ref / fact field / calculator
+        输出中找到对应权威锚点, 否则视为污染。
+        这是决议 7 overlay 防腐禁令在 LLM 生成路径上的镜像规则。
+
+    normative_basis_refs:
+      type: list[ref]
+      desc: |
+        指向规范 / 法规 / 标准条款, 回答"这条规则为什么存在"。
+        对应决议 8 硬规则 1 "双锚必备" 的上游锚点。
+      required_on: [obligation, calculator, governance_block]
+
+    evidence_anchor_refs:
+      type: list[ref]
+      desc: |
+        指向项目内的 fact / artifact, 回答"这条规则在本项目是否触发"。
+        对应决议 8 硬规则 1 "双锚必备" 的下游锚点。
+        两者不可互相替代。
+      required_on: [obligation, calculator]
+
+    provenance_verified:
+      type: bool
+      default: false
+      desc: |
+        标识该来源是否已走完留痕 / 核验流程。专家访谈类来源 (L8/L9)
+        未留痕时必须保持 false, 且不得驱动 CRITICAL 级 obligation。
+
+    authority_chain_audit:
+      type: list[record]
+      desc: |
+        冲突消解历史记录。每次人工仲裁产生一条 audit, 保留
+        仲裁人 / 时间 / 理由 / 取用来源。v0 可选, v1 强制。
+
+  dual_anchor_requirement:
+    rule: |
+      除 evidence 源头 (field.fact.*) 本身外, 所有生效对象
+      必须同时声明 normative_basis_refs (规则为什么存在) 和
+      evidence_anchor_refs (规则在本项目是否触发)。
+    rationale: |
+      - 只有 normative 没有 evidence: 规则不知道在本项目是否触发
+      - 只有 evidence 没有 normative: 规则本身凭空
+      两者不可互相替代。
+    v0_transition: |
+      v0 旧对象不强制回填 (SOURCE_AUTH_001 宽松口径),
+      新增对象必须齐全。v1 起对所有对象强制。
+
+  prohibited_source_types:
+    rule: |
+      以下类型的来源即使作为 inspiration_only 也不得入库:
+        - 无责任署名的 PDF / 扫描件
+        - 无制作时间的文档
+        - 无版本号的"历史样本汇编"
+        - 匿名整理的培训材料
+    enforcement: |
+      详细条款见 ProvenanceClassification.yaml 的
+      prohibited_source_types 节。本 Core Contracts 节仅作指针,
+      实际判定规则在 ProvenanceClassification.yaml 中定义。
+
+  referenced_external_file: specs/ProvenanceClassification.yaml
+
+lint_rules:
+  CORE_CONTRACTS_001:
+    desc:     跨对象 _refs 必须 resolve, 禁止 dangling
+    severity: ERROR
+    scope:    all yaml registries
+
+  CORE_CONTRACTS_002:
+    desc:     id 必须符合 namespace 格式 (field./ob./art./as./sec./narr./rule./sample.)
+    severity: ERROR
+    scope:    all yaml registries
+
+  CORE_CONTRACTS_003:
+    desc:     Narrative 模板不得硬编码数字 (决议 4)
+    severity: ERROR
+    scope:    narrative templates
+
+  CORE_CONTRACTS_004:
+    desc:     Obligation 必须携带决议 2 的六字段 (id, source_rule_id, requirement_type, required_artifact_refs, required_assurance_refs, status)
+    severity: ERROR
+    scope:    ObligationSet_v0.yaml
+
+  CORE_CONTRACTS_005:
+    desc:     Section 必须用 stable_id, 不得用显示章节号作 key (决议 3)
+    severity: ERROR
+    scope:    template tree, narrative tree
+
+  CORE_CONTRACTS_006:
+    desc:     跨对象列表字段必须用 _refs 后缀
+    severity: WARN
+    scope:    all yaml registries
+
+  CORE_CONTRACTS_007:
+    desc:     FieldIdentity 与 Obligation 必须声明 protection_level
+    severity: ERROR
+    scope:    FieldIdentityRegistry_v0.yaml, ObligationSet_v0.yaml
+
+  CORE_CONTRACTS_008:
+    desc:     跨对象引用禁止嵌入完整副本, 必须使用 id
+    severity: ERROR
+    scope:    all yaml registries
+
+  EXPERT_SWITCH_001:
+    desc:     expert-switch bool (semantic_type=bool, protection_level∈{CRITICAL,PROTECTED}, origin≠derived) 必须声明完整 governance_block (决议 6)
+    severity: INFO    # v0 批次; 下一次新增未治理升 WARN, 进入 v1 升 ERROR
+    scope:    FieldIdentityRegistry_v0.yaml
+
+  SOURCE_AUTH_001:
+    desc:     所有生效对象必须能追溯到 source_rule_id / source / 等价权威锚点 (决议 8 来源铁律, v0 宽松口径)
+    severity: INFO    # v0 批次只对明显缺失者发 INFO; v1 升 WARN, v2 升 ERROR
+    scope:    ObligationSet_v0.yaml, FieldIdentityRegistry_v0.yaml, CPSWC_ARTIFACT_REGISTRY_v0.yaml, AssuranceRegistry_v0.yaml
+
+  CAL_001:
+    desc:     CalculatorRegistry_v0 中每条 live calculator 必须完整 (决议 8 双锚 + 决议 8 九类 authority_class + inputs/outputs 结构 + error_branches + v0 override_resolution.enabled=false)
+    severity: ERROR
+    scope:    CalculatorRegistry_v0.yaml
+
+  REGION_OVERRIDE_001:
+    desc:     每个 override.target_ref 必须能 resolve 到已登记 id (决议 9)
+    severity: ERROR_WHEN_V1       # reserved-only, v0 不执行
+    scope:    RegionOverridePrototype_v1_reserved.yaml
+    status:   skeleton_only       # 决议 9 预埋, 本批次不进 main() 执行序列
+
+  REGION_OVERRIDE_002:
+    desc:     override 的 provenance 六字段完整 + target_attribute_path 必须命中 override_capable_slots (决议 9)
+    severity: ERROR_WHEN_V1
+    scope:    RegionOverridePrototype_v1_reserved.yaml
+    status:   skeleton_only
+
+  REGION_OVERRIDE_003:
+    desc:     冲突消解键合法性 + refine_applicability 不得放宽 + region_scope.province != "*" (决议 9)
+    severity: ERROR_WHEN_V1
+    scope:    RegionOverridePrototype_v1_reserved.yaml
+    status:   skeleton_only
+
+# ============================================================
+# 10. 版本演进规则
+# ============================================================
+versioning:
+  backward_compat:
+    rule: |
+      - 字段新增允许
+      - 字段改名需 migration 并在 v(n+2) 前保留别名
+      - 字段删除需在 v(n+2) 前保留 deprecated 标记
+      - 命名空间 prefix 终身不改 (field./ob./art./as. 等)
+
+  upward_compat:
+    rule: |
+      v0 → v1 升级时:
+      - FieldIdentityRegistry 字段形状允许扩展
+      - ObligationSet 的 Set 可升 Graph, 但单条 obligation 的字段只能扩不能改
+      - FrozenSubmissionInput 名称不换, 载荷演进
+
+  breaking_change_policy:
+    trigger:  命名规约的不兼容修改
+    gate:     架构宪法反升级条款 (必须走 RFC + 书面批准 + revert 义务)

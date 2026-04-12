@@ -1,0 +1,273 @@
+# CPSWC Region Override Prototype (v1_reserved)
+#
+# 依据: CPSWC_ARCHITECTURE_DECISIONS.md 决议 9 Regional Override Layer
+#
+# 文件性质:
+#   - reserved 文件, 遵循前向兼容预埋豁免条款
+#   - cross_registry_lint.py 对本文件豁免 (只有 --include-reserved 开关激活时才扫描)
+#   - v0 不消费本文件, v1 启用 override 时须 RFC 提升为正式 RegionOverrideRegistry_v1.yaml
+#   - 允许 forward reference, 指向 v1 才登记的 id
+#
+# 本文件只做"结构原型", 不做全国内容扩张:
+#   - 2 个近真实示例, 不是地方规则库
+#   - action 闭集 5 类写死, 不接受弱化
+#   - 每个 override 必须携带完整 provenance (决议 8 双锚)
+#
+# v1 启用路径:
+#   1. 走 RFC 提升本文件为 RegionOverrideRegistry_v1.yaml
+#   2. 对正式 registry 启用 REGION_OVERRIDE_001/002/003 lint
+#   3. v1 runtime 选择链按 region_scope 命中本文件中的 override
+#   4. 冲突消解按决议 9 第 5 条严格顺序执行
+# ============================================================
+
+version: region_override_prototype_v0.1
+generated_at: 2026-04-11
+governance_doc: CPSWC_ARCHITECTURE_DECISIONS.md  # 决议 9
+v0_lint_status: excluded  # 不进 v0 lint 默认路径
+purpose: |
+  为 v1 Region Override Layer 定义对象模型与冲突消解结构。
+  本文件只承载"形状", 不承载"完整地方规则集"。
+
+# ============================================================
+# 0. action 闭集 (决议 9 第 action 词表)
+# ============================================================
+# 新增 action 必须走 RFC, 不接受在本文件内扩展。
+# ============================================================
+
+allowed_actions:
+  replace_scalar:
+    semantics: 替换一个标量值
+    payload_shape:
+      value: <scalar>
+      unit: <string, 可选>
+    example_use: 补偿费费率替换
+  replace_map_entry:
+    semantics: 替换 map 类 field 的某个 key 值
+    payload_shape:
+      map_key: <string>
+      value: <scalar | object>
+    example_use: region_specific_rate[广东省] = 0.6
+  add_constraint:
+    semantics: 追加约束 (不改现有约束)
+    payload_shape:
+      constraint_type: <enum>
+      constraint_body: <object>
+    example_use: 地方要求某字段额外声明
+  add_required_artifacts:
+    semantics: 追加所需工件
+    payload_shape:
+      artifact_refs: [...]     # 指向已登记 art.*
+      added_reason: <string>
+    example_use: 地方条例要求额外合规声明
+  refine_applicability:
+    semantics: 收窄适用条件 (禁止放宽)
+    payload_shape:
+      narrower_scope: <object>   # 必须严格收窄, 由 REGION_OVERRIDE_003 校验
+      rationale: <string>
+    hard_constraint: |
+      只能收窄, 不能放宽。放宽意味着"让本来该管的项目不管了",
+      这是上位规则级变更, 必须走 RFC 修改正式 ObligationSet。
+    example_use: 承诺制仅对某类项目免报
+
+# ============================================================
+# 1. override 对象
+# ============================================================
+
+overrides:
+
+  # ----------------------------------------------------------
+  # 示例 A: 广东省补偿费费率
+  # ----------------------------------------------------------
+  # 性质: 近真实示例, 依据粤发改价格〔2021〕231 号 (正式批复, L4)
+  # target 是 v1 将新增的 field, 此处属 forward reference
+  # action: replace_map_entry (对 region_specific_rate 的广东省 key)
+  # ----------------------------------------------------------
+  ro.field_rate.gd.compensation_fee:
+    override_id: ro.field_rate.gd.compensation_fee
+    target_kind: field_rate
+    target_ref: field.fact.regulatory.compensation_fee_rate   # v1 forward ref
+    target_attribute_path: region_specific_rate.广东省         # 命中 override-capable map slot
+    region_scope:
+      country: CN
+      province: 广东省
+      prefecture: null
+      county: null
+    applicability:
+      species: [报告书, 报告表]
+      industry_categories: "*"        # 粤发改 2021_231 号对所有生产建设项目适用
+      phases: [application, construction]
+    action: replace_map_entry
+    payload:
+      map_key: 广东省
+      value:
+        rate: 0.6
+        unit: 元/m²
+        chargeable_area_rule: permanent_plus_temporary  # 广东口径含临时
+    normative_basis_refs:
+      - rule.guangdong.fa_gai_2021_231      # 粤发改价格〔2021〕231 号
+      - rule.guangdong.shui_gui_fan_zi_2026_1 # 粤水规范字〔2026〕1 号
+    evidence_anchor_refs:
+      - field.fact.project.disturbed_area.permanent
+      - field.fact.project.disturbed_area.temporary
+      - field.fact.project.location.province
+    authority_class: official_approval
+    precedence_rank: 4
+    effective_since: 2021-04-01   # 粤发改 2021_231 号发布时间, 需确认
+    effective_until: null
+    issued_by_scope: 广东省 (province)
+    provenance_verified: true     # 文件已归档到 docs/CPSWC_refs/04_广东惠州地方资料/
+    authored_by: cpswc_architect
+    authored_at: 2026-04-11
+    status: active
+    factual_validation_required: false
+    notes: |
+      本 override 是补偿费费率在广东省辖区内对国家基线 (若有) 的
+      正式批复级局部特化。0.6 元/m² 的数字已在 docs/CPSWC_refs/
+      04_广东惠州地方资料/ 的原文中核实, 不是样稿推断。
+      历史样稿中出现的 0.06 元/m² 属于 10 倍偏差, 由本 override
+      保证不会污染 v1 runtime (v1 启用后, runtime 选择链命中本条,
+      不走样稿)。
+
+  # ----------------------------------------------------------
+  # 示例 B: 广东省条例对"责任范围"附加合规声明
+  # ----------------------------------------------------------
+  # 性质: 结构示意, 明确标注 status = representative_structure_not_factually_final
+  # 依据: 《广东省水土保持条例》(地方规章, L2)
+  # 具体条款内容未逐条核实, 不作为事实权威, 只用于验证 prototype 结构
+  # action: add_required_artifacts
+  # ----------------------------------------------------------
+  ro.artifact.gd.responsibility_range_compliance_statement:
+    override_id: ro.artifact.gd.responsibility_range_compliance_statement
+    target_kind: artifact_addition
+    target_ref: ob.responsibility_range.declaration  # v0 existing obligation, forward-style reference
+    target_attribute_path: required_artifact_refs    # ObligationSet.obligation.required_artifact_refs
+    region_scope:
+      country: CN
+      province: 广东省
+      prefecture: null
+      county: null
+    applicability:
+      species: [报告书]
+      industry_categories: "*"
+      phases: [application]
+    action: add_required_artifacts
+    payload:
+      artifact_refs:
+        - art.statement.gd_conservation_ordinance_compliance  # v1 forward ref
+      added_reason: |
+        《广东省水土保持条例》作为广东省地方规章, 在省辖区内对
+        责任范围声明有超出国家基线的细化要求。本 override 追加
+        一份条例合规声明工件作为 obligation 的 required_artifact。
+    normative_basis_refs:
+      - rule.guangdong.soil_water_conservation_regulation  # 广东省水土保持条例
+    evidence_anchor_refs:
+      - field.fact.project.location.province
+      - field.fact.project.responsibility_range
+    authority_class: regulation    # 地方规章 = regulation L2
+    precedence_rank: 2
+    effective_since: 2018-01-01    # 条例某个版本, 需核对
+    effective_until: null
+    issued_by_scope: 广东省 (province)
+    provenance_verified: false     # 条例具体条款未逐条核验
+    authored_by: cpswc_architect
+    authored_at: 2026-04-11
+    status: representative_structure_not_factually_final   # 硬标记
+    factual_validation_required: true                      # v1 启用前必须核实
+    notes: |
+      本 override 用于验证 add_required_artifacts action 的结构。
+      广东省确实有《广东省水土保持条例》, 且作为地方规章在省辖区
+      内有法定效力, 但本 override 声明的"附加条例合规声明"这一
+      具体要求**未逐条核验**。
+
+      v1 启用前必须:
+        (1) 核实条例原文是否真的要求这类附加声明
+        (2) 若要求存在, 核实具体的声明格式与内容
+        (3) 若要求不存在, 从原型中删除本示例或替换为其他真实示例
+        (4) 将 status 改为 active, factual_validation_required 改为 false
+        (5) provenance_verified 改为 true
+
+# ============================================================
+# 2. conflict_resolution (冲突消解规则, 决议 9 第 5 条)
+# ============================================================
+
+conflict_resolution:
+  order:
+    - key: precedence_rank
+      rule: 小者胜 (1 > 2 > ... > 9)
+    - key: effective_since
+      rule: 更新者胜
+    - key: issued_by_scope
+      rule: |
+        更贴近本项目适用地域者胜 (县级 > 市级 > 省级 > 国家级),
+        但仅在"本地法优于上位法未覆盖场景"成立。
+        不适用于 mandatory_standard, 因为强制性国标不受地方细化削弱。
+    - key: manual_arbitration
+      rule: |
+        上述三键无法分出胜负时进入人工仲裁,
+        结论必须记入 authority_chain_audit。
+
+  mandatory_floor:
+    rule: |
+      无论冲突消解结果如何, 若 override 削弱了 mandatory_standard
+      (rank 3) 或更高 authority_class 的硬性约束, 一律视为非法 override,
+      直接拒绝生效。此条是决议 9 第 4 条的执行入口。
+    exception: |
+      仅当上位规则在条文中**明确授权**地方细化时, 允许 override 生效。
+      授权必须在 override 的 normative_basis_refs 中显式引用。
+
+# ============================================================
+# 3. override_capable slot registry (声明哪些属性可被 override)
+# ============================================================
+# 只有登记在此的 (target_ref, attribute_path) 才能被 override 修改。
+# REGION_OVERRIDE_002 将对 target_attribute_path 做此表校验。
+# ============================================================
+
+override_capable_slots:
+
+  - target_ref: field.fact.regulatory.compensation_fee_rate   # v1 forward ref
+    attribute_paths:
+      - region_specific_rate.*   # map 类, 通配允许省级 key
+    rationale: |
+      补偿费费率是决议 8 认定的 field_rate 类 override 主场。
+      region_specific_rate 的 map slot 在 v1_reservations 已预埋。
+
+  - target_ref: ob.responsibility_range.declaration
+    attribute_paths:
+      - required_artifact_refs
+    rationale: |
+      obligation 的 required_artifact_refs 是 obligation applicability
+      的合法扩展点, 允许 add_required_artifacts action 命中。
+      该属性的 override 只能添加, 不能删除已有工件 (删除属于弱化 mandatory,
+      受 mandatory_floor 规则拒绝)。
+
+# ============================================================
+# 4. 统计
+# ============================================================
+
+summary:
+  overrides_count: 2
+  action_coverage:
+    replace_map_entry: 1   # 示例 A
+    add_required_artifacts: 1 # 示例 B
+    replace_scalar: 0
+    add_constraint: 0
+    refine_applicability: 0
+  status_breakdown:
+    active: 1                                       # 示例 A
+    representative_structure_not_factually_final: 1 # 示例 B
+  authority_class_coverage:
+    official_approval: 1   # 示例 A (粤发改批复)
+    regulation: 1          # 示例 B (广东条例)
+  v1_reservations_consumed:
+    - res.schema.field.region_specific_rate  # 示例 A 的 map slot 依据
+  todo_before_v1_activation:
+    - 核实广东省水土保持条例对责任范围声明的具体条款 (示例 B)
+    - 补齐 rule.guangdong.* 命名空间下的 rule 登记
+    - 把 cross_registry_lint.py 的 REGION_OVERRIDE_001/002/003 从骨架升为可执行
+    - 走 RFC 把本 prototype 提升为 RegionOverrideRegistry_v1.yaml
+
+changelog:
+  - date: 2026-04-11
+    version: region_override_prototype_v0.1
+    summary: 初版创建 (Step 10 地方特化层结构原型)
+    by: cpswc_architect

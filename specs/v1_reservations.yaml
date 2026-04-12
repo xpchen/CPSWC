@@ -1,0 +1,574 @@
+# CPSWC v1 Reservations
+#
+# 本文件是 "前向兼容预埋豁免条款" (CPSWC_ARCHITECTURE_DECISIONS.md) 下的预埋文件。
+#
+# 规则要点 (完整见决议文档):
+#   1. 本文件里的条目是 v1+ 的预留 id, 不是 v0 生效规则
+#   2. cross_registry_lint.py 不加载本文件进 v0 lint
+#   3. 本文件可以引用 v0 id (通过 references_v0_fields 字段),
+#      但 v0 的任何文件不得反向引用本文件里的任何 id
+#   4. v0 registry (ObligationSet_v0.yaml / AssuranceRegistry_v0.yaml /
+#      CPSWC_ARTIFACT_REGISTRY_v0.yaml / FieldIdentityRegistry_v0.yaml)
+#      不得以任何形式 (包括注释或 disabled 标记) 包含本文件里的条目
+#   5. 提升到 v1 正式 registry 必须走 RFC 流程
+#
+# 条目结构:
+#   id:                          命名空间合法 (ob./as./art.)
+#   entity_kind:                 obligation | assurance | artifact
+#   phase:                       application | construction | verification | post_verification
+#   one_line_description:        简述用途
+#   planned_source_rule:         规则依据 (rule.* id 或法规原文位置)
+#   reserved_since:              预埋日期
+#   references_v0_fields:        预埋条目将来会依赖的 v0 field id (允许)
+#   references_v0_obligations:   预埋条目将来会依赖的 v0 obligation id (允许)
+#   notes:                       其他备注 (可选)
+
+version: v1_reserved_v0.1
+generated_at: 2026-04-11
+governance_doc: CPSWC_ARCHITECTURE_DECISIONS.md # 前向兼容预埋豁免条款
+v0_lint_status: excluded # 本文件不进 v0 lint, 由 --include-reserved 开关主动检查 (未实现)
+
+# ============================================================
+# Phase: application (申报阶段 — 承诺制 / 公示 / 提交)
+# ============================================================
+# 源: 办水保〔2020〕160 号 生产建设项目水土保持承诺制管理通知
+# 适用: 编制水土保持方案报告表的项目; 水土保持区域评估范围内的项目
+# v0 现状: 不支持 (v0 仅报告书, 未启用承诺制流程)
+
+reservations:
+  ob.commitment.application_promise:
+    entity_kind: obligation
+    phase: application
+    one_line_description: 承诺制项目建设单位对承诺书 6 条内容作出书面承诺
+    planned_source_rule: rule.t2020.160_application_commitment_6items
+    reserved_since: 2026-04-11
+    references_v0_fields:
+      - field.fact.party.construction_unit
+    notes: |
+      承诺内容 6 条 (160 号第二条):
+      1. 知晓并履行水保法定义务
+      2. 信息真实完整准确, 方案符合标准
+      3. 严格执行"三同时"制度, 投产前完成设施自主验收并报备
+      4. 按时足额缴纳补偿费
+      5. 配合监督检查
+      6. 承担不实或未履行的法律责任和失信责任
+
+  ob.disclosure.public_10_workdays:
+    entity_kind: obligation
+    phase: application
+    one_line_description: 承诺制项目方案报批前须公开拟报批方案全文 ≥10 个工作日
+    planned_source_rule: rule.t2020.160_pre_submission_disclosure
+    reserved_since: 2026-04-11
+    references_v0_fields:
+      - field.fact.project.name
+      - field.fact.party.construction_unit
+    notes: |
+      公开渠道: 建设单位网站 / 项目所在地公共媒体网站 / 相关政府网站
+      期限: 不得少于 10 个工作日
+      公众意见必须逐一处理与回应, 并在承诺书中说明
+
+  ob.submission.form_review_only:
+    entity_kind: obligation
+    phase: application
+    one_line_description: 承诺制项目的审批仅进行形式审查, 即来即办, 现场办结
+    planned_source_rule: rule.t2020.160_form_review
+    reserved_since: 2026-04-11
+    notes: |
+      材料齐全/格式符合 → 受理后即来即办
+      出具准予许可决定, 明确补偿费征收金额
+      材料不齐 → 当场一次性告知补正材料
+
+# ============================================================
+# Phase: construction (建设阶段 — 现场持续履约)
+# ============================================================
+
+  ob.construction.on_site_commitment_public:
+    entity_kind: obligation
+    phase: construction
+    one_line_description: 建设期间在项目现场建设管理场所公开水土保持行政许可承诺书
+    planned_source_rule: rule.t2020.160_construction_disclosure
+    reserved_since: 2026-04-11
+    notes: 持续性义务, 贯穿整个建设期; v1 需要设计周期性 gate (例如月度/季度检查)
+
+  ob.construction.commitment_compliance_ongoing:
+    entity_kind: obligation
+    phase: construction
+    one_line_description: 建设期间严格落实承诺书中的各项水土流失防治措施
+    planned_source_rule: rule.t2020.160_commitment_compliance
+    reserved_since: 2026-04-11
+    notes: 对应"三同时"制度的建设期部分
+
+# ============================================================
+# Phase: verification (验收阶段 — 自主验收 + 第三方评价)
+# ============================================================
+# 源: 办水保〔2018〕133 号 生产建设项目水土保持设施自主验收规程 (试行)
+# 适用: 编制水土保持方案报告书的项目
+# v0 现状: 不支持 (v0 不涉及验收流程)
+
+  ob.verification.scheme_and_approval_complete:
+    entity_kind: obligation
+    phase: verification
+    one_line_description: 验收前水土保持方案及其变更编报审批程序完备 (7 项合格条件 a)
+    planned_source_rule: rule.t2018.133_2_4_a
+    reserved_since: 2026-04-11
+    references_v0_obligations: [] # v0 审批流程不在 CPSWC 范围
+    notes: 133 号第 2.4 条 a 项; 不合格对应第 4.8 条 a 项 (验收不通过)
+
+  ob.verification.monitoring_data_complete:
+    entity_kind: obligation
+    phase: verification
+    one_line_description: 水土保持监测资料齐全成果可靠 (7 项合格条件 b)
+    planned_source_rule: rule.t2018.133_2_4_b
+    reserved_since: 2026-04-11
+    references_v0_obligations:
+      - ob.monitoring.baseline_monitoring
+      - ob.monitoring.point_layout
+    notes: 133 号第 2.4 条 b; 不合格对应第 4.8 条 b/h
+
+  ob.verification.supervision_data_complete:
+    entity_kind: obligation
+    phase: verification
+    one_line_description: 水土保持监理资料齐全成果可靠 (7 项合格条件 c)
+    planned_source_rule: rule.t2018.133_2_4_c
+    reserved_since: 2026-04-11
+    notes: 133 号第 2.4 条 c; 不合格对应第 4.8 条 c
+
+  ob.verification.facilities_built_to_spec:
+    entity_kind: obligation
+    phase: verification
+    one_line_description: 水土保持设施按经批准方案及设计建成, 符合国家/地方/行业标准 (7 项合格条件 d)
+    planned_source_rule: rule.t2018.133_2_4_d
+    reserved_since: 2026-04-11
+    notes: 133 号第 2.4 条 d; 不合格对应第 4.8 条 e
+
+  ob.verification.erosion_targets_achieved:
+    entity_kind: obligation
+    phase: verification
+    one_line_description: 水土流失防治指标达到方案批复的要求 (7 项合格条件 e)
+    planned_source_rule: rule.t2018.133_2_4_e
+    reserved_since: 2026-04-11
+    references_v0_obligations:
+      - ob.evaluation.weighted_target_required
+    notes: |
+      133 号第 2.4 条 e; 六率达标通过 GB/T 50434 查表验证
+      依赖 memory: reference_target_index_table.md
+
+  ob.verification.no_major_hazard_residuals:
+    entity_kind: obligation
+    phase: verification
+    one_line_description: 重要防护对象不存在严重水土流失危害隐患 (7 项合格条件 f)
+    planned_source_rule: rule.t2018.133_2_4_f
+    reserved_since: 2026-04-11
+    references_v0_obligations:
+      - ob.disposal_site.stability_monitoring
+      - ob.disposal_site.failure_analysis
+    notes: |
+      133 号第 2.4 条 f + 第 5.1 条定义
+      "重要防护对象" = 4 级 (含) 以上弃渣场等易发生水土流失危害及隐患的工程部位
+      不合格对应第 4.8 条 f (无安全稳定结论或结论为不稳定)
+
+  ob.verification.facilities_operational:
+    entity_kind: obligation
+    phase: verification
+    one_line_description: 水土保持设施具备正常运行条件且运维责任已落实 (7 项合格条件 g)
+    planned_source_rule: rule.t2018.133_2_4_g
+    reserved_since: 2026-04-11
+    notes: 133 号第 2.4 条 g
+
+  ob.verification.third_party_evaluation:
+    entity_kind: obligation
+    phase: verification
+    one_line_description: 由第三方技术服务机构编制水土保持设施验收报告
+    planned_source_rule: rule.t2018.133_3_1
+    reserved_since: 2026-04-11
+    notes: |
+      第三方必须具备独立承担民事责任能力 + 相应水土保持技术条件
+      评价内容 4 大类:
+        1. 项目法人水保法定义务履行情况
+        2. 水土流失防治任务完成情况
+        3. 水土流失防治效果情况
+        4. 水土保持工作组织管理情况
+
+  ob.verification.completion_meeting:
+    entity_kind: obligation
+    phase: verification
+    one_line_description: 由项目法人组织竣工验收会议, 验收结论须 2/3 以上验收组成员同意
+    planned_source_rule: rule.t2018.133_4
+    reserved_since: 2026-04-11
+    notes: |
+      133 号第 4 章; 验收组由项目法人 + 水保设施验收报告编制/监测/监理/方案编制/施工单位代表组成
+      项目法人可根据规模/性质/复杂度邀请水保专家参加
+
+  ob.verification.9_rejection_criteria:
+    entity_kind: obligation
+    phase: verification
+    one_line_description: 9 种不通过情形任一成立即判定验收不通过 (硬 gate)
+    planned_source_rule: rule.t2018.133_4_8
+    reserved_since: 2026-04-11
+    notes: |
+      133 号第 4.8 条 9 种情形:
+      a) 未依法依规履行方案及重大变更的编报审批程序
+      b) 未依法依规开展监测或补充开展不符合规定
+      c) 未依法依规开展监理工作
+      d) 废弃土石渣未堆放在批准的专门存放地
+      e) 措施体系/等级/标准未按批准方案落实
+      f) 重要防护对象无安全稳定结论或结论为不稳定
+      g) 水保分部工程和单位工程未经验收或验收不合格
+      h) 监测/监理总结报告弄虚作假或存在重大技术问题
+      i) 未依法依规缴纳水土保持补偿费
+
+# ============================================================
+# Assurance 预埋 (phase: application)
+# ============================================================
+
+  as.commitment.application_promise:
+    entity_kind: assurance
+    phase: application
+    one_line_description: 水土保持行政许可承诺书 (6 条承诺 + 法人签字 + 建设单位盖章)
+    planned_source_rule: rule.t2020.160_commitment_form
+    reserved_since: 2026-04-11
+    references_v0_fields:
+      - field.fact.party.construction_unit
+    notes: |
+      160 号附件: 承诺书一式 3 份 (建设单位 / 水行政主管部门 (或其他审批部门) / 监督检查部门)
+      每份需: 法人代表亲笔签字 + 建设单位公章 + 审批部门公章
+
+  as.signature.commitment_legal_rep:
+    entity_kind: assurance
+    phase: application
+    one_line_description: 承诺书法人代表亲笔签字
+    planned_source_rule: rule.t2020.160_legal_rep_signature
+    reserved_since: 2026-04-11
+
+  as.seal.construction_unit_on_commitment:
+    entity_kind: assurance
+    phase: application
+    one_line_description: 承诺书建设单位公章
+    planned_source_rule: rule.t2020.160_construction_unit_seal
+    reserved_since: 2026-04-11
+
+  as.disclosure.public_notice_evidence:
+    entity_kind: assurance
+    phase: application
+    one_line_description: 方案公示证明材料 (公示网站截图 / 起止时间 / 公众意见接收与处理情况)
+    planned_source_rule: rule.t2020.160_disclosure_evidence
+    reserved_since: 2026-04-11
+    notes: 160 号附件"承诺书"中明确要求填写公示情况
+
+# ============================================================
+# Assurance 预埋 (phase: verification)
+# ============================================================
+
+  as.third_party.independence_qualification:
+    entity_kind: assurance
+    phase: verification
+    one_line_description: 第三方技术服务机构独立性与资格证明
+    planned_source_rule: rule.t2018.133_5_2
+    reserved_since: 2026-04-11
+    notes: |
+      133 号第 5.2 条: 第三方 = 独立承担民事责任 + 相应水土保持技术条件
+      + 从事水土保持技术服务的企业法人/事业单位法人/其他组织
+
+  as.documentation.verification_9_items:
+    entity_kind: assurance
+    phase: verification
+    one_line_description: 水土保持设施自主验收资料清单 (133 号附录 9 项)
+    planned_source_rule: rule.t2018.133_appendix
+    reserved_since: 2026-04-11
+    notes: |
+      9 项资料:
+      1. 项目立项(审批/核准/备案)文件
+      2. 主体工程设计相关资料
+      3. 水保分部/单位工程验收资料
+      4. 水保方案(含变更)及批复文件
+      5. 水保初步设计和施工图设计及审批意见
+      6. 各级水行政主管部门监督检查及落实情况
+      7. 水保监理总结报告及原始资料
+      8. 水保监测总结报告及原始资料
+      9. 水保设施验收报告
+
+# ============================================================
+# Artifact 预埋 (phase: application)
+# ============================================================
+
+  art.attachment.application_commitment_letter:
+    entity_kind: artifact
+    phase: application
+    one_line_description: 水土保持行政许可承诺书 (一式 3 份)
+    planned_source_rule: rule.t2020.160_commitment_form
+    reserved_since: 2026-04-11
+    notes: |
+      模板见 160 号附件
+      交付要求: 一式 3 份, 建设单位 / 水行政主管部门 / 监督检查部门各 1 份
+
+  art.attachment.public_disclosure_proof:
+    entity_kind: artifact
+    phase: application
+    one_line_description: 方案公示证明材料 (网站截图 + 公众意见记录)
+    planned_source_rule: rule.t2020.160_pre_submission_disclosure
+    reserved_since: 2026-04-11
+
+# ============================================================
+# Artifact 预埋 (phase: verification)
+# ============================================================
+
+  art.subreport.verification_report:
+    entity_kind: artifact
+    phase: verification
+    one_line_description: 水土保持设施验收报告 (第三方编制)
+    planned_source_rule: rule.t2018.133_3
+    reserved_since: 2026-04-11
+    notes: |
+      第三方技术服务机构编制
+      含 4 类评价:
+        1. 项目法人水保法定义务履行情况
+        2. 水土流失防治任务完成情况
+        3. 水土流失防治效果情况
+        4. 水土保持工作组织管理情况
+
+  art.attachment.verification_documentation_bundle:
+    entity_kind: artifact
+    phase: verification
+    one_line_description: 自主验收资料清单打包 (133 号附录 9 项)
+    planned_source_rule: rule.t2018.133_appendix
+    reserved_since: 2026-04-11
+
+  art.attachment.completion_certificate:
+    entity_kind: artifact
+    phase: verification
+    one_line_description: 水土保持设施验收鉴定书
+    planned_source_rule: rule.t2018.133_4_9
+    reserved_since: 2026-04-11
+    notes: 133 号第 4.9 条; 由项目法人按规范格式制发
+
+# ============================================================
+# 批次 2 (2026-04-11, v1 前置宪法修补包)
+# Schema 槽位预留 - 非 entity, 不构成 obligation/assurance/artifact
+# 这些槽位定义 v1 将要在既有 schema 上新增的 optional 字段,
+# 均遵循决议"Schema 扩展的默认值规则": 默认值保持 v0 行为不变。
+# ============================================================
+
+schema_reservations:
+
+  - id: res.schema.field.source_authority
+    entity_kind: schema_slot
+    target_schema: FieldIdentityRegistry.field
+    new_field_name: source_authority
+    field_type: enum
+    enum_values:
+      - self_declared          # 建设单位自报 (v0 默认)
+      - design_institute_calc  # 设计院重算
+      - third_party_surveyed   # 第三方实测
+      - remote_sensing         # 遥感核验
+      - expert_recalculated    # 专家复核结论
+      - regulatory_filed       # 已向主管部门备案
+    default_value: self_declared
+    arbitration_priority_draft: |
+      regulatory_filed > expert_recalculated > third_party_surveyed
+      > remote_sensing > design_institute_calc > self_declared
+    reserved_since: 2026-04-11
+    reason: |
+      事实层的权属仲裁问题。v0 假设每个 field 有单一权威值, v1 必须
+      面对"同一 field 多来源 + 优先级 + 仲裁"的场景。预留此槽位允许
+      v1 在不迁移数据的前提下启用仲裁规则。
+    notes: |
+      v0 阶段本字段不校验取值, 默认 self_declared;
+      v1 启用后 lint 新增规则校验 source_authority ∈ enum_values。
+
+  - id: res.schema.obligation.region_override
+    entity_kind: schema_slot
+    target_schema: ObligationSet.obligation
+    new_field_name: region_override
+    field_type: map
+    schema_draft: |
+      region_override:
+        <region_code>:         # 如 "guangdong", "jiangsu"
+          requirement_type: <override>
+          source_rule_ref: <地方规章>
+          effective_since: <ISO 日期>
+          notes: <地方口径说明>
+    default_value: {}  # 空 map, 等同于无 override
+    reserved_since: 2026-04-11
+    reason: |
+      地方灰区口径问题。广东有专门的承诺制与自主验收口径,
+      其他省有不同的补偿费标准/项目分类。v1 扩展到第二个省份时
+      若没有 override 层, 要么污染 v0 ObligationSet, 要么全量复制。
+      预留此槽位让地方口径成为一等公民。
+    notes: v0 不启用, 默认空 map; v1 启用时 region_code 使用国标行政区代码。
+
+  - id: res.schema.field.region_specific_rate
+    entity_kind: schema_slot
+    target_schema: FieldIdentityRegistry.field
+    new_field_name: region_specific_rate
+    field_type: map
+    schema_draft: |
+      region_specific_rate:
+        <region_code>: <numeric_value_with_unit>
+    default_value: {}
+    reserved_since: 2026-04-11
+    override_capable: true  # 决议 9: 允许 Region Override 通过 target_attribute_path 命中
+    override_slot_pattern: region_specific_rate.*  # 允许通配命中任意省级 key
+    consumed_by_prototype:
+      - RegionOverridePrototype_v1_reserved.yaml::ro.field_rate.gd.compensation_fee
+    reason: |
+      与 region_override 对偶, 但作用在 field 层。典型用例:
+      补偿费费率 (粤 0.6 元/m², 其他省不同), 监测频次地方标准,
+      目标值地方调整系数。v0 只能写死默认值, v1 通过此槽位支持
+      按项目归属地自动取值。
+    notes: |
+      与 source_authority 正交: 前者说明"这个数从哪来",
+      后者说明"这个数在不同地区应该是多少"。两者可共存。
+      Step 10 补: 本槽位是 Region Override Layer 的首个
+      override-capable slot, 对应决议 9 的 override_capable_slots 登记表。
+
+  - id: res.schema.field.visibility_scope
+    entity_kind: schema_slot
+    target_schema: FieldIdentityRegistry.field # 以及 ObligationSet.obligation
+    new_field_name: visibility_scope
+    field_type: list[enum]
+    enum_values:
+      - public                  # 所有用户可见
+      - design_institute        # 仅设计院内部
+      - internal_review         # 仅内部审查
+      - regulatory_only         # 仅向主管部门展示
+    default_value: [public]
+    reserved_since: 2026-04-11
+    reason: |
+      数据层角色隔离。penalty_warning_table_v1_reserved 中的罚款预估
+      / 执法裁量信息若出现在面向建设单位的前台, 会立刻构成商业风险。
+      此槽位作用于 field 和 obligation 层, 控制"谁能看到这条数据存在"。
+    notes: |
+      与 audience_scope 正交: 本槽位是数据可见性 (谁能看到),
+      audience_scope 是输出受众 (谁是报告读者)。两层配合才是完整的
+      角色隔离。
+
+  - id: res.schema.artifact.audience_scope
+    entity_kind: schema_slot
+    target_schema: ArtifactRegistry.artifact
+    new_field_name: audience_scope
+    field_type: list[enum]
+    enum_values:
+      - construction_unit       # 建设单位 (正式报告书)
+      - design_institute        # 设计院内部
+      - internal_review         # 咨询机构内部审查
+      - regulatory_authority    # 主管部门
+    default_value: [construction_unit, regulatory_authority]
+    reserved_since: 2026-04-11
+    reason: |
+      输出层角色隔离。同一套数据在不同受众面前应呈现为不同工件。
+      典型: penalty_warning_table 必须限定在 [design_institute, internal_review],
+      禁止出现在 [construction_unit] 的 Artifact 中。
+    notes: |
+      v1 启用后新增 lint 规则: 若 Artifact 引用的 field/obligation 的
+      visibility_scope 与本 Artifact 的 audience_scope 不相容, 直接 ERROR。
+
+  - id: res.schema.common.contribution_lineage
+    entity_kind: schema_slot
+    target_schema: "FieldIdentityRegistry.field | ObligationSet.obligation | governance_block"
+    new_field_name: "contributed_by / reviewed_by"
+    field_type: record
+    schema_draft: |
+      contributed_by:
+        name: string
+        role: string
+        contributed_at: <ISO 日期>
+      reviewed_by:
+        - name: string
+          role: string
+          reviewed_at: <ISO 日期>
+          verdict: enum[approved, rejected, pending]
+    default_value: null
+    reserved_since: 2026-04-11
+    reason: |
+      组织能力沉淀的声誉锚点。让规则 / 字段 / 开关都能被"署名"是
+      推动老师傅把经验放进系统的关键激励。架构上为 v3 阶段的
+      "贡献可见性"预留接口。决议 6 的 governance_block 已经在
+      authored_by/authored_at 字段上先行落地了这个机制。
+    notes: |
+      v0 不强制; v1 启用时可选填; v2 起新增规则可选要求
+      CRITICAL 字段必须有 contributed_by。
+
+# ============================================================
+# 批次 3 (2026-04-11, Step 10 Region Override 结构原型引用)
+# 本节不重复 prototype 的内容, 只记录 prototype 文件的存在与
+# 它消费的 schema 槽位关系, 以及 v1 runtime 的预期选择顺序。
+# ============================================================
+
+region_override_prototype_reference:
+
+  prototype_file: RegionOverridePrototype_v1_reserved.yaml
+  prototype_version: region_override_prototype_v0.1
+
+  region_override_object_kinds:
+    # 决议 9 第 action 闭集的 target_kind 分类
+    - field_rate               # 对 field 的 region_specific_rate 槽位做替换
+    - obligation_applicability # 对 obligation.applicability 做收窄
+    - artifact_addition        # 给 obligation 追加 required_artifact_refs
+    - assurance_addition       # 给 obligation 追加 required_assurance_refs
+
+  planned_runtime_resolution_order:
+    # v1 runtime 选择链的预期顺序 (仅文字描述, 不是执行代码)
+    step_1: |
+      从 SubmissionContext 提取 project.location.province / prefecture / county,
+      构造 region_scope_key
+    step_2: |
+      用 region_scope_key 查询 RegionOverrideRegistry_v1 (本 prototype 的 v1 版),
+      得到候选 override set
+    step_3: |
+      按决议 9 第 5 条冲突消解顺序排序: precedence_rank -> effective_since ->
+      issued_by_scope -> manual_arbitration
+    step_4: |
+      对每个胜出的 override 检查 mandatory_floor 规则: 是否削弱了 mandatory_standard
+      或更高 authority_class 的约束, 若是则拒绝
+    step_5: |
+      合法 override 按 action 类型注入 runtime (replace_scalar / replace_map_entry /
+      add_constraint / add_required_artifacts / refine_applicability)
+    step_6: |
+      对每一次 override 注入记录 audit trail (authority_chain_audit),
+      供 ModificationReport 引用
+
+  reserved_files_referenced:
+    - RegionOverridePrototype_v1_reserved.yaml
+    - penalty_warning_table_v1_reserved.yaml  # 未来 violation override 入口
+    - v1_reservations.yaml                     # 本文件自身
+
+  lint_skeleton_reserved:
+    # 决议 9 预埋的 reserved-only lint 规则名
+    - REGION_OVERRIDE_001  # target_ref resolve
+    - REGION_OVERRIDE_002  # provenance + override_capable 槽位校验
+    - REGION_OVERRIDE_003  # 冲突消解键合法性 + refine_applicability 不放宽 + province!="*"
+
+# ============================================================
+# 统计 (便于后续提升时检查总量)
+# ============================================================
+summary:
+  reservations_count: 23
+  schema_reservations_count: 6
+  region_override_prototype_count: 2  # Step 10 新增
+  by_entity_kind:
+    obligation: 13
+    assurance: 6
+    artifact: 5 # (含 verification 3 + application 2)
+    schema_slot: 6
+  by_phase:
+    application: 9 # obligations 3 + assurances 4 + artifacts 2
+    construction: 2 # obligations only
+    verification: 12 # obligations 8 + assurances 2 + artifacts 2
+    cross_cutting: 6 # schema_reservations 不绑定 phase
+  source_rules:
+    - rule.t2020.160 # 承诺制管理通知
+    - rule.t2018.133 # 自主验收规程
+    - cpswc_archdec_patch1 # 决议 6/7 + 前置修补包
+    - cpswc_archdec_patch3 # 决议 9 + Region Override prototype (Step 10)
+    - rule.guangdong.fa_gai_2021_231 # 示例 A 依据
+    - rule.guangdong.soil_water_conservation_regulation # 示例 B 依据 (待核实)
+  v0_obligations_referenced:
+    - ob.monitoring.baseline_monitoring
+    - ob.monitoring.point_layout
+    - ob.evaluation.weighted_target_required
+    - ob.disposal_site.stability_monitoring
+    - ob.disposal_site.failure_analysis
+  v0_fields_referenced:
+    - field.fact.project.name
+    - field.fact.party.construction_unit
+    - field.fact.disposal_site.failure_analysis_required # 新增: 决议 6 首个合规样本

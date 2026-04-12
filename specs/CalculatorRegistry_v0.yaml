@@ -1,0 +1,599 @@
+# CPSWC CalculatorRegistry v0
+#
+# 依据: CPSWC_ARCHITECTURE_DECISIONS.md 决议 6/7/8/9 + Step 11A
+#
+# 文件性质:
+#   - v0 live registry (与 FieldIdentityRegistry_v0.yaml / ObligationSet_v0.yaml 同级)
+#   - 由 cross_registry_lint.py 加载并参与 CAL_001 硬校验 (ERROR 级)
+#   - 由 calculator_engine.py 作为执行载体 (本轮仅硬编码 cal.compensation.fee)
+#
+# 准入纪律 (Step 11A 起, 每个 live calculator 必须满足):
+#   1. 决议 8 双锚必备: normative_basis_refs + evidence_anchor_refs 齐全
+#   2. authority_class 在决议 8 九类之中
+#   3. 输入输出全部使用已登记的 field.* id
+#   4. unit 显式声明, 与 FieldIdentityRegistry 中的同名 field 一致
+#   5. 禁止隐式 fallback, 错误分支必须显式
+#   6. override_resolution: v0 阶段固定 false (决议 9: v0 不消费 override)
+#
+# 本文件当前只有 1 条 calculator, 不做抽象, 不做框架。
+# 下一颗 calculator 激活时再决定是否泛化。
+# ============================================================
+
+version: calculator_registry_v0.1
+generated_at: 2026-04-11
+governance_doc: CPSWC_ARCHITECTURE_DECISIONS.md  # 决议 6/7/8/9
+executor_file: calculator_engine.py
+v0_scope_note: |
+  Step 11A 首批 live calculator, 仅 cal.compensation.fee 一条。
+  v0 单一广东包下, 所有参数从 FieldIdentityRegistry_v0 读取固定值;
+  override resolver 未接入, 待 v1 Region Override Layer 启用。
+
+calculators:
+
+  cal.compensation.fee:
+    canonical_name: 水土保持补偿费计算器
+    purpose: |
+      根据项目永久占地 + 临时占地面积, 结合广东省水土保持补偿费征收
+      费率, 计算应缴补偿费总额 (万元)。
+    protection_level: CRITICAL      # 输出直接对应法定应缴金额
+    status: live                    # Step 11A: 第一颗 live calculator
+
+    # --- 决议 8 来源铁律 ---
+    authority_class: official_approval
+    precedence_rank: 4
+    sample_usage_mode_input: inspiration_only  # 惠州样例仅作 ground truth 验证
+    provenance_verified: true
+    normative_basis_refs:
+      - rule.guangdong.fa_gai_2021_231       # 粤发改价格〔2021〕231 号
+      - rule.guangdong.shui_gui_fan_zi_2026_1 # 粤水规范字〔2026〕1 号
+      - rule.ministry_order_53               # 水利部令 53 号 (补偿费上位依据)
+    evidence_anchor_refs:
+      - field.fact.land.permanent_area
+      - field.fact.land.temporary_area
+      - field.fact.regulatory.compensation_fee_rate
+      - field.fact.location.province_list
+
+    # --- 输入输出契约 ---
+    inputs:
+      - ref: field.fact.land.permanent_area
+        required: true
+        unit: hm²
+        unit_conversion_to: m²
+        conversion_factor: 10000
+      - ref: field.fact.land.temporary_area
+        required: true
+        unit: hm²
+        unit_conversion_to: m²
+        conversion_factor: 10000
+      - ref: field.fact.regulatory.compensation_fee_rate
+        required: true
+        unit: 元/m²
+
+    outputs:
+      - ref: field.derived.investment.compensation_fee_amount
+        unit: 万元
+        persistence: derived_only
+
+    # --- 公式 ---
+    formula:
+      kind: multiply_and_convert  # 本轮唯一支持的公式类型
+      pseudocode: |
+        chargeable_area_m2 = (permanent_area_hm2 + temporary_area_hm2) * 10000
+        amount_yuan        = chargeable_area_m2 * rate_yuan_per_m2
+        amount_wan         = amount_yuan / 10000
+      hardcoded_implementation: |
+        实现写死在 calculator_engine.py 的 _eval_compensation_fee 函数中。
+        本轮不建通用 DSL, 不做抽象。
+
+    # --- 错误分支 (禁止隐式 fallback) ---
+    error_branches:
+      - trigger: "permanent_area < 0 OR temporary_area < 0"
+        action: raise
+        message: "占地面积不能为负数"
+      - trigger: "rate <= 0"
+        action: raise
+        message: "补偿费率必须为正数"
+      - trigger: "rate < 0.1"
+        action: raise
+        message: |
+          费率低于 0.1 元/m², 疑似命中历史样稿偏差 (如 0.06 元/m²);
+          v0 只接受广东新标准 0.6 元/m², 拒绝静默继承错误。
+      - trigger: "chargeable_area_m2 == 0 AND project_type != exempted"
+        action: warn
+        message: "项目无计征面积, 请确认是否为豁免项目"
+
+    # --- 决议 9 override 接入预留 (v0 不消费) ---
+    override_resolution:
+      enabled: false  # v0 阶段硬关, 待 v1 Region Override Layer 启用
+      v1_plan:
+        target_ref: field.fact.regulatory.compensation_fee_rate
+        target_attribute_path: region_specific_rate.<province_key>
+        resolver_order: precedence_rank -> effective_since -> issued_by_scope -> manual_arbitration
+        mandatory_floor_check: true
+        fallback_value_source_ref: field.fact.regulatory.compensation_fee_rate
+        fallback_value_note: "v0 默认值 0.6"
+
+    # --- 样本 ground truth (用于 validator 双向 cross-check) ---
+    sample_ground_truth:
+      huizhou_housing_v0:
+        input_values:
+          permanent_area_hm2: 8.2
+          temporary_area_hm2: 1.3
+          rate_yuan_per_m2: 0.6
+        expected_chargeable_area_m2: 95000
+        expected_amount_yuan: 57000
+        expected_amount_wan: 5.7
+        expected_unit: 万元
+        note: |
+          该 ground truth 与 sample_meta.annotations.compensation_fee.calculation
+          中的散文描述 "95,000 m² × 0.6 元/m² = 57,000 元 = 5.7 万元" 一致。
+          validator 跑 calculator 后与 annotation 做双向 cross-check,
+          任一方偏离即 FAIL。
+
+    # --- 决议 6 ExpertSwitch Governance (不适用, 本 calculator 非 expert-switch) ---
+    # 本 calculator 的所有参数都来自 fact field, 没有 bool 总开关,
+    # 因此不涉及 governance_block。
+
+    # --- v1 升级路径 ---
+    upgrade_path_to_v1:
+      - 启用 Region Override Layer, 让 rate 从 region_specific_rate map 动态读取
+      - 加 project_type 判断, 支持豁免项目路径
+      - 扩展到跨省项目: 按 province_list 分省计算 + 汇总
+      - 接入 CalculatorGraph, 把本 calculator 作为投资估算链的一个节点
+    authored_by: cpswc_architect
+    authored_at: 2026-04-11
+    migrated_from_draft: memory/feedback_calculator_contracts_draft.md C1
+
+  # ============================================================
+  # Step 11B: 第二颗 live calculator
+  # 多等级面积加权综合防治指标值
+  # ============================================================
+  cal.target.weighted_comprehensive:
+    canonical_name: 多等级面积加权综合防治指标值计算器
+    purpose: |
+      当项目涉及两个及以上防治标准等级时 (control_standard_level_breakdown
+      >= 2 条), 按面积权重对 GB/T 50434 表 4.0.2-X 中的六项指标做加权平均,
+      产出 field.derived.target.weighted_comprehensive_target (record 型输出)。
+
+      当只有一个等级时, 直接取该等级的表值作为单等级兜底。
+    protection_level: CRITICAL
+    status: live
+
+    # --- 决议 8 来源铁律 ---
+    authority_class: recommended_standard  # GB/T 50434 含 /T, 推荐性标准
+    precedence_rank: 5
+    sample_usage_mode_input: inspiration_only
+    provenance_verified: true
+    normative_basis_refs:
+      - rule.gb_t_50434_2018.chapter_4           # 第 4 章等级划分原则
+      - rule.gb_t_50434_2018.table_4_0_2_5       # 表 4.0.2-5 南方红壤区 (v0 覆盖范围)
+      - rule.template_2026.section_7_3_2         # 2026 模板 7.3.2 加权要求
+    evidence_anchor_refs:
+      - field.fact.prevention.control_standard_level
+      - field.fact.prevention.control_standard_level_breakdown
+      - field.fact.natural.water_soil_zoning
+      - field.fact.prevention.responsibility_range_area
+
+    # --- 输入输出契约 ---
+    inputs:
+      - ref: field.fact.prevention.control_standard_level_breakdown
+        required: true
+        shape: list_of_records
+        record_keys: [zone_id, zone_name, standard_level, area]
+      - ref: field.fact.prevention.control_standard_level
+        required: true
+        shape: enum
+        enum_values: [一级, 二级, 三级]
+      - ref: field.fact.natural.water_soil_zoning
+        required: true
+        shape: enum
+        enum_values:
+          - 东北黑土区
+          - 北方风沙区
+          - 北方土石山区
+          - 西北黄土高原区
+          - 南方红壤区     # v0 覆盖
+          - 西南紫色土区
+          - 西南岩溶区
+          - 青藏高原区
+
+    outputs:
+      - ref: field.derived.target.weighted_comprehensive_target
+        shape: record
+        record_keys:
+          - control_degree              # 水土流失治理度 (%)
+          - soil_loss_control_ratio     # 土壤流失控制比 (无量纲)
+          - spoil_protection_rate       # 渣土防护率 (%)
+          - topsoil_protection_rate     # 表土保护率 (%)
+          - vegetation_restoration_rate # 林草植被恢复率 (%)
+          - vegetation_coverage_rate    # 林草覆盖率 (%)
+        persistence: derived_only
+
+    # --- 公式 ---
+    formula:
+      kind: area_weighted_lookup
+      pseudocode: |
+        # Step 1: 按 water_soil_zoning 查 reference_data 里的目标表
+        target_table = reference_data.gbt50434_table_4_0_2_X[water_soil_zoning]
+
+        # Step 2: 若 breakdown 只有 1 个等级 -> 单等级兜底
+        if len(breakdown) == 1:
+            level = breakdown[0].standard_level
+            return target_table[level]  # 六项直接返回
+
+        # Step 3: 多等级 -> 按面积加权
+        total_area = sum(zone.area for zone in breakdown)
+        weights = {zone.zone_id: zone.area / total_area for zone in breakdown}
+        result = {indicator: 0.0 for indicator in SIX_INDICATORS}
+        for zone in breakdown:
+            for indicator in SIX_INDICATORS:
+                result[indicator] += weights[zone.zone_id] *
+                                     target_table[zone.standard_level][indicator]
+        return result
+      hardcoded_implementation: |
+        实现写死在 calculator_engine.py 的 _eval_weighted_comprehensive_target 函数中。
+        本轮不建通用加权 DSL, 不做多 calculator 泛化。
+
+    # --- 错误分支 (禁止隐式 fallback) ---
+    error_branches:
+      - trigger: "control_standard_level_breakdown 为空"
+        action: raise
+        message: "必须提供 control_standard_level_breakdown, 不允许缺省"
+      - trigger: "water_soil_zoning 不在已登记的 8 个水保区中"
+        action: raise
+        message: "water_soil_zoning 必须是 GB/T 50434 第 4 章的 8 个水保区之一"
+      - trigger: "water_soil_zoning 在 8 个区内, 但对应 reference_data 表未登记"
+        action: raise
+        message: |
+          v0 仅登记南方红壤区 (表 4.0.2-5), 其他 7 张表在 v1+ 补齐。
+          本 calculator 目前拒绝服务非南方红壤区项目 (守住 v0 单一广东包边界)。
+      - trigger: "zone.standard_level 不在 [一级, 二级, 三级] 中"
+        action: raise
+        message: "zone.standard_level 非法"
+      - trigger: "sum(zone.area) <= 0"
+        action: raise
+        message: "总责任范围面积必须为正数"
+
+    # --- 决议 9 override 接入预留 (v0 不消费) ---
+    override_resolution:
+      enabled: false
+      v1_plan:
+        target_ref: field.derived.target.weighted_comprehensive_target
+        target_attribute_path: region_override.target_value_adjustment
+        resolver_order: precedence_rank -> effective_since -> issued_by_scope -> manual_arbitration
+        mandatory_floor_check: true
+        fallback_value_source_ref: field.derived.target.weighted_comprehensive_target
+        fallback_value_note: "v0 按 GB/T 50434 原表加权, 不做地方特化"
+
+    # --- 样本 ground truth (用于 validator 双向 cross-check) ---
+    sample_ground_truth:
+      huizhou_housing_v0:
+        input_values:
+          water_soil_zoning: 南方红壤区
+          control_standard_level: 一级
+          control_standard_level_breakdown:
+            - zone_id: Z1
+              standard_level: 一级
+              area_hm2: 7.9
+            - zone_id: Z2
+              standard_level: 二级
+              area_hm2: 1.6
+          total_area_hm2: 9.5
+          weight_z1: 0.8315789473684211  # 7.9 / 9.5
+          weight_z2: 0.16842105263157894 # 1.6 / 9.5
+        expected_output:
+          # 按 GB/T 50434 表 4.0.2-5 面积加权计算 (Step 11B 修正前 sample 手填错值)
+          # 旧值 (已纠正): control=98, ratio=1.00, spoil=98.8, topsoil=92, restoration=98, coverage=24
+          control_degree: 97.49         # (0.8316 * 98 + 0.1684 * 95)
+          soil_loss_control_ratio: 0.89 # (0.8316 * 0.90 + 0.1684 * 0.85)
+          spoil_protection_rate: 96.66  # (0.8316 * 97 + 0.1684 * 95)
+          topsoil_protection_rate: 91.16 # (0.8316 * 92 + 0.1684 * 87)
+          vegetation_restoration_rate: 97.83 # (0.8316 * 98 + 0.1684 * 97)
+          vegetation_coverage_rate: 24.49 # (0.8316 * 25 + 0.1684 * 22 = 24.4947 -> round2 = 24.49)
+        tolerance:
+          percent_fields: 0.5   # control_degree / spoil / topsoil / restoration / coverage
+          ratio_fields: 0.01    # soil_loss_control_ratio
+        note: |
+          本 ground truth 是 Step 11B 从 sample 手填错值纠正而来。
+          sample 里原值内部不一致 (见 _previous_values_audit 块), 本 calculator
+          首次执行时就暴露了这个口径错误, 并由 sample 纠正动作把 ground truth
+          提升为"机器可验证"。这是 11A (十倍偏差保险丝) 到 11B (口径错误显影)
+          的能力递进。
+
+    # --- 参考数据 (Q2 = C 拍板: 表值放在 calculator 的 reference_data 节) ---
+    # v0 单一广东包下, 仅登记南方红壤区 (表 4.0.2-5)。
+    # 其他 7 个水保区的表留到 v1+ 扩展, 不在本轮登记。
+    # 字段含义:
+    #   一级/二级/三级: 对应 GB/T 50434 防治标准等级
+    #   施工期 vs 水平年: 本 calculator 使用水平年目标值 (设计目标)
+    reference_data:
+      gbt50434_table_4_0_2_5:
+        label: GB/T 50434-2018 表 4.0.2-5 南方红壤区防治指标目标值 (水平年)
+        source_rule_ref: GB/T 50434-2018 §4.0.2 表 4.0.2-5
+        authority_class: recommended_standard
+        precedence_rank: 5
+        水平年_values:
+          一级:
+            control_degree: 98          # 水土流失治理度 %
+            soil_loss_control_ratio: 0.90  # 土壤流失控制比
+            spoil_protection_rate: 97   # 渣土防护率 % (水平年)
+            topsoil_protection_rate: 92 # 表土保护率 %
+            vegetation_restoration_rate: 98  # 林草植被恢复率 %
+            vegetation_coverage_rate: 25     # 林草覆盖率 %
+          二级:
+            control_degree: 95
+            soil_loss_control_ratio: 0.85
+            spoil_protection_rate: 95
+            topsoil_protection_rate: 87
+            vegetation_restoration_rate: 97
+            vegetation_coverage_rate: 22
+          三级:
+            control_degree: 90
+            soil_loss_control_ratio: 0.80
+            spoil_protection_rate: 92
+            topsoil_protection_rate: 82
+            vegetation_restoration_rate: 95
+            vegetation_coverage_rate: 19
+      # v1 扩展路径 (非本轮内容, 仅文档):
+      # gbt50434_table_4_0_2_1: 东北黑土区
+      # gbt50434_table_4_0_2_2: 北方风沙区
+      # gbt50434_table_4_0_2_3: 北方土石山区
+      # gbt50434_table_4_0_2_4: 西北黄土高原区
+      # gbt50434_table_4_0_2_6: 西南紫色土区
+      # gbt50434_table_4_0_2_7: 西南岩溶区
+      # gbt50434_table_4_0_2_8: 青藏高原区
+
+    # --- v1 升级路径 ---
+    upgrade_path_to_v1:
+      - 补齐其他 7 个水保区的 reference_data 表
+      - 支持 SL/T 804-2020 的行业补充目标值 (若项目涉及特定行业)
+      - 接入 region_override 的地方调整系数 (如广东省对植被覆盖率的地方加严)
+      - 把 reference_data 节提升为独立的 TargetIndexTable_v1.yaml (Step 11C+)
+    authored_by: cpswc_architect
+    authored_at: 2026-04-11
+    migrated_from_draft: memory/feedback_calculator_contracts_draft.md C2
+
+  # ============================================================
+  # Step 11C: 第三颗 live calculator
+  # 弃渣场级别评定 (GB 51018 表 5.7.1 就高不就低)
+  # 首个 fact → calculator → derived → obligation trigger 完整链路
+  # ============================================================
+  cal.disposal_site.level_assessment:
+    canonical_name: 弃渣场级别评定计算器
+    purpose: |
+      按 GB 51018-2014 表 5.7.1 的三维判定规则 (堆渣量 / 最大堆渣高度 /
+      下游危害程度), 结合"就高不就低"规则, 对每个弃渣场计算其级别 (1~5 级)。
+
+      约定: 1 级 = 最严重 (大体积 / 高堆 / 严重危害), 5 级 = 最轻 (小体积 / 低堆 / 无危害)。
+      就高不就低 = 三路取级别最高 = 数字最小。
+
+      本 calculator 是 v0 第一个直接驱动 obligation trigger 的 calculator:
+        - 产生 level 1/2 → ob.disposal_site.geology_report 触发
+        - 产生 level 1/2/3 → ob.disposal_site.stability_monitoring + video_surveillance 触发
+
+      这是 v0 第一次从 "calculator 喂表" 进入 "calculator 改 trigger 拓扑"。
+    protection_level: CRITICAL
+    status: live
+
+    # --- 决议 8 来源铁律 ---
+    authority_class: mandatory_standard  # GB 51018 不含 /T, 强制性标准
+    precedence_rank: 3
+    sample_usage_mode_input: inspiration_only
+    provenance_verified: true
+    normative_basis_refs:
+      - rule.gb_51018_2014.section_5_7_1
+      - rule.gb_51018_2014.table_5_7_1_notes
+    evidence_anchor_refs:
+      - field.fact.disposal_site.level_assessment
+
+    # --- 输入输出契约 ---
+    inputs:
+      - ref: field.fact.disposal_site.level_assessment
+        required: true
+        shape: list_of_records
+        record_keys: [site_id, site_name, volume, max_height, downstream_harm_class]
+
+    outputs:
+      - ref: field.derived.disposal_site.level_assessment
+        shape: list_of_records
+        record_keys:
+          - site_id
+          - site_name
+          - level
+          - level_by_volume
+          - level_by_height
+          - level_by_harm
+          - governing_dimension
+        persistence: derived_only
+
+    # --- 公式 ---
+    formula:
+      kind: three_way_min_level
+      pseudocode: |
+        for each site in fact.disposal_site.level_assessment:
+            level_by_volume = lookup(表 5.7.1 维度 1, site.volume)
+            level_by_height = lookup(表 5.7.1 维度 2, site.max_height)
+            level_by_harm   = lookup(表 5.7.1 维度 3, site.downstream_harm_class)
+            level = min(level_by_volume, level_by_height, level_by_harm)
+            governing_dimension = 产生 level 的那一路 (volume/height/harm)
+        返回 list_of_records
+      hardcoded_implementation: |
+        实现写死在 calculator_engine.py 的 _eval_disposal_site_level_assessment。
+        本轮仍不做公式抽象。
+
+    # --- 错误分支 ---
+    error_branches:
+      - trigger: "site.volume < 0 OR site.max_height < 0"
+        action: raise
+        message: "site.volume 和 site.max_height 必须为非负数"
+      - trigger: "site.downstream_harm_class 不在 5 个枚举之一"
+        action: raise
+        message: "downstream_harm_class 必须是 严重/较严重/不严重/较轻/无危害 之一"
+      - trigger: "site.volume == 0 AND site.max_height == 0"
+        action: raise
+        message: "弃渣场不能同时 volume=0 和 max_height=0, 此情形应不登记该场"
+
+    # --- 决议 9 override 接入预留 (v0 不消费) ---
+    override_resolution:
+      enabled: false
+      v1_plan:
+        target_ref: field.derived.disposal_site.level_assessment
+        target_attribute_path: region_override.level_threshold_adjustment
+        resolver_order: precedence_rank -> effective_since -> issued_by_scope -> manual_arbitration
+        mandatory_floor_check: true
+        fallback_value_source_ref: field.derived.disposal_site.level_assessment
+        fallback_value_note: "v0 按 GB 51018 表 5.7.1 原值, 不允许地方下调"
+      mandatory_floor_applies: true
+      mandatory_floor_note: |
+        本 calculator 基于 mandatory_standard (rank 3), 任何低 precedence 的
+        override 若试图降低级别 (5→4→3→2→1 方向) 都会被决议 9 的 mandatory_floor
+        规则拒绝, 不允许地方规则削弱强制性国标。
+
+    # --- 样本 ground truth (双样本模式, Step 11C 首次) ---
+    sample_ground_truth:
+      huizhou_housing_v0:
+        input_sites: []  # Step 11C 清理后 Huizhou 无弃渣场
+        expected_output: []
+        expected_obligations_triggered: []  # 3 条高风险都不触发
+        note: |
+          Huizhou 低风险样本清理后无真正弃渣场. 本 calculator 对空 list 输入
+          直接返回空 list, 不触发任何高风险 obligation. 验证"不误报"。
+      disposal_high_risk_v0:
+        input_sites:
+          - site_id: D1
+            volume: 800
+            max_height: 140
+            downstream_harm_class: 严重
+          - site_id: D2
+            volume: 80
+            max_height: 50
+            downstream_harm_class: 较轻
+        expected_output:
+          - site_id: D1
+            level: 1级   # min(2级volume, 2级height, 1级harm)
+            level_by_volume: 2级
+            level_by_height: 2级
+            level_by_harm: 1级
+            governing_dimension: harm
+          - site_id: D2
+            level: 4级   # min(4级volume, 4级height, 4级harm)
+            level_by_volume: 4级
+            level_by_height: 4级
+            level_by_harm: 4级
+            governing_dimension: volume
+        expected_obligations_triggered:
+          - ob.disposal_site.geology_report       # D1=1级 命中 [1级,2级]
+          - ob.disposal_site.stability_monitoring  # D1=1级 命中 [1级,2级,3级]
+          - ob.disposal_site.video_surveillance    # D1=1级 命中 [1级,2级,3级]
+        note: |
+          高风险样本: D1 由 harm 维度决定 (严重→1级), 验证 governing dimension
+          正确识别; D2 三路一致为 4级, 不触发任何高风险 obligation (4 不在
+          [1级,2级,3级] 集合中)。这是 v0 第一次在单样本里同时验证"高风险正确打亮"
+          和"较轻级别不误报"两个断点。
+
+    # --- 参考数据: GB 51018 表 5.7.1 (Step 11C 本轮登记) ---
+    # 与 11B 的 GB/T 50434 表一样, 先住在 calculator 的 reference_data 节。
+    # 未来若有多个 disposal 相关 calculator 复用同一张表, 再考虑提升为独立文件。
+    reference_data:
+      gb_51018_table_5_7_1:
+        label: GB 51018-2014 表 5.7.1 弃渣场级别判定
+        source_rule_ref: GB 51018-2014 §5.7.1 表 5.7.1
+        authority_class: mandatory_standard
+        precedence_rank: 3
+        convention: |
+          1 级 = 最严重 (大体积/高堆/严重危害)
+          5 级 = 最轻 (小体积/低堆/无危害)
+          就高不就低 = 三路取最小级别数字
+        # 维度 1: 堆渣量 (万 m³)
+        # 每档用 [min, max] 闭区间表示, 数字代表该档对应的级别
+        volume_thresholds:
+          - {level: "1级", min: 1000.0, max: 2000.0}      # 2000 ≥ V ≥ 1000
+          - {level: "2级", min: 500.0,  max: 1000.0}      # 1000 > V ≥ 500
+          - {level: "3级", min: 100.0,  max: 500.0}       # 500 > V ≥ 100
+          - {level: "4级", min: 50.0,   max: 100.0}       # 100 > V ≥ 50
+          - {level: "5级", min: 0.0,    max: 50.0}        # V < 50
+        # 维度 2: 最大堆渣高度 (m)
+        height_thresholds:
+          - {level: "1级", min: 150.0,  max: 200.0}       # 200 ≥ H ≥ 150
+          - {level: "2级", min: 100.0,  max: 150.0}       # 150 ≥ H ≥ 100
+          - {level: "3级", min: 60.0,   max: 100.0}       # 100 ≥ H ≥ 60
+          - {level: "4级", min: 20.0,   max: 60.0}        # 60 > H ≥ 20
+          - {level: "5级", min: 0.0,    max: 20.0}        # H < 20
+        # 维度 3: 下游危害程度 (enum → level)
+        harm_to_level:
+          "严重": "1级"       # GB 51018 注 3 定义
+          "较严重": "2级"
+          "不严重": "3级"
+          "较轻": "4级"
+          "无危害": "5级"
+
+    # --- v1 升级路径 ---
+    upgrade_path_to_v1:
+      - 接入 region_override (如广东某地方规则对级别的临时加严)
+      - 接入 CalculatorGraph, 让 level 的变化自动触发 obligation 重算
+      - 扩展到 NB/T 35111-2018 水电工程弃渣场的补充规则 (若项目涉及水电行业)
+      - 与 ob.disposal_site.failure_analysis 的 bool 总开关做语义对齐
+        (当前 failure_analysis 仍由人工 bool 驱动, v2+ 可考虑由 level 直接驱动)
+    authored_by: cpswc_architect
+    authored_at: 2026-04-11
+    migrated_from_draft: memory/feedback_calculator_contracts_draft.md C3
+
+# ============================================================
+# 统计
+# ============================================================
+summary:
+  calculators_count: 3   # Step 11C: +1
+  live_count: 3
+  by_protection_level:
+    CRITICAL: 3
+  by_authority_class:
+    official_approval: 1    # cal.compensation.fee
+    recommended_standard: 1 # cal.target.weighted_comprehensive
+    mandatory_standard: 1   # cal.disposal_site.level_assessment (Step 11C)
+  consumed_fields:
+    - field.fact.land.permanent_area
+    - field.fact.land.temporary_area
+    - field.fact.regulatory.compensation_fee_rate
+    - field.fact.location.province_list
+    - field.fact.prevention.control_standard_level
+    - field.fact.prevention.control_standard_level_breakdown
+    - field.fact.prevention.responsibility_range_area
+    - field.fact.natural.water_soil_zoning
+    - field.fact.disposal_site.level_assessment   # Step 11C 上游输入
+  produced_fields:
+    - field.derived.investment.compensation_fee_amount
+    - field.derived.target.weighted_comprehensive_target
+    - field.derived.disposal_site.level_assessment  # Step 11C
+  calculator_to_trigger_bindings:
+    # Step 11C 首次登记: calculator 输出直接驱动 obligation trigger
+    cal.disposal_site.level_assessment:
+      - ob.disposal_site.geology_report          # D1=1/2级 触发
+      - ob.disposal_site.stability_monitoring    # D1=1/2/3级 触发
+      - ob.disposal_site.video_surveillance      # D1=1/2/3级 触发
+
+changelog:
+  - date: 2026-04-11
+    version: calculator_registry_v0.1
+    summary: 初版创建, 首条 live calculator cal.compensation.fee (Step 11A)
+    by: cpswc_architect
+  - date: 2026-04-11
+    version: calculator_registry_v0.2
+    summary: |
+      Step 11B: 新增 cal.target.weighted_comprehensive (多等级面积加权),
+      含 reference_data.gbt50434_table_4_0_2_5 南方红壤区表值 (18 项),
+      支持单等级兜底和多等级加权两个分支, v0 仅覆盖南方红壤区。
+      同批补 SOURCE_AUTH 三条欠账 (2 earthwork ratios provenance +
+      weighted_comprehensive_target live lineage)。
+    by: cpswc_architect
+  - date: 2026-04-11
+    version: calculator_registry_v0.3
+    summary: |
+      Step 11C: 新增 cal.disposal_site.level_assessment (GB 51018 表 5.7.1
+      三维"就高不就低"判定), 含 reference_data.gb_51018_table_5_7_1 (volume 5 档 +
+      height 5 档 + harm 5 档映射). 第一颗 fact → calculator → derived → obligation
+      trigger 完整链路的 live calculator. 同批修复 v0 内部矛盾: 3 条 obligation
+      trigger DSL 从反转约定 [3级,4级,5级] 纠正为 GB 51018 约定 [1级,2级,3级]
+      (和 geology_report 的 [1级,2级]), 并从 field.fact.* path 迁移到
+      field.derived.* path. field.fact.disposal_site.level_assessment 重构为
+      上游输入载体 (去掉 level, 加 volume/max_height/downstream_harm_class).
+    by: cpswc_architect

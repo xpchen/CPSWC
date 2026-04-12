@@ -1,0 +1,1546 @@
+# FieldIdentityRegistry v0
+#
+# 功能: CPSWC 所有语义字段的权威注册表
+# 约束: CPSWC_ARCHITECTURE_DECISIONS.md (决议 4) + CPSWC_CORE_CONTRACTS.yaml
+#
+# 命名规则:
+#   - field.fact.*    = 基础事实 (专家/系统录入, 不派生)
+#   - field.derived.* = 派生量 (由 derivation 计算, 只读)
+#   - projection 目标用 proj.* / sec.* / narr.* / art.*
+#
+# 本文件是 v0 的最小可用集, 覆盖:
+#   - 2026 模板附件 1 表 1 水土保持方案特性表的全部字段
+#   - 2026 模板附件 3 报告表的关键字段 (交叉投影验证)
+#   - 六项防治指标的派生链
+#   - 惠州房地产样本必需的扩展事实字段
+#
+# 未列入 v0 的字段 (矿山/线性/水利专项) 受反升级条款约束, 需 RFC 批准后扩展
+
+version: v0
+generated_at: 2026-04-11
+applicable_species: [报告书]
+applicable_v0_industries: [29, 30]   # 29 房地产 + 30 其他城建
+constraint_docs:
+  - CPSWC_ARCHITECTURE_DECISIONS.md
+  - CPSWC_CORE_CONTRACTS.yaml
+
+# ============================================================
+# 语义类型定义 (Semantic Types)
+# ============================================================
+# 所有 Quantity 类字段的值必须是 {value: number, unit: string} 结构
+# 不允许裸数字入 field.value, 防止单位漂移
+semantic_types:
+  string:
+    kind: scalar
+  text:
+    kind: scalar
+    note: 多行文本
+  number:
+    kind: scalar
+  percent:
+    kind: scalar
+    constraint: 0 <= value <= 100
+    unit: "%"
+  year:
+    kind: scalar
+    format: "YYYY"
+  year_month:
+    kind: scalar
+    format: "YYYY-MM"
+  enum:
+    kind: scalar
+    requires: enum_values
+  bool:
+    kind: scalar
+  Quantity:
+    kind: compound
+    schema: { value: number, unit: string }
+    requires: [unit, precision]
+  Area:
+    extends: Quantity
+    unit_enum: ["hm²", "m²", "km²"]
+  Volume:
+    extends: Quantity
+    unit_enum: ["m³", "万m³"]
+  Mass:
+    extends: Quantity
+    unit_enum: ["t", "kg", "万t"]
+  Currency:
+    extends: Quantity
+    unit_enum: ["万元", "元"]
+  ErosionModulus:
+    extends: Quantity
+    unit: "t/(km²·a)"
+  Coordinate:
+    kind: compound
+    schema: { x: number, y: number, crs: string }
+    note: CRS 必须是 CGCS2000
+  geo_ref:
+    kind: reference
+    target: GeoStore
+    note: |
+      指向 GeoStore 中的空间对象或文件对象, v0 最小实现为 shapefile / geometry 资源引用。
+      实际载荷是一个 id + metadata 结构, 不是空间数据本身。
+  record:
+    kind: compound
+    schema: dynamic
+    note: 动态结构复合类型, 具体字段由使用方的 record_schema 声明
+  list_of_records:
+    kind: list
+    element_type: record
+    note: 列表元素为 record, 每条的 schema 由 record_schema 字段声明
+  list_of_string:
+    kind: list
+    element_type: string
+
+# ============================================================
+# FACT DOMAIN - 基础事实字段
+# ============================================================
+fields:
+
+  # -------- 项目主档 --------
+  field.fact.project.name:
+    canonical_name: 项目名称
+    semantic_type: string
+    protection_level: PROTECTED
+    source: 2026_template_table_1
+    applicable_species: [报告书, 报告表, 整体变更报告书, 弃渣场补充报告书]
+    lineage:
+      upstream_deps: []
+      derivation: null
+      projection_target_refs:
+        - proj.spec_sheet.project_name
+        - proj.report_form.project_name
+        - sec.overview.project_basic
+        - sec.title_page.project_name
+        - art.cover.report_book_cover
+      invalidation_targets:
+        - proj.spec_sheet.project_name
+        - proj.report_form.project_name
+        - sec.overview.project_basic
+        - art.cover.report_book_cover
+    validation:
+      required: true
+      rule: 原则上应与项目批复/核准/备案名称一致
+
+  field.fact.project.code:
+    canonical_name: 项目代码
+    semantic_type: string
+    protection_level: PROTECTED
+    source: 2026_template_table_1
+    lineage:
+      upstream_deps: []
+      derivation: null
+      projection_target_refs:
+        - proj.spec_sheet.project_code
+        - proj.report_form.project_code
+        - sec.overview.project_basic
+      invalidation_targets:
+        - proj.spec_sheet.project_code
+        - proj.report_form.project_code
+    validation:
+      required: true
+      note: 填写国家发改委项目代码, 如无代码可填写项目批准文号
+
+  field.fact.project.industry_category:
+    canonical_name: 行业类别
+    semantic_type: enum
+    enum_source: 2018_format_annex_1
+    enum_values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36]
+    v0_allowed_values: [29, 30]
+    protection_level: CRITICAL
+    lineage:
+      upstream_deps: []
+      projection_target_refs:
+        - sec.overview.project_basic
+      invalidation_targets:
+        - ob.*  # 行业类别改动将触发整个 obligation 重算
+    note: v0 仅支持 29 房地产 + 30 其他城建; 其他行业需 RFC 扩展
+
+  field.fact.project.nature:
+    canonical_name: 建设性质
+    semantic_type: enum
+    enum_values: [新建, 改建, 扩建, 改扩建, 技改]
+    protection_level: PROTECTED
+    source: 2026_template_table_1
+    lineage:
+      upstream_deps: []
+      projection_target_refs:
+        - proj.report_form.project_nature
+        - sec.overview.project_basic
+      invalidation_targets:
+        - proj.report_form.project_nature
+
+  # 注: 原 field.fact.project.stage 已移除。
+  # 项目阶段与 compilation_intent / submission_stage 重复建模, 应由
+  # SubmissionProfile (compilation_intent) + SubmissionLifecycle (stage)
+  # 承载, 不占 Fact 位。参见 CPSWC_ARCHITECTURE_DECISIONS.md 前提 B。
+
+  # -------- 空间与行政区 --------
+  field.fact.location.river_basin_agency:
+    canonical_name: 涉及流域管理机构
+    semantic_type: string
+    protection_level: PROTECTED
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.river_basin_agency
+
+  field.fact.location.province_list:
+    canonical_name: 涉及省/自治区/直辖市
+    semantic_type: list_of_string
+    protection_level: PROTECTED
+    source: 2026_template_table_1
+    render_rule: |
+      特性表对应项为"涉及省(自治区、直辖市)"。
+      "及数量"部分由 list.length 在渲染期派生, 不建单独 field。
+      渲染示例: "广东省 (1 个)"
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.province_list
+        - sec.overview.project_basic
+    validation:
+      v0_constraint: 必须包含"广东省"
+
+  field.fact.location.prefecture_list:
+    canonical_name: 涉及地市
+    semantic_type: list_of_string
+    protection_level: PROTECTED
+    source: 2026_template_table_1
+    render_rule: |
+      特性表对应项为"涉及地市和数量"。
+      数量部分由 list.length 在渲染期派生, 不建单独 field。
+      渲染示例: "惠州市 (1 个)"
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.prefecture_list
+    validation:
+      v0_constraint: 必须包含"惠州市"
+
+  field.fact.location.county_list:
+    canonical_name: 涉及县/区
+    semantic_type: list_of_string
+    protection_level: PROTECTED
+    source: 2026_template_table_1
+    render_rule: |
+      特性表对应项为"涉及县和数量"。
+      数量部分由 list.length 在渲染期派生, 不建单独 field。
+      渲染示例: "惠阳区、大亚湾区 (2 个)"
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.county_list
+        - sec.overview.project_basic
+        - sec.soil_loss_prevention.responsibility_range_by_county
+        - art.table.responsibility_range_by_admin_division
+
+  field.fact.location.redline_geometry_ref:
+    canonical_name: 红线矢量数据
+    semantic_type: geo_ref
+    protection_level: CRITICAL
+    note: 指向 GeoStore 中的 shapefile (CGCS2000)
+    lineage:
+      projection_target_refs:
+        - art.figure.F_04_responsibility_range
+        - art.figure.F_05_overall_layout
+        - art.figure.F_01_location
+
+  # -------- 投资 --------
+  field.fact.investment.total_investment:
+    canonical_name: 总投资
+    semantic_type: Currency
+    unit: 万元
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      upstream_deps: []
+      projection_target_refs:
+        - proj.spec_sheet.total_investment
+        - proj.report_form.total_investment
+        - sec.overview.project_basic
+        - sec.investment.summary
+        - sec.conclusion
+      invalidation_targets:
+        - proj.spec_sheet.total_investment
+        - proj.report_form.total_investment
+        - sec.overview.project_basic
+        - sec.investment.summary
+
+  field.fact.investment.civil_investment:
+    canonical_name: 土建投资
+    semantic_type: Currency
+    unit: 万元
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.civil_investment
+        - proj.report_form.civil_investment
+        - sec.overview.project_basic
+
+  # -------- 工期与时点 --------
+  field.fact.schedule.start_time:
+    canonical_name: 开工时间
+    semantic_type: year_month
+    precision: month
+    protection_level: PROTECTED
+    note: 开工时间为施工准备期开始时间
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.start_time
+        - proj.report_form.start_time
+        - sec.overview.project_basic
+        - sec.project_overview.progress
+        - art.figure.schedule_gantt
+
+  field.fact.schedule.end_time:
+    canonical_name: 完工时间
+    semantic_type: year_month
+    protection_level: PROTECTED
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.end_time
+        - proj.report_form.end_time
+        - sec.project_overview.progress
+        - art.figure.schedule_gantt
+
+  field.fact.schedule.design_horizon_year:
+    canonical_name: 设计水平年
+    semantic_type: year
+    protection_level: PROTECTED
+    source: 2026_template_table_1
+    note: 根据主体完工时间和措施实施进度综合确定; 分期投产项目需分期设计水平年
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.design_horizon_year
+        - sec.soil_loss_prevention.design_horizon
+
+  # -------- 占地 --------
+  field.fact.land.total_area:
+    canonical_name: 工程占地
+    semantic_type: Area
+    unit: hm²
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      upstream_deps:
+        - field.fact.land.permanent_area
+        - field.fact.land.temporary_area
+      derivation: sum
+      projection_target_refs:
+        - proj.spec_sheet.total_land_area
+        - proj.report_form.total_land_area
+        - sec.project_overview.land_occupation
+        - art.table.total_land_occupation
+
+  field.fact.land.permanent_area:
+    canonical_name: 永久占地
+    semantic_type: Area
+    unit: hm²
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.permanent_land_area
+        - proj.report_form.permanent_land_area
+        - sec.project_overview.land_occupation
+
+  field.fact.land.temporary_area:
+    canonical_name: 临时占地
+    semantic_type: Area
+    unit: hm²
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.temporary_land_area
+        - proj.report_form.temporary_land_area
+        - sec.project_overview.land_occupation
+
+  # -------- 监管参数 (v0-live, Step 11A 首批) --------
+  # field.fact.regulatory.* 不是项目事实, 而是"项目所在地的法定参数"。
+  # v0 单一广东包下值固定; v1 由 Region Override Layer (决议 9) 注入地方特化。
+  # 本字段是决议 8 下 Step 10 Region Override prototype 的 target_ref 兑现点,
+  # 也是 cal.compensation.fee 的法定费率 evidence anchor。
+  field.fact.regulatory.compensation_fee_rate:
+    canonical_name: 水土保持补偿费征收费率
+    semantic_type: Quantity    # 费率, 不是货币; 拍板 Q1: 不用 Currency
+    unit: 元/m²
+    precision: 0.01
+    protection_level: CRITICAL  # 直接决定法定应缴金额 (拍板 Q1)
+    origin: regulatory_parameter
+    source: 粤发改价格〔2021〕231 号 / 粤水规范字〔2026〕1 号
+    note: |
+      广东省水土保持补偿费征收费率, 一般性生产建设项目 0.6 元/m², 一次性计征。
+      适用范围: 广东省辖区内所有生产建设项目 (含房地产 29 / 其他城建 30 等)。
+      计征范围: 永久占地 + 临时占地 (广东口径含临时), 以 m² 为单位。
+
+      v0 单一广东包下, 本字段值固定为 0.6 元/m² (由 sample 提供)。
+      v1 接入 Region Override Layer 后, 由 ro.field_rate.gd.compensation_fee
+      的 replace_map_entry action 注入 region_specific_rate.广东省 = 0.6。
+
+      历史风险: 2022 年前旧标准为约 0.06 元/m², 新旧差 10 倍。
+      样本 annotations.compensation_fee 保留了这一历史对照,
+      用作 validator 的十倍偏差保险丝。
+    # 决议 8 双锚必备
+    normative_basis_refs:
+      - rule.guangdong.fa_gai_2021_231      # 粤发改价格〔2021〕231 号 (official_approval L4)
+      - rule.guangdong.shui_gui_fan_zi_2026_1 # 粤水规范字〔2026〕1 号
+      - rule.ministry_order_53              # 水利部令 53 号 (补偿费制度上位依据)
+    evidence_anchor_refs:
+      - field.fact.location.province_list  # 广东省归属决定适用本费率
+    authority_class: official_approval
+    precedence_rank: 4
+    lineage:
+      upstream_deps: []          # 规范性参数, 不依赖其他 field
+      derivation: null
+      projection_target_refs:
+        - art.table.investment.compensation_fee
+        - proj.spec_sheet.compensation_fee_standard  # 投资说明段落引用
+      invalidation_targets:
+        - field.derived.investment.compensation_fee_amount  # 费率变 → 金额重算
+    validation:
+      default: 0.6
+      rule: |
+        广东省单一包下固定 0.6; 跨省项目须按各省 region_specific_rate 分省取值
+        (v1 功能, v0 禁用)
+
+  # -------- 投资派生 (v0-live, Step 11A 首批) --------
+  # 决议 8 下第一个完全合规的 live derived field:
+  # upstream_deps / derivation / normative_basis_refs / evidence_anchor_refs
+  # 从第一天就齐全, 作为后续 derived field 的模板样本。
+  field.derived.investment.compensation_fee_amount:
+    canonical_name: 水土保持补偿费应缴金额
+    semantic_type: Currency      # 这个才是货币值 (派生结果)
+    unit: 万元                    # 报告书习惯用 "万元"
+    precision: 0.01
+    protection_level: CRITICAL
+    origin: derived
+    source: cal.compensation.fee  # 指向 CalculatorRegistry 中的 calculator id
+    note: |
+      由 CalculatorRegistry_v0 中的 cal.compensation.fee 派生。
+      公式: (permanent_area_m2 + temporary_area_m2) × rate / 10000 (元 → 万元)
+      其中 permanent/temporary_area 从 hm² 转 m² 乘以 10000。
+
+      惠州样本结果: (8.2 + 1.3) hm² = 9.5 hm² = 95,000 m²
+                   95,000 × 0.6 = 57,000 元 = 5.7 万元
+    # 决议 8 双锚必备 (模板样本)
+    normative_basis_refs:
+      - rule.guangdong.fa_gai_2021_231
+      - rule.ministry_order_53
+    evidence_anchor_refs:
+      - field.fact.land.permanent_area
+      - field.fact.land.temporary_area
+      - field.fact.regulatory.compensation_fee_rate
+    authority_class: official_approval
+    precedence_rank: 4
+    lineage:
+      upstream_deps:
+        - field.fact.land.permanent_area
+        - field.fact.land.temporary_area
+        - field.fact.regulatory.compensation_fee_rate
+      derivation: |
+        cal.compensation.fee:
+          chargeable_area_m2 = (permanent_area_hm2 + temporary_area_hm2) × 10000
+          amount_yuan = chargeable_area_m2 × rate_yuan_per_m2
+          amount_wan = amount_yuan / 10000
+      projection_target_refs:
+        - art.table.investment.compensation_fee
+        - sec.investment_estimation.compensation_fee
+      invalidation_targets: []  # 本字段是终点, 不触发下游 obligation
+
+  field.fact.land.county_breakdown:
+    canonical_name: 分县占地表
+    semantic_type: list_of_records
+    record_schema:
+      county: string
+      nature: enum[永久, 临时]
+      type: string
+      area: Area
+    protection_level: CRITICAL
+    note: 按县级行政区拆分占地; 决议 3 / 2026 模板 2.3 节要求
+    lineage:
+      upstream_deps:
+        - field.fact.location.redline_geometry_ref
+        - field.fact.location.county_list
+      derivation: 由 GeoPipeline 按行政区切片计算
+      projection_target_refs:
+        - art.table.land_occupation_by_county
+        - sec.project_overview.land_occupation
+
+  # -------- 土石方 (不含表土) --------
+  field.fact.earthwork.excavation:
+    canonical_name: 挖方 (不含表土)
+    semantic_type: Volume
+    unit: 万m³
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    note: |
+      包括场地平整、基础开挖、隧道开挖、井巷开挖等产生的开挖土石方;
+      不含表土、建筑物拆迁建筑垃圾、不出水面的水下清淤量、
+      不出地面的地下工程量及生产期产生的土石方
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.earthwork_excavation
+        - proj.report_form.earthwork_excavation
+        - sec.project_overview.earthwork_balance
+        - art.table.earthwork_balance
+
+  field.fact.earthwork.fill:
+    canonical_name: 填方 (不含表土)
+    semantic_type: Volume
+    unit: 万m³
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.earthwork_fill
+        - proj.report_form.earthwork_fill
+        - sec.project_overview.earthwork_balance
+        - art.table.earthwork_balance
+
+  field.fact.earthwork.borrow:
+    canonical_name: 借方
+    semantic_type: Volume
+    unit: 万m³
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.earthwork_borrow
+        - proj.report_form.earthwork_borrow
+        - sec.project_overview.earthwork_balance
+        - sec.evaluation.earthwork_balance
+
+  field.fact.earthwork.borrow_source_type:
+    canonical_name: 借方来源类型
+    semantic_type: enum
+    enum_values: [自设取土场, 外购, 项目间调配, 其他]
+    protection_level: CRITICAL
+    source: cpswc_v0_internal
+    note: |
+      v0 单值字段, 用于区分借方来源并驱动 obligation 分流:
+        - "自设取土场"  → 触发 ob.borrow_site.land_use_approval (AF-3 权属)
+        - "外购"        → 触发 ob.borrow_site.external_purchase_evidence (AF-4 协议)
+        - "项目间调配"  → 无额外义务 (配合其他项目挖方, 由对方项目负责)
+        - "其他"        → 由专家人工确认
+      v0 不支持多来源混合; 若一个项目同时存在多种来源, 按主要来源填写,
+      后续升级为 borrow_source_breakdown (list_of_records) 时再支持混合场景。
+    lineage:
+      projection_target_refs:
+        - sec.project_overview.earthwork_balance
+        - sec.evaluation.earthwork_balance
+      invalidation_targets:
+        - ob.borrow_site.land_use_approval
+        - ob.borrow_site.external_purchase_evidence
+    validation:
+      required_when: field.fact.earthwork.borrow.value > 0
+
+  field.fact.earthwork.self_reuse:
+    canonical_name: 项目自身建材利用方
+    semantic_type: Volume
+    unit: 万m³
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    note: 用于项目自身的骨料、浆砌石、机制砂等建筑材料的利用量
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.earthwork_self_reuse
+        - proj.report_form.earthwork_self_reuse
+        - sec.project_overview.earthwork_balance
+
+  field.fact.earthwork.spoil:
+    canonical_name: 弃方
+    semantic_type: Volume
+    unit: 万m³
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    note: 项目自身无法利用的土石方
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.earthwork_spoil
+        - proj.report_form.earthwork_spoil
+        - sec.disposal_site.source_and_flow
+        - art.table.spoil_summary
+
+  field.fact.earthwork.comprehensive_reuse:
+    canonical_name: 综合利用方
+    semantic_type: Volume
+    unit: 万m³
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    note: 弃方中被社会综合利用的数量
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.earthwork_comprehensive_reuse
+        - proj.report_form.earthwork_comprehensive_reuse
+        - sec.evaluation.earthwork_balance
+
+  # -------- 表土 (独立于土石方) --------
+  field.fact.topsoil.excavation:
+    canonical_name: 挖方/表土
+    semantic_type: Volume
+    unit: 万m³
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    note: 特性表独立列, 不并入 earthwork.excavation
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.topsoil_excavation
+        - proj.report_form.topsoil_excavation
+        - sec.topsoil.balance
+        - art.table.topsoil_balance
+
+  field.fact.topsoil.fill:
+    canonical_name: 填方/表土
+    semantic_type: Volume
+    unit: 万m³
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.topsoil_fill
+        - proj.report_form.topsoil_fill
+        - sec.topsoil.balance
+
+  field.fact.topsoil.stripable_area:
+    canonical_name: 可剥离表土面积
+    semantic_type: Area
+    unit: hm²
+    protection_level: CRITICAL
+    lineage:
+      projection_target_refs:
+        - sec.topsoil.stripping
+        - art.figure.F_09_topsoil_stripping_range
+
+  field.fact.topsoil.stripable_volume:
+    canonical_name: 可剥离表土数量
+    semantic_type: Volume
+    unit: 万m³
+    protection_level: CRITICAL
+    lineage:
+      projection_target_refs:
+        - sec.topsoil.stripping
+        - sec.topsoil.balance
+
+  # -------- 自然概况 --------
+  field.fact.natural.landform_type:
+    canonical_name: 地貌类型
+    semantic_type: string
+    protection_level: ADVISORY
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.landform_type
+        - proj.report_form.landform_type
+        - sec.project_overview.landform
+
+  field.fact.natural.climate_type:
+    canonical_name: 气候类型
+    semantic_type: string
+    protection_level: ADVISORY
+    lineage:
+      projection_target_refs:
+        - proj.report_form.climate_type
+        - sec.project_overview.climate
+
+  field.fact.natural.soil_erosion_type:
+    canonical_name: 土壤侵蚀类型
+    semantic_type: enum
+    enum_values: [水力侵蚀, 风力侵蚀, 冻融侵蚀, 重力侵蚀, 混合侵蚀]
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.soil_erosion_type
+        - proj.report_form.soil_erosion_type
+        - sec.soil_loss_analysis.current_state
+
+  field.fact.natural.soil_erosion_intensity:
+    canonical_name: 土壤侵蚀强度
+    semantic_type: enum
+    enum_values: [微度, 轻度, 中度, 强烈, 极强烈, 剧烈]
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.soil_erosion_intensity
+        - proj.report_form.soil_erosion_intensity
+        - sec.soil_loss_analysis.current_state
+
+  field.fact.natural.original_erosion_modulus:
+    canonical_name: 原地貌土壤侵蚀模数
+    semantic_type: ErosionModulus
+    unit: "t/(km²·a)"
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    projection_scope_note: |
+      本字段只进 proj.report_form, 不进 proj.spec_sheet。
+      特性表中无该字段, 请勿补建 proj.spec_sheet.original_erosion_modulus。
+    lineage:
+      projection_target_refs:
+        - proj.report_form.original_erosion_modulus
+        - sec.soil_loss_analysis.current_state
+
+  field.fact.natural.allowable_loss:
+    canonical_name: 容许土壤流失量
+    semantic_type: ErosionModulus
+    unit: "t/(km²·a)"
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.allowable_loss
+        - proj.report_form.allowable_loss
+        - sec.soil_loss_analysis.current_state
+
+  field.fact.natural.water_soil_zoning:
+    canonical_name: 涉及水土保持区划
+    semantic_type: string
+    protection_level: PROTECTED
+    source: 2026_template_table_1
+    note: 填写《全国水土保持区划》中的一级区
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.water_soil_zoning
+        - sec.project_overview.water_soil_zoning
+
+  field.fact.natural.key_prevention_treatment_areas:
+    canonical_name: 涉及的水土流失重点预防区和重点治理区名称
+    semantic_type: list_of_string
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.key_prevention_treatment_areas
+        - proj.report_form.key_prevention_treatment_areas
+        - sec.project_overview.sensitive_areas
+        - sec.evaluation.site_selection
+      invalidation_targets:
+        - ob.unavoidability.redline_conflict
+
+  field.fact.natural.other_sensitive_areas:
+    canonical_name: 其他敏感区命中清单
+    semantic_type: list_of_records
+    record_schema:
+      area_type: enum[饮用水水源保护区, 河湖管理范围, 永久基本农田, 基本草原, 国家公益林, 生态保护红线, 自然保护地]
+      name: string
+      spatial_relation: string
+      approval_status: string
+    protection_level: CRITICAL
+    lineage:
+      upstream_deps:
+        - field.fact.location.redline_geometry_ref
+      derivation: 由 GeoPipeline 叠加分析计算
+      projection_target_refs:
+        - sec.project_overview.sensitive_areas
+        - sec.evaluation.site_selection
+      invalidation_targets:
+        - ob.unavoidability.redline_conflict
+        - ob.sensitive_overlay.*
+
+  # -------- 土壤流失预测 --------
+  field.fact.prediction.total_loss:
+    canonical_name: 土壤流失预测总量
+    semantic_type: Mass
+    unit: t
+    precision: 1
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.predicted_total_loss
+        - proj.report_form.predicted_total_loss
+        - sec.soil_loss_analysis.prediction_result
+        - sec.conclusion
+
+  field.fact.prediction.new_loss:
+    canonical_name: 新增土壤流失量
+    semantic_type: Mass
+    unit: t
+    precision: 1
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.new_loss
+        - proj.report_form.new_loss
+        - sec.soil_loss_analysis.prediction_result
+
+  field.fact.prediction.reducible_loss:
+    canonical_name: 可减少土壤流失量
+    semantic_type: Mass
+    unit: t
+    precision: 1
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.reducible_loss
+        - proj.report_form.reducible_loss
+        - sec.soil_loss_prevention.benefit_analysis
+
+  # -------- 防治责任范围与目标 --------
+  field.fact.prevention.responsibility_range_area:
+    canonical_name: 防治责任范围面积
+    semantic_type: Area
+    unit: hm²
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      upstream_deps:
+        - field.fact.location.redline_geometry_ref
+      derivation: GeoPipeline.computePreventionResponsibilityArea
+      projection_target_refs:
+        - proj.spec_sheet.responsibility_range_area
+        - proj.report_form.responsibility_range_area
+        - sec.soil_loss_prevention.responsibility_range
+        - art.figure.F_04_responsibility_range
+
+  field.fact.prevention.control_standard_level:
+    canonical_name: 防治标准执行等级 (项目默认)
+    semantic_type: enum
+    enum_values: [一级, 二级, 三级]
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    note: |
+      单值字段, 代表项目默认防治标准等级。
+      项目只涉及一个等级时直接用本字段; 涉及两个及以上等级时必须同时填
+      field.fact.prevention.control_standard_level_breakdown, 并由 Calculator
+      按面积(体积)加权算出综合指标值 (参见 field.derived.target.weighted_comprehensive_target)。
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.control_standard_level
+        - proj.report_form.control_standard_level
+        - sec.soil_loss_prevention.targets
+      invalidation_targets:
+        - field.derived.target.*  # 等级改动所有派生六率重算
+
+  field.fact.prevention.control_standard_level_breakdown:
+    canonical_name: 防治标准等级分区明细
+    semantic_type: list_of_records
+    record_schema:
+      zone_id: string
+      zone_name: string
+      standard_level: enum[一级, 二级, 三级]
+      area: Area          # 加权用面积
+      volume: Volume      # 加权用体积 (可选, 矿山类常用)
+    protection_level: CRITICAL
+    source: 2026_template_7_3_1
+    note: |
+      当且仅当项目涉及两个及以上防治标准等级时填写, 否则留空。
+      由此字段驱动 ob.evaluation.weighted_target_required 触发。
+    lineage:
+      projection_target_refs:
+        - art.table.weighted_target_calculation   # AT-02
+        - sec.soil_loss_prevention.targets
+      invalidation_targets:
+        - field.derived.target.weighted_comprehensive_target
+
+  # -------- 防治字段 placeholder stubs (六率派生链的上游) --------
+  # 以下 5 个字段由措施布设引擎填充, v0 阶段作为 placeholder stub 存在。
+  # 不允许在 v0 业务层直接由专家录入, 应通过措施布设界面驱动。
+  # 所有 stub 字段都是 CRITICAL 保护级别, 因为它们是六率派生链的法定上游。
+
+  field.fact.prevention.treated_loss_area:
+    canonical_name: 水土流失治理达标面积
+    semantic_type: Area
+    unit: hm²
+    precision: 0.01
+    protection_level: CRITICAL
+    placeholder: true
+    note: |
+      Placeholder stub: 由措施布设引擎按防治分区汇总得出。
+      用作 field.derived.target.control_degree 的分子。
+    lineage:
+      upstream_deps: []  # v1 将改为引用 measure allocation
+      derivation: null
+      projection_target_refs:
+        - sec.soil_loss_prevention.targets
+
+  field.fact.prevention.total_loss_area:
+    canonical_name: 项目防治责任范围内水土流失面积
+    semantic_type: Area
+    unit: hm²
+    precision: 0.01
+    protection_level: CRITICAL
+    placeholder: true
+    note: |
+      Placeholder stub: 由 GeoPipeline 叠加侵蚀现状图得出。
+      用作 field.derived.target.control_degree 的分母。
+      v0 若无侵蚀现状图层, 可退化为 responsibility_range_area。
+    lineage:
+      upstream_deps:
+        - field.fact.prevention.responsibility_range_area
+      derivation: null
+      projection_target_refs:
+        - sec.soil_loss_prevention.targets
+
+  field.fact.prevention.should_restore_area:
+    canonical_name: 林草植被应恢复面积
+    semantic_type: Area
+    unit: hm²
+    precision: 0.01
+    protection_level: CRITICAL
+    placeholder: true
+    note: |
+      Placeholder stub: 由措施布设引擎按可绿化区域汇总得出。
+      用作 field.derived.target.vegetation_restoration_rate 的分母。
+    lineage:
+      upstream_deps: []
+      derivation: null
+      projection_target_refs:
+        - sec.soil_loss_prevention.targets
+
+  field.fact.prevention.planned_vegetation_area:
+    canonical_name: 林草植被规划建设面积
+    semantic_type: Area
+    unit: hm²
+    precision: 0.01
+    protection_level: CRITICAL
+    placeholder: true
+    note: |
+      Placeholder stub: 由措施布设引擎汇总植物措施面积得出。
+      同时用作 vegetation_restoration_rate 的分子与 vegetation_coverage_rate 的分子。
+    lineage:
+      upstream_deps: []
+      derivation: null
+      projection_target_refs:
+        - sec.soil_loss_prevention.targets
+        - sec.soil_loss_prevention.benefit_analysis
+
+  field.fact.prevention.protected_topsoil_volume:
+    canonical_name: 已保护表土量
+    semantic_type: Volume
+    unit: 万m³
+    precision: 0.01
+    protection_level: CRITICAL
+    placeholder: true
+    note: |
+      Placeholder stub: 由措施布设引擎按表土剥离/堆存/回覆措施汇总得出。
+      用作 field.derived.target.topsoil_protection_rate 的分子。
+    lineage:
+      upstream_deps: []
+      derivation: null
+      projection_target_refs:
+        - sec.topsoil.balance
+        - sec.soil_loss_prevention.targets
+
+  field.fact.prevention.protected_spoil_volume:
+    canonical_name: 已防护弃渣量
+    semantic_type: Volume
+    unit: 万m³
+    precision: 0.01
+    protection_level: CRITICAL
+    placeholder: true
+    note: |
+      Placeholder stub: 由措施布设引擎按弃渣场拦挡+临时防护+综合利用汇总得出。
+      用作 field.derived.target.spoil_protection_rate 的分子。
+      注: 这是我在 co-architect 列表之外主动补的第 5 个 stub, 用以闭合 spoil_protection_rate 派生链。
+    lineage:
+      upstream_deps:
+        - field.fact.earthwork.comprehensive_reuse
+      derivation: null
+      projection_target_refs:
+        - sec.soil_loss_prevention.targets
+
+  # -------- 施工组织 --------
+  field.fact.construction.living_area:
+    canonical_name: 施工生产生活区
+    semantic_type: list_of_records
+    record_schema:
+      name: string
+      location: Coordinate
+      area: Area
+      purpose: string
+      vertical_layout: text
+    protection_level: PROTECTED
+    source: 2026_template_2_2_1
+    lineage:
+      projection_target_refs:
+        - sec.project_overview.construction.living_area
+
+  field.fact.construction.road:
+    canonical_name: 施工道路
+    semantic_type: list_of_records
+    record_schema:
+      name: string
+      nature: enum[新建, 改建, 利用]
+      length: Quantity
+      width: Quantity
+      area: Area
+      structure: string
+    protection_level: PROTECTED
+    source: 2026_template_2_2_2
+    lineage:
+      projection_target_refs:
+        - sec.project_overview.construction.road
+
+  field.fact.construction.temp_topsoil_site:
+    canonical_name: 临时堆土场
+    semantic_type: list_of_records
+    record_schema:
+      name_or_id: string
+      location: Coordinate
+      type: enum[临时中转场, 周转场, 转存场, 表土堆场]
+      area: Area
+      storage_volume: Volume
+      storage_duration: string
+      source: string
+      flow_to: string
+      outside_permanent_land: bool   # v0 新增: 是否位于项目永久占地范围外
+                                     # true → 触发 AF-3 权属确认意见义务
+                                     # false → 在永久占地内, 不触发 AF-3
+    protection_level: CRITICAL
+    source: 2026_template_2_2_7
+    lineage:
+      projection_target_refs:
+        - sec.project_overview.construction.temp_topsoil_site
+        - sec.disposal_site.source_and_flow
+        - art.figure.F_12_borrow_and_disposal_location
+      invalidation_targets:
+        - ob.disposal_site.*  # 有临时堆土场触发弃渣场相关义务
+        - ob.disposal_site.land_use_approval  # outside_permanent_land 驱动 AF-3
+
+  # -------- 弃渣场/临时堆土场级别评定 --------
+  # Step 11C: 重构为弃渣场级别评定的上游输入载体
+  # - 本字段只承载原始测量/判断输入 (volume / max_height / downstream_harm_class)
+  # - 级别结论由 cal.disposal_site.level_assessment 根据 GB 51018 表 5.7.1 计算,
+  #   落在 field.derived.disposal_site.level_assessment.level (见下方 derived 节)
+  # - obligation trigger 迁移到 derived 路径, 见 ObligationSet_v0.yaml
+  field.fact.disposal_site.level_assessment:
+    canonical_name: 弃渣场原始输入 (体积/高度/危害)
+    semantic_type: list_of_records
+    record_schema:
+      site_id: string                   # 弃渣场唯一标识
+      site_name: string
+      volume: Quantity                  # 堆渣量, 万 m³; GB 51018 表 5.7.1 维度 1
+      max_height: Quantity              # 最大堆渣高度, m; GB 51018 表 5.7.1 维度 2
+      downstream_harm_class: enum[严重, 较严重, 不严重, 较轻, 无危害]  # GB 51018 注 3
+      _assessment_note: string          # 审计说明, 解释 downstream_harm_class 的专业判断依据
+    protection_level: CRITICAL
+    origin: fact
+    source: GB 51018-2014 §5.7.1 upstream inputs
+    note: |
+      Step 11C 重构: 本字段只承载弃渣场级别评定的**原始输入**,
+      不再承载 level 结论。level 由 cal.disposal_site.level_assessment
+      按 GB 51018 表 5.7.1 "就高不就低" 规则计算, 产出
+      field.derived.disposal_site.level_assessment。
+
+      ★ 命名边界: 本字段仅适用于**弃渣场** (spoil dumps),
+      不包含表土堆场 / 临时中转场等 —— 后者在
+      field.fact.construction.temp_topsoil_site 独立管理。
+
+      ★ downstream_harm_class 的语义 (GB 51018 注 2+3):
+        严重    相关建筑物遭大破坏, 可能人员伤亡/重大财产损失
+        较严重  相关建筑物遭较大破坏, 需专门修复才能使用
+        不严重  相关建筑物遭破坏, 及时修复即可使用
+        较轻    相关建筑物受影响很小, 无需修复即可使用
+        无危害  (规范未明确, 工程实践默认对应无影响类)
+
+      这是一个 enum 型专家判断字段, 严格不在决议 6 管辖
+      (决议 6 scope = bool)。11C 未将其纳入 governance_block,
+      保留 _assessment_note 作为审计说明位, 解释枚举值的判断依据。
+    normative_basis_refs:
+      - rule.gb_51018_2014.section_5_7_1      # GB 51018 §5.7.1 弃渣场级别
+      - rule.gb_51018_2014.table_5_7_1_notes  # 注 1 "就高不就低" + 注 2/3 危害定义
+    evidence_anchor_refs: []   # fact 源头, 无下游 evidence
+    authority_class: mandatory_standard  # GB 51018 不含 /T, 强制性标准
+    precedence_rank: 3
+    lineage:
+      upstream_deps: []
+      derivation: null
+      projection_target_refs:
+        - sec.disposal_site.site_selection
+        - art.table.spoil_summary
+      invalidation_targets:
+        - field.derived.disposal_site.level_assessment   # 驱动 calculator 重算
+    validation:
+      rule: |
+        - volume > 0 且 max_height > 0
+        - downstream_harm_class 必须是 GB 51018 注 3 列出的 5 个枚举之一
+        - site_id 在一份 list 内唯一
+
+  field.fact.disposal_site.failure_analysis_required:
+    canonical_name: 是否需要开展弃渣场失事影响专题分析
+    semantic_type: bool
+    protection_level: CRITICAL
+    source: cpswc_v0_internal
+    note: |
+      v0 专家确认型总开关, 默认 false。
+
+      法定触发条件 (2026 模板 5.2):
+        - 弃渣场/临时堆土场位于沟谷、山区、丘陵区
+        - OR 周边及下游存在敏感因素
+          (居民 / 村庄 / 城镇 / 基础设施 / 河流 / 水库大坝 / 水利工程 / 灌排干渠沟)
+
+      v0 将这两类条件合并为一个 bool 总开关, 由专家判断后填写。
+      v1 将拆成 `landform_hazard_class` + `downstream_sensitive_factors[]`
+         两个显式字段, 并自动推导本字段。
+
+      惠州房地产 / 城建项目默认为 false (冲积平原 + 无下游敏感)。
+    lineage:
+      upstream_deps:
+        - field.fact.natural.landform_type
+        - field.fact.construction.temp_topsoil_site
+      derivation: null
+      projection_target_refs:
+        - sec.disposal_site.site_selection
+      invalidation_targets:
+        - ob.disposal_site.failure_analysis
+        - as.commitment.spoil_failure_report_truth   # 专题触发时连带承诺书
+    validation:
+      default: false
+      rule: 若任一临时堆土场位于沟谷/山区/丘陵 OR 下游有敏感要素, 须改为 true
+    governance_block:
+      # 依据: 决议 6 ExpertSwitch Governance
+      # 本字段是 v0 中第一个规范化落地的 expert-switch, 作为全局合规样本
+      source_rule_id: rule.template_2026.section_5_2.disposal_failure_analysis
+      human_decision_question: |
+        本项目的弃渣场 / 临时堆土场是否满足下列任一条件:
+          (a) 位于沟谷、山区、丘陵区;
+          (b) 周边及下游存在敏感因素
+              (居民 / 村庄 / 城镇 / 基础设施 / 河流 / 水库大坝 /
+               水利工程 / 灌排干渠沟)?
+        如满足任一条件, 须开展失事影响专题分析并提交对应承诺书。
+      decision_owner_role: registered_wsc_engineer
+      default_value: false
+      evidence_expectation: |
+        - 若 true: 须提供失事影响专题分析报告 + as.commitment.spoil_failure_report_truth
+        - 若 false: 须在本字段 note 中记录判断依据
+          (场地地形类型 / 下游敏感性排查结论)
+      replaced_normative_semantics:
+        - rule_ref: 2026 模板 §5.2 (弃渣场)
+          quoted_phrase: |
+            位于沟谷、山区、丘陵区,
+            或周边及下游存在敏感因素的弃渣场, 应进行失事影响专题分析
+          why_not_calculable: |
+            "沟谷/山区/丘陵"的地形判定与"敏感因素"的列举边界均依赖
+            现场综合判断; 现阶段缺乏足够的地形分类数据源与敏感要素
+            空间数据层, 无法做到谓词级可计算, 必须由专家确认。
+      upgrade_path:
+        strategy: splittable
+        planned_split_fields:
+          - field.fact.disposal_site.landform_hazard_class     # 枚举: 平原/丘陵/山区/沟谷
+          - field.fact.disposal_site.downstream_sensitive_factors  # list[enum]
+        refinement_notes: null
+        irreducibility_justification: null
+      sunset_target_version: v1
+      authored_by: cpswc_architect
+      authored_at: 2026-04-11
+
+  # -------- 单位与责任主体 --------
+  field.fact.party.compile_unit:
+    canonical_name: 方案编制单位
+    semantic_type: record
+    record_schema:
+      name: string
+      legal_representative: string
+      unified_social_credit_code: string
+      address: string
+      contact_person: string
+      phone: string
+      email: string
+    protection_level: PROTECTED
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.compile_unit
+        - proj.report_form.compile_unit
+        - sec.title_page.compile_unit
+        - art.cover.responsibility_page
+
+  field.fact.party.construction_unit:
+    canonical_name: 建设单位
+    semantic_type: record
+    record_schema:
+      name: string
+      legal_representative: string
+      unified_social_credit_code: string
+      address: string
+      contact_person: string
+      phone: string
+      email: string
+    protection_level: PROTECTED
+    source: 2026_template_table_1
+    lineage:
+      projection_target_refs:
+        - proj.spec_sheet.construction_unit
+        - proj.report_form.construction_unit
+        - sec.title_page.construction_unit
+        - art.cover.report_book_cover
+
+# ============================================================
+# DERIVED DOMAIN - 派生量字段
+# ============================================================
+# 每个派生字段必须:
+#   1. 有 upstream_deps (至少一个 fact field)
+#   2. 有 derivation (计算表达式或引用的 Calculator)
+#   3. upstream 变动时整个派生链失效重算
+
+  # -------- 土石方派生 --------
+  field.derived.earthwork.excavation_utilization_ratio:
+    canonical_name: 挖方利用率
+    semantic_type: percent
+    precision: 0.1
+    protection_level: CRITICAL
+    # Step 11B: 补 SOURCE_AUTH_001 欠账 (provenance only, 不建 calculator)
+    # 本字段是纯算数比率, 上游全部为已登记 fact field, 不构成 calculator 候选。
+    origin: derived
+    source: 2026_template_table_1  # 2026 模板表 1 (项目水土保持工程特性表)
+    note: |
+      用于项目自身填筑和骨料等建筑材料的挖方数量与挖方总量之比。
+      本字段依据 2026 模板表 1 中"挖方利用率"条目要求登记。
+    # 决议 8 双锚 (provenance-only, 不走 calculator)
+    normative_basis_refs:
+      - rule.template_2026.table_1.earthwork_balance  # 2026 模板表 1 土石方平衡
+      - rule.gb_50433_2018.earthwork_summary          # GB 50433-2018 土石方平衡要求
+    evidence_anchor_refs:
+      - field.fact.earthwork.self_reuse
+      - field.fact.earthwork.excavation
+    authority_class: mandatory_standard  # GB 50433 强制性标准
+    precedence_rank: 3
+    lineage:
+      upstream_deps:
+        - field.fact.earthwork.self_reuse
+        - field.fact.earthwork.excavation
+      derivation: |
+        ratio = (self_reuse / excavation) * 100
+        单位: 百分比, precision 0.1
+        约束: 0 <= ratio <= 100
+      projection_target_refs:
+        - proj.spec_sheet.excavation_utilization_ratio
+        - sec.overview.project_basic
+        - sec.evaluation.earthwork_balance
+      invalidation_targets:
+        - proj.spec_sheet.excavation_utilization_ratio
+        - sec.evaluation.earthwork_balance
+    validation:
+      rule: 0 <= value <= 100
+
+  field.derived.earthwork.comprehensive_reuse_ratio:
+    canonical_name: 弃渣综合利用率
+    semantic_type: percent
+    precision: 0.1
+    protection_level: CRITICAL
+    # Step 11B: 补 SOURCE_AUTH_001 欠账 (provenance only, 不建 calculator)
+    origin: derived
+    source: 2026_template_table_1
+    note: |
+      弃渣中被社会综合利用的数量与弃渣总量之比。
+      本字段依据 2026 模板表 1 中"弃渣综合利用率"条目要求登记。
+    normative_basis_refs:
+      - rule.template_2026.table_1.earthwork_balance
+      - rule.gb_50433_2018.earthwork_summary
+    evidence_anchor_refs:
+      - field.fact.earthwork.comprehensive_reuse
+      - field.fact.earthwork.spoil
+    authority_class: mandatory_standard
+    precedence_rank: 3
+    lineage:
+      upstream_deps:
+        - field.fact.earthwork.comprehensive_reuse
+        - field.fact.earthwork.spoil
+      derivation: |
+        ratio = (comprehensive_reuse / spoil) * 100
+        单位: 百分比, precision 0.1
+        约束: 0 <= ratio <= 100
+      projection_target_refs:
+        - proj.spec_sheet.comprehensive_reuse_ratio
+        - sec.overview.project_basic
+        - sec.evaluation.earthwork_balance
+      invalidation_targets:
+        - proj.spec_sheet.comprehensive_reuse_ratio
+    validation:
+      rule: 0 <= value <= 100
+
+  # -------- 六项防治指标 (六率) --------
+  field.derived.target.control_degree:
+    canonical_name: 水土流失治理度
+    semantic_type: percent
+    precision: 0.1
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      upstream_deps:
+        - field.fact.prevention.treated_loss_area
+        - field.fact.prevention.total_loss_area
+        - field.fact.prevention.control_standard_level
+      derivation: |
+        control_degree = treated_loss_area / total_loss_area * 100
+        若涉及两个及以上防治标准等级, 按面积加权计算综合指标值
+        (参见 field.derived.target.weighted_comprehensive_target)
+      projection_target_refs:
+        - proj.spec_sheet.control_degree
+        - proj.report_form.control_degree
+        - sec.soil_loss_prevention.targets
+      invalidation_targets:
+        - proj.spec_sheet.control_degree
+        - proj.report_form.control_degree
+    validation:
+      rule: 0 <= value <= 100
+      standard_ref: 依据防治标准等级查表获得目标值
+
+  field.derived.target.soil_loss_control_ratio:
+    canonical_name: 土壤流失控制比
+    semantic_type: number
+    precision: 0.01
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      upstream_deps:
+        - field.fact.natural.allowable_loss
+        - field.fact.prediction.total_loss
+      derivation: |
+        ratio = allowable_loss / actual_loss_modulus
+      projection_target_refs:
+        - proj.spec_sheet.soil_loss_control_ratio
+        - proj.report_form.soil_loss_control_ratio
+        - sec.soil_loss_prevention.targets
+
+  field.derived.target.spoil_protection_rate:
+    canonical_name: 渣土防护率
+    semantic_type: percent
+    precision: 0.1
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      upstream_deps:
+        - field.fact.earthwork.spoil
+        - field.fact.prevention.protected_spoil_volume
+      derivation: |
+        rate = protected_spoil_volume / total_spoil * 100
+        其中 protected_spoil_volume 含拦挡+临时防护+综合利用三部分
+      projection_target_refs:
+        - proj.spec_sheet.spoil_protection_rate
+        - proj.report_form.spoil_protection_rate
+        - sec.soil_loss_prevention.targets
+
+  field.derived.target.topsoil_protection_rate:
+    canonical_name: 表土保护率
+    semantic_type: percent
+    precision: 0.1
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      upstream_deps:
+        - field.fact.prevention.protected_topsoil_volume
+        - field.fact.topsoil.stripable_volume
+      derivation: |
+        rate = protected_topsoil_volume / stripable_volume * 100
+      projection_target_refs:
+        - proj.spec_sheet.topsoil_protection_rate
+        - proj.report_form.topsoil_protection_rate
+        - sec.topsoil.balance
+        - sec.soil_loss_prevention.targets
+
+  field.derived.target.vegetation_restoration_rate:
+    canonical_name: 林草植被恢复率
+    semantic_type: percent
+    precision: 0.1
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    lineage:
+      upstream_deps:
+        - field.fact.prevention.planned_vegetation_area
+        - field.fact.prevention.should_restore_area
+      derivation: |
+        rate = planned_vegetation / should_restore * 100
+      projection_target_refs:
+        - proj.spec_sheet.vegetation_restoration_rate
+        - proj.report_form.vegetation_restoration_rate
+        - sec.soil_loss_prevention.targets
+
+  field.derived.target.vegetation_coverage_rate:
+    canonical_name: 林草覆盖率
+    semantic_type: percent
+    precision: 0.1
+    protection_level: CRITICAL
+    source: 2026_template_table_1
+    note: 林草覆盖率指标应结合水土保持措施布设情况合理确定
+    lineage:
+      upstream_deps:
+        - field.fact.prevention.planned_vegetation_area
+        - field.fact.prevention.responsibility_range_area
+      derivation: |
+        rate = planned_vegetation / responsibility_range * 100
+      projection_target_refs:
+        - proj.spec_sheet.vegetation_coverage_rate
+        - proj.report_form.vegetation_coverage_rate
+        - sec.soil_loss_prevention.targets
+
+  # -------- 综合派生 (多等级加权) --------
+  # Step 11B: live 化, 由 cal.target.weighted_comprehensive 派生
+  field.derived.target.weighted_comprehensive_target:
+    canonical_name: 加权综合防治指标值
+    semantic_type: record
+    record_schema:
+      control_degree: percent
+      soil_loss_control_ratio: number
+      spoil_protection_rate: percent
+      topsoil_protection_rate: percent
+      vegetation_restoration_rate: percent
+      vegetation_coverage_rate: percent
+    protection_level: CRITICAL
+    origin: derived
+    source: cal.target.weighted_comprehensive  # Step 11B live calculator
+    note: |
+      当一项目涉及两个及以上防治标准等级时, 按面积(体积)加权计算
+      六项防治指标的加权综合目标值。
+      ref: 2026 模板 7.3.2 + GB/T 50434-2018 第 4 章
+      live 执行者: cal.target.weighted_comprehensive
+      reference_data: GB/T 50434-2018 表 4.0.2-5 (南方红壤区, v0 仅一张表)
+    # 决议 8 双锚必备
+    normative_basis_refs:
+      - rule.gb_t_50434_2018.chapter_4                # GB/T 50434 第 4 章等级划分
+      - rule.gb_t_50434_2018.table_4_0_2_5            # 表 4.0.2-5 南方红壤区
+      - rule.template_2026.section_7_3_2              # 2026 模板 7.3.2 加权要求
+    evidence_anchor_refs:
+      - field.fact.prevention.control_standard_level_breakdown  # 面积加权的主证据
+      - field.fact.prevention.control_standard_level            # 单等级兜底
+      - field.fact.natural.water_soil_zoning                    # 决定适用哪张 4.0.2-X 表
+      - field.fact.prevention.responsibility_range_area
+    authority_class: recommended_standard  # GB/T 50434 含 /T, 是推荐性标准
+    precedence_rank: 5
+    lineage:
+      upstream_deps:
+        - field.fact.prevention.control_standard_level
+        - field.fact.prevention.control_standard_level_breakdown
+        - field.fact.prevention.responsibility_range_area
+        - field.fact.natural.water_soil_zoning
+      derivation: |
+        由 cal.target.weighted_comprehensive (Step 11B live calculator) 计算:
+
+        若 control_standard_level_breakdown 有 >= 2 个等级:
+          按面积权重 w_i = area_i / sum(area) 对每项指标加权:
+            weighted_value = sum(w_i * target_value(zone_level_i, indicator))
+          其中 target_value 从 GB/T 50434 表 4.0.2-X 按 water_soil_zoning 查表。
+
+        若 control_standard_level_breakdown 只有 1 个等级:
+          直接取该等级的表值 (单等级兜底)。
+      projection_target_refs:
+        - art.table.weighted_target_calculation   # AT-02
+        - sec.soil_loss_prevention.targets
+      invalidation_targets:
+        - art.table.weighted_target_calculation
+    validation:
+      trigger_condition: 涉及两个及以上防治标准等级
+      rule: |
+        六项值须与 GB/T 50434 对应 water_soil_zoning 表的面积加权结果一致,
+        允许容差: 百分比类 ±0.5, 控制比 ±0.01
+
+  # -------- 弃渣场级别派生 (Step 11C 首次 fact→calculator→derived→trigger 链路) --------
+  # 由 cal.disposal_site.level_assessment 按 GB 51018 表 5.7.1 "就高不就低" 规则计算。
+  # 本字段是 v0 第一个被 obligation trigger 直接消费的 derived 字段,
+  # 它驱动 ob.disposal_site.geology_report / stability_monitoring / video_surveillance
+  # 的触发状态。
+  field.derived.disposal_site.level_assessment:
+    canonical_name: 弃渣场级别评定 (GB 51018 表 5.7.1 计算结果)
+    semantic_type: list_of_records
+    record_schema:
+      site_id: string
+      site_name: string
+      level: enum[1级, 2级, 3级, 4级, 5级]   # GB 51018 约定: 1=最严重, 5=无危害
+      level_by_volume: enum[1级, 2级, 3级, 4级, 5级]
+      level_by_height: enum[1级, 2级, 3级, 4级, 5级]
+      level_by_harm: enum[1级, 2级, 3级, 4级, 5级]
+      governing_dimension: enum[volume, height, harm]   # 最终 level 由哪一路决定
+    protection_level: CRITICAL
+    origin: derived
+    source: cal.disposal_site.level_assessment
+    note: |
+      v0 约定: 1 级 = 最严重 (大体积/高堆/严重危害), 5 级 = 最轻。
+      这与 GB 51018 表 5.7.1 一致, 也与 "就高不就低" 规则一致。
+
+      Step 11C 之前 v0 ObligationSet 的 DSL 使用了**反转约定** (in [3级,4级,5级]),
+      与本字段的 note 和 GB 51018 都矛盾。Step 11C 已将 3 条 obligation
+      trigger DSL 修正为正确方向: in [1级, 2级, 3级] / in [1级, 2级]。
+
+      计算逻辑 (cal.disposal_site.level_assessment):
+        level_by_volume = lookup(表 5.7.1, volume)
+        level_by_height = lookup(表 5.7.1, max_height)
+        level_by_harm   = lookup(表 5.7.1, downstream_harm_class)
+        level = min(level_by_volume, level_by_height, level_by_harm)
+        governing_dimension = 产生最小 level 的那一路
+    normative_basis_refs:
+      - rule.gb_51018_2014.section_5_7_1
+      - rule.gb_51018_2014.table_5_7_1_notes
+    evidence_anchor_refs:
+      - field.fact.disposal_site.level_assessment       # 上游: volume/max_height/harm
+    authority_class: mandatory_standard
+    precedence_rank: 3
+    lineage:
+      upstream_deps:
+        - field.fact.disposal_site.level_assessment
+      derivation: |
+        对 fact.level_assessment 里的每个 site:
+          level_by_volume = GB 51018 表 5.7.1 按 volume 查档
+          level_by_height = GB 51018 表 5.7.1 按 max_height 查档
+          level_by_harm   = GB 51018 表 5.7.1 按 downstream_harm_class 查档
+          level = min(三者)  # "就高不就低" = 取级别更高 = 数字更小
+      projection_target_refs:
+        - sec.disposal_site.site_selection
+        - art.table.spoil_summary
+      invalidation_targets:
+        - ob.disposal_site.geology_report
+        - ob.disposal_site.stability_monitoring
+        - ob.disposal_site.video_surveillance
+    validation:
+      rule: |
+        level ∈ [1级, 2级, 3级, 4级, 5级]
+        level == min(level_by_volume, level_by_height, level_by_harm)
+
+# ============================================================
+# REGISTRY VALIDATION HOOKS
+# ============================================================
+# 本 registry 自身的 lint 规则
+registry_lints:
+  - id: FIR_001
+    rule: 每个 field 必须声明 protection_level
+    scope: all fields
+  - id: FIR_002
+    rule: 每个 derived field 必须声明 upstream_deps 与 derivation
+    scope: field.derived.*
+  - id: FIR_003
+    rule: projection_target_refs 必须全部通过 CORE_CONTRACTS_001 检测
+    scope: all fields
+  - id: FIR_004
+    rule: source 字段指向 2026_template_table_1 的字段必须同时投影到 proj.spec_sheet.*
+    scope: all fields
+  - id: FIR_005
+    rule: v0_allowed_values 一旦设置, 系统必须在接收数据时校验枚举值在白名单内
+    scope: all enum fields with v0_allowed_values
+
+# ============================================================
+# 显式缺位声明 (v0 不做的字段, 受反升级条款保护)
+# ============================================================
+# 下列字段识别自 2026 模板, 但 v0 硬范围收敛不做
+# 任何提前实施需 RFC + 更新决议文档
+v0_excluded_fields:
+  - path: field.fact.mining.*
+    reason: v0 不支持矿山行业 (17-22)
+  - path: field.fact.linear.longitudinal_profile
+    reason: v0 不支持线性工程
+  - path: field.fact.disposal_site.failure_simulation.*
+    reason: 弃渣场失事影响专题 v0 作为单册附件上传, 不做字段化
+  - path: field.fact.monitoring.video_stream_ref
+    reason: 3 级以上弃渣场视频监控 v0 不做自动接入
+  - path: field.fact.yellow_river.silt_dam
+    reason: 惠州项目不在黄河流域
+  - path: field.fact.classified.secrecy_level
+    reason: 涉密项目 v0 不支持

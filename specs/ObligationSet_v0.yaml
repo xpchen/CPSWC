@@ -1,0 +1,560 @@
+# CPSWC ObligationSet v0
+#
+# 功能: 将 2026 模板/2018 格式/广东惠州 v0 范围内的硬规则
+#      压成可解析的 obligation 配置。
+# 约束: CPSWC_ARCHITECTURE_DECISIONS.md (决议 2) + CPSWC_CORE_CONTRACTS.yaml
+#      + FieldIdentityRegistry_v0.yaml + CPSWC_ARTIFACT_REGISTRY_v0.yaml
+#
+# v0 原则:
+#   - Obligation 采用 Set 形态, 不做 DAG 增量重算
+#   - 每条 obligation 必须带决议 2 的六字段
+#   - trigger/depends_on_field_refs/protection_level 等作为 v1 升 Graph 的过渡字段
+#   - 仅覆盖 v0 范围: 报告书 + NEW + 房地产/其他城建 + 广东/惠州
+
+version: v0
+generated_at: 2026-04-11
+applicable_species: [报告书]
+applicable_v0_industries: [29, 30]
+constraint_docs:
+  - CPSWC_ARCHITECTURE_DECISIONS.md
+  - CPSWC_CORE_CONTRACTS.yaml
+  - FieldIdentityRegistry_v0.yaml
+  - CPSWC_ARTIFACT_REGISTRY_v0.yaml
+
+obligations:
+
+  ob.sensitive_overlay.multi_admin_breakdown:
+    obligation_id: ob.sensitive_overlay.multi_admin_breakdown
+    source_rule_id: rule.t2026.multi_admin_range_table
+    requirement_type: artifact
+    required_artifact_refs:
+      - art.table.responsibility_range_by_admin_division
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: PROTECTED
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: count(field.fact.location.county_list) >= 2
+      human: 涉及两个及以上县级行政区时，必须附防治责任范围统计表
+    depends_on_field_refs:
+      - field.fact.location.county_list
+      - field.fact.land.county_breakdown
+      - field.fact.prevention.responsibility_range_area
+    narrative_target_refs:
+      - sec.soil_loss_prevention.responsibility_range_by_county
+    v0_scope_note: 由 sample 与 GeoPipeline 分县切片结果共同验证
+
+  ob.evaluation.weighted_target_required:
+    obligation_id: ob.evaluation.weighted_target_required
+    source_rule_id: rule.t2026.weighted_target_trigger
+    requirement_type: artifact
+    required_artifact_refs:
+      - art.table.weighted_target_calculation
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: CRITICAL
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: count(distinct(field.fact.prevention.control_standard_level_breakdown.standard_level)) >= 2
+      human: 涉及两个及以上防治标准等级时，必须按面积(体积)加权计算综合指标并附 AT-02
+    depends_on_field_refs:
+      - field.fact.prevention.control_standard_level
+      - field.fact.prevention.control_standard_level_breakdown
+      - field.derived.target.weighted_comprehensive_target
+    narrative_target_refs:
+      - sec.soil_loss_prevention.targets
+    v0_scope_note: breakdown 留空则该 obligation 不触发
+
+  ob.unavoidability.redline_conflict:
+    obligation_id: ob.unavoidability.redline_conflict
+    source_rule_id: rule.t2026.unavoidability_trigger
+    requirement_type: evidence
+    required_artifact_refs:
+      - art.attachment.AF_2_unavoidability_justification
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: CRITICAL
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: |
+        has_any(field.fact.natural.key_prevention_treatment_areas)
+        OR has_any(field.fact.natural.other_sensitive_areas)
+      human: 无法避让重点预防/治理区或其他法定敏感区时，必须附不可避让论证材料
+    depends_on_field_refs:
+      - field.fact.natural.key_prevention_treatment_areas
+      - field.fact.natural.other_sensitive_areas
+      - field.fact.location.redline_geometry_ref
+    narrative_target_refs:
+      - sec.project_overview.sensitive_areas
+      - sec.evaluation.site_selection
+    v0_scope_note: v0 先按命中即要求补充论证材料，复杂专题细分留到 v1
+
+  ob.borrow_site.land_use_approval:
+    obligation_id: ob.borrow_site.land_use_approval
+    source_rule_id: rule.t2026.borrow_site_land_confirmation
+    requirement_type: evidence
+    required_artifact_refs:
+      - art.attachment.AF_3_land_use_confirmation
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: PROTECTED
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: field.fact.earthwork.borrow.value > 0 AND field.fact.earthwork.borrow_source_type == "自设取土场"
+      human: 借方来自自设取土场时，需补取土场土地权属确认意见 (AF-3)
+    depends_on_field_refs:
+      - field.fact.earthwork.borrow
+      - field.fact.earthwork.borrow_source_type
+      - field.fact.construction.temp_topsoil_site
+    narrative_target_refs:
+      - sec.project_overview.earthwork_balance
+      - sec.evaluation.earthwork_balance
+    v0_scope_note: 已由 borrow_source_type 字段区分自设取土场与外购, 不再共享触发
+
+  ob.disposal_site.land_use_approval:  # NOTE: 2026-04-11 — 验证器发现过度触发, 已改用 outside_permanent_land 精确过滤
+    obligation_id: ob.disposal_site.land_use_approval
+    source_rule_id: rule.t2026.disposal_site_land_confirmation
+    requirement_type: evidence
+    required_artifact_refs:
+      - art.attachment.AF_3_land_use_confirmation
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: PROTECTED
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: any(field.fact.construction.temp_topsoil_site.outside_permanent_land in [true])
+      human: 临时堆土场位于永久占地范围外时, 需补权属确认意见 (AF-3)
+    depends_on_field_refs:
+      - field.fact.construction.temp_topsoil_site
+    narrative_target_refs:
+      - sec.disposal_site.source_and_flow
+      - sec.disposal_site.site_selection
+    v0_scope_note: |
+      2026-04-11 修订: 原 trigger 用 "有弃渣场或临时堆土场" 粗代理过度触发。
+      现改用新字段 temp_topsoil_site.outside_permanent_land 精确过滤。
+      AF-3 的法定语义是"永久占地范围外临时堆土场"权属确认, 不含范围内的。
+      借方自设取土场的权属确认由 ob.borrow_site.land_use_approval 独立承担。
+
+  ob.borrow_site.external_purchase_evidence:
+    obligation_id: ob.borrow_site.external_purchase_evidence
+    source_rule_id: rule.t2026.external_purchase_supporting
+    requirement_type: evidence
+    required_artifact_refs:
+      - art.attachment.AF_4_external_earth_purchase
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: PROTECTED
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: field.fact.earthwork.borrow.value > 0 AND field.fact.earthwork.borrow_source_type == "外购"
+      human: 借方来自外购时，需补外购协议或周边土源调查结果及确认材料 (AF-4)
+    depends_on_field_refs:
+      - field.fact.earthwork.borrow
+      - field.fact.earthwork.borrow_source_type
+      - field.fact.location.county_list
+    narrative_target_refs:
+      - sec.project_overview.earthwork_balance
+      - sec.evaluation.earthwork_balance
+    v0_scope_note: 已由 borrow_source_type 字段精确触发, 不再对自设取土场误报
+
+  ob.disposal_site.geology_report:
+    obligation_id: ob.disposal_site.geology_report
+    source_rule_id: rule.t2026.spoil_level_4_geology
+    requirement_type: evidence
+    required_artifact_refs:
+      - art.attachment.AF_5_geology_report
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: CRITICAL
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      # Step 11C: 迁移到 derived 路径, 并按 GB 51018 纠正方向 (1=最严重, 5=无危害)
+      # 原 v0 DSL ["4级", "5级"] 基于反转约定, 意图是"最严重的那两级";
+      # GB 51018 正确约定下即 ["1级", "2级"]
+      when: any(field.derived.disposal_site.level_assessment.level in ["1级", "2级"])
+      human: 级别 1 级或 2 级 (GB 51018 最严重两档) 弃渣场必须附地质勘察报告结论 (AF-5)
+    depends_on_field_refs:
+      - field.fact.disposal_site.level_assessment
+      - field.derived.disposal_site.level_assessment   # Step 11C
+      - field.fact.construction.temp_topsoil_site
+    narrative_target_refs:
+      - sec.disposal_site.site_selection
+    v0_scope_note: |
+      Step 11C: 从 fact path 迁移到 derived path 并按 GB 51018 约定纠正方向。
+      原 v0 DSL 使用反转约定 ["4级","5级"], 意图是最严重两档, 但 GB 51018
+      约定下应为 ["1级","2级"]。
+      低级别房地产项目 (如 Huizhou 样本) 没有弃渣场, 此 obligation 自然不触发。
+
+  ob.disposal_site.reuse_evidence:
+    obligation_id: ob.disposal_site.reuse_evidence
+    source_rule_id: rule.t2026.spoil_reuse_supporting
+    requirement_type: evidence
+    required_artifact_refs:
+      - art.attachment.AF_6_reuse_evidence
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: PROTECTED
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: field.fact.earthwork.comprehensive_reuse.value > 0
+      human: 涉及弃渣综合利用时，必须附综合利用支撑材料
+    depends_on_field_refs:
+      - field.fact.earthwork.comprehensive_reuse
+      - field.derived.earthwork.comprehensive_reuse_ratio
+    narrative_target_refs:
+      - sec.evaluation.earthwork_balance
+
+  ob.topsoil.reuse_evidence:
+    obligation_id: ob.topsoil.reuse_evidence
+    source_rule_id: rule.t2026.topsoil_reuse_supporting
+    requirement_type: evidence
+    required_artifact_refs:
+      - art.attachment.AF_6_reuse_evidence
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: PROTECTED
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: field.fact.topsoil.excavation.value > field.fact.topsoil.fill.value
+      human: 存在表土剩余并拟再利用时，需附周边需求及再利用支撑材料
+    depends_on_field_refs:
+      - field.fact.topsoil.excavation
+      - field.fact.topsoil.fill
+    narrative_target_refs:
+      - sec.topsoil.balance
+    v0_scope_note: v0 先按“挖方表土大于填方表土”作为近似触发
+
+  ob.disposal_site.site_selection:
+    obligation_id: ob.disposal_site.site_selection
+    source_rule_id: rule.t2026.disposal_site_summary_table
+    requirement_type: artifact
+    required_artifact_refs:
+      - art.table.spoil_summary
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: CRITICAL
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: |
+        field.fact.earthwork.spoil.value > 0
+        OR count(field.fact.construction.temp_topsoil_site) > 0
+      human: 设置弃渣场或临时堆土场时，正文必须列弃渣场/堆土场设置汇总表
+    depends_on_field_refs:
+      - field.fact.earthwork.spoil
+      - field.fact.construction.temp_topsoil_site
+      - field.fact.location.redline_geometry_ref
+    narrative_target_refs:
+      - sec.disposal_site.site_selection
+
+  ob.disposal_site.location_map:
+    obligation_id: ob.disposal_site.location_map
+    source_rule_id: rule.t2026.disposal_site_location_map
+    requirement_type: artifact
+    required_artifact_refs:
+      - art.figure.F_12_borrow_and_disposal_location
+    required_assurance_refs:
+      - as.geo.downstream_coverage_verified
+    status: UNKNOWN
+    protection_level: CRITICAL
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: |
+        field.fact.earthwork.spoil.value > 0
+        OR field.fact.earthwork.borrow.value > 0
+        OR count(field.fact.construction.temp_topsoil_site) > 0
+      human: 涉及取土场/弃渣场/临时堆土场时，必须出 F-12 位置图并核实下游覆盖
+    depends_on_field_refs:
+      - field.fact.earthwork.spoil
+      - field.fact.earthwork.borrow
+      - field.fact.construction.temp_topsoil_site
+      - field.fact.location.redline_geometry_ref
+    narrative_target_refs:
+      - sec.disposal_site.source_and_flow
+      - sec.disposal_site.site_selection
+
+  ob.disposal_site.failure_analysis:
+    obligation_id: ob.disposal_site.failure_analysis
+    source_rule_id: rule.t2026.spoil_failure_analysis
+    requirement_type: commitment
+    required_artifact_refs:
+      - art.subreport.spoil_failure_analysis
+    required_assurance_refs:
+      - as.commitment.spoil_failure_report_truth
+    status: UNKNOWN
+    protection_level: CRITICAL
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: field.fact.disposal_site.failure_analysis_required == true
+      human: 弃渣场位于沟谷/山区/丘陵, 或周边及下游存在敏感因素时, 需另附失事影响专题并附真实性承诺
+    depends_on_field_refs:
+      - field.fact.disposal_site.failure_analysis_required
+      - field.fact.construction.temp_topsoil_site
+      - field.fact.natural.landform_type
+    narrative_target_refs:
+      - sec.disposal_site.site_selection
+    v0_scope_note: |
+      2026-04-11 修订: 原 trigger 用 "有临时堆土场" 粗代理, 在冲积平原房地产项目上系统性误触发。
+      现改用新字段 disposal_site.failure_analysis_required (bool 总开关) 精确过滤。
+      法定触发本质是"地形位置(沟谷/山区/丘陵) + 下游敏感因素", 不是级别。
+      v0 合并为一个专家确认型 bool; v1 再拆为 landform_hazard_class + downstream_sensitive_factors[]。
+
+  ob.monitoring.baseline_monitoring:
+    obligation_id: ob.monitoring.baseline_monitoring
+    source_rule_id: rule.t2026.monitoring_baseline
+    requirement_type: narrative
+    required_artifact_refs: []
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: ADVISORY
+    applicable_species: [报告书]
+    trigger:
+      mode: always
+      when: always
+      human: 施工准备期应进行本底值监测
+    depends_on_field_refs:
+      - field.fact.schedule.start_time
+      - field.fact.schedule.end_time
+      - field.fact.prevention.responsibility_range_area
+    narrative_target_refs:
+      - sec.monitoring.scope_and_period
+    v0_scope_note: v0 只要求在正文中体现，不绑定单独 artifact
+
+  ob.monitoring.point_layout:
+    obligation_id: ob.monitoring.point_layout
+    source_rule_id: rule.t2026.monitoring_point_layout
+    requirement_type: artifact
+    required_artifact_refs:
+      - art.figure.F_06_monitoring_points
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: PROTECTED
+    applicable_species: [报告书]
+    trigger:
+      mode: always
+      when: always
+      human: 报告书必须附监测点布置图
+    depends_on_field_refs:
+      - field.fact.prevention.responsibility_range_area
+      - field.fact.location.redline_geometry_ref
+    narrative_target_refs:
+      - sec.monitoring.point_layout
+
+  ob.disposal_site.stability_monitoring:
+    obligation_id: ob.disposal_site.stability_monitoring
+    source_rule_id: rule.t2026.spoil_level_3_monitoring
+    requirement_type: monitoring
+    required_artifact_refs:
+      - art.figure.F_06_monitoring_points
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: CRITICAL
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      # Step 11C: 迁移到 derived 路径 + 按 GB 51018 纠正方向
+      when: any(field.derived.disposal_site.level_assessment.level in ["1级", "2级", "3级"])
+      human: 级别 1/2/3 级 (GB 51018 最严重三档) 弃渣场必须开展稳定监测
+    depends_on_field_refs:
+      - field.fact.disposal_site.level_assessment     # 上游输入
+      - field.derived.disposal_site.level_assessment  # Step 11C: 直接消费 derived 结论
+      - field.fact.construction.temp_topsoil_site
+    narrative_target_refs:
+      - sec.monitoring.contents_methods_frequency
+      - sec.monitoring.point_layout
+    v0_scope_note: |
+      Step 11C: 从 fact path 迁移到 derived path。
+      triggering 读 field.derived.disposal_site.level_assessment,
+      该 derived 由 cal.disposal_site.level_assessment 按 GB 51018 表 5.7.1 计算。
+
+  ob.disposal_site.video_surveillance:
+    obligation_id: ob.disposal_site.video_surveillance
+    source_rule_id: rule.t2026.spoil_level_3_video
+    requirement_type: surveillance
+    required_artifact_refs: []
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: CRITICAL
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      # Step 11C: 迁移到 derived 路径 + 按 GB 51018 纠正方向
+      when: any(field.derived.disposal_site.level_assessment.level in ["1级", "2级", "3级"])
+      human: 级别 1/2/3 级 (GB 51018 最严重三档) 弃渣场 (涉密项目除外) 必须全过程视频监控
+    depends_on_field_refs:
+      - field.fact.disposal_site.level_assessment
+      - field.derived.disposal_site.level_assessment   # Step 11C
+      - field.fact.construction.temp_topsoil_site
+    narrative_target_refs:
+      - sec.monitoring.contents_methods_frequency
+    v0_scope_note: |
+      Step 11C: 从 fact path 迁移到 derived path。v0 不接入视频流, 仅在
+      Narrative / Review 闭环体现该义务。triggering 由 cal.disposal_site.level_assessment
+      驱动, 按 GB 51018 表 5.7.1 计算。
+
+  ob.schedule.dual_line_gantt_chart:
+    obligation_id: ob.schedule.dual_line_gantt_chart
+    source_rule_id: rule.t2026.dual_line_gantt_chart
+    requirement_type: artifact
+    required_artifact_refs:
+      - art.figure.schedule_gantt
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: PROTECTED
+    applicable_species: [报告书]
+    trigger:
+      mode: always
+      when: always
+      human: 施工组织章节必须列主体工程与水保措施双线横道图
+    depends_on_field_refs:
+      - field.fact.schedule.start_time
+      - field.fact.schedule.end_time
+    narrative_target_refs:
+      - sec.soil_loss_prevention.construction_schedule
+      - sec.project_overview.progress
+
+  ob.topsoil.balance_required:
+    obligation_id: ob.topsoil.balance_required
+    source_rule_id: rule.t2026.topsoil_balance_required
+    requirement_type: artifact
+    required_artifact_refs:
+      - art.table.topsoil_balance
+      - art.figure.F_08_topsoil_survey
+      - art.figure.F_09_topsoil_stripping_range
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: CRITICAL
+    applicable_species: [报告书]
+    trigger:
+      mode: always
+      when: always
+      human: 表土资源保护与利用章节必须有调查点位图、剥离范围图和表土平衡表
+    depends_on_field_refs:
+      - field.fact.topsoil.excavation
+      - field.fact.topsoil.fill
+      - field.fact.topsoil.stripable_area
+      - field.fact.topsoil.stripable_volume
+    narrative_target_refs:
+      - sec.topsoil.stripping
+      - sec.topsoil.balance
+
+  ob.evaluation.dual_source_earthwork_justification:
+    obligation_id: ob.evaluation.dual_source_earthwork_justification
+    source_rule_id: rule.t2026.borrow_and_spoil_justification
+    requirement_type: narrative
+    required_artifact_refs:
+      - art.table.earthwork_balance
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: PROTECTED
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: field.fact.earthwork.borrow.value > 0 AND field.fact.earthwork.spoil.value > 0
+      human: 同时存在借方和弃方时，必须专门论证其合理性
+    depends_on_field_refs:
+      - field.fact.earthwork.borrow
+      - field.fact.earthwork.spoil
+      - field.fact.earthwork.comprehensive_reuse
+      - field.derived.earthwork.excavation_utilization_ratio
+      - field.derived.earthwork.comprehensive_reuse_ratio
+    narrative_target_refs:
+      - sec.evaluation.earthwork_balance
+
+  ob.disposal_site.separate_prevention_zone:
+    obligation_id: ob.disposal_site.separate_prevention_zone
+    source_rule_id: rule.t2026.separate_disposal_zone
+    requirement_type: narrative
+    required_artifact_refs:
+      - art.figure.F_10_measures_layout
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: PROTECTED
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: field.fact.earthwork.spoil.value > 0 OR count(field.fact.construction.temp_topsoil_site) > 0
+      human: 涉及弃渣场时必须单独设置弃渣场防治区
+    depends_on_field_refs:
+      - field.fact.earthwork.spoil
+      - field.fact.construction.temp_topsoil_site
+    narrative_target_refs:
+      - sec.soil_loss_prevention.targets
+
+  ob.topsoil.soil_improvement_required:
+    obligation_id: ob.topsoil.soil_improvement_required
+    source_rule_id: rule.t2026.topsoil_improvement
+    requirement_type: narrative
+    required_artifact_refs:
+      - art.table.topsoil_balance
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: ADVISORY
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: field.fact.topsoil.fill.value > field.fact.topsoil.excavation.value
+      human: 表土资源缺乏或质量不达标时，应提出土壤改良方案
+    depends_on_field_refs:
+      - field.fact.topsoil.excavation
+      - field.fact.topsoil.fill
+    narrative_target_refs:
+      - sec.topsoil.balance
+    v0_scope_note: v0 先用表土供需缺口近似触发，质量评价细分留到 v1
+
+  ob.topsoil.external_topsoil_source:
+    obligation_id: ob.topsoil.external_topsoil_source
+    source_rule_id: rule.t2026.external_topsoil_source
+    requirement_type: evidence
+    required_artifact_refs:
+      - art.attachment.AF_6_reuse_evidence
+    required_assurance_refs: []
+    status: UNKNOWN
+    protection_level: PROTECTED
+    applicable_species: [报告书]
+    trigger:
+      mode: conditional
+      when: field.fact.topsoil.fill.value > field.fact.topsoil.excavation.value
+      human: 改良后仍不足时，应说明外借表土数量与来源，并附支撑材料
+    depends_on_field_refs:
+      - field.fact.topsoil.excavation
+      - field.fact.topsoil.fill
+    narrative_target_refs:
+      - sec.topsoil.balance
+
+registry_lints:
+  - id: OBL_001
+    rule: 每条 obligation 必须声明决议 2 的六字段
+    severity: ERROR
+    scope: all obligations
+
+  - id: OBL_002
+    rule: depends_on_field_refs 中所有 field.* 必须在 FieldIdentityRegistry 中 resolve
+    severity: ERROR
+    scope: all obligations
+
+  - id: OBL_003
+    rule: required_artifact_refs 中所有 art.* 必须在 ArtifactRegistry 中 resolve
+    severity: ERROR
+    scope: all obligations
+
+  - id: OBL_004
+    rule: required_assurance_refs 中所有 as.* 先挂起收集，待 AssuranceRegistry_v0 产出后强校验
+    severity: WARN
+    scope: all obligations
+
+  - id: OBL_005
+    rule: obligation_id 必须与 yaml key 一致
+    severity: ERROR
+    scope: all obligations

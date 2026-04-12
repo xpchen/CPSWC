@@ -1,0 +1,241 @@
+{
+  "$schema": "../schemas/cpswc_sample.schema.json",
+  "sample_id": "disposal_high_risk_v0",
+  "sample_meta": {
+    "purpose": "Step 11C 高风险弃渣场样本, 用于验证 cal.disposal_site.level_assessment 和 3 条高风险 disposal obligation trigger 的正确打亮/未打亮断点。",
+    "disclaimer": "本样本为合成样本 (fictional), 用于回归测试. 项目名称、地点、责任主体均为虚构, 不对应任何真实生产建设项目.",
+    "physical_realism": "简化到刚好能支撑 cal.disposal_site.level_assessment 的两个断点 (D1 严重/1 级, D2 较轻/4 级), 其他字段最小化只填到足够跑 validator 的程度.",
+    "natural_realism": "广东省河源市(虚构矿区), 山区丘陵区, 南方红壤区, 符合 v0 单一广东包边界.",
+    "generated_at": "2026-04-11",
+    "applicable_ruleset": "v2026_template + v2018_gb + v2024_estimation + gd_package",
+    "species": "报告书",
+    "compilation_intent": "NEW",
+    "industry_category": 30,
+    "designed_to_trigger_obligations": [
+      "ob.disposal_site.geology_report",
+      "ob.disposal_site.stability_monitoring",
+      "ob.disposal_site.video_surveillance",
+      "ob.disposal_site.site_selection",
+      "ob.disposal_site.location_map",
+      "ob.disposal_site.separate_prevention_zone",
+      "ob.schedule.dual_line_gantt_chart",
+      "ob.monitoring.baseline_monitoring",
+      "ob.monitoring.point_layout",
+      "ob.topsoil.balance_required"
+    ],
+    "designed_to_NOT_trigger_obligations": [
+      "ob.disposal_site.failure_analysis",
+      "ob.disposal_site.reuse_evidence",
+      "ob.disposal_site.land_use_approval",
+      "ob.topsoil.reuse_evidence",
+      "ob.sensitive_overlay.multi_admin_breakdown",
+      "ob.evaluation.weighted_target_required",
+      "ob.evaluation.dual_source_earthwork_justification",
+      "ob.unavoidability.redline_conflict",
+      "ob.borrow_site.external_purchase_evidence"
+    ],
+    "designed_to_require_assurances": [],
+    "designed_to_NOT_require_assurances": [
+      "as.commitment.spoil_failure_report_truth"
+    ],
+    "annotations": {
+      "_purpose": "本样本唯一目标是验证 cal.disposal_site.level_assessment 计算正确 + 3 条高风险 disposal trigger 正确翻转.",
+      "disposal_level_ground_truth": {
+        "_verification_source": "derived_field_should_match",
+        "_verification_calculator": "cal.disposal_site.level_assessment",
+        "_verification_target": "field.derived.disposal_site.level_assessment",
+        "sites": [
+          {
+            "site_id": "D1",
+            "expected_level": "1级",
+            "expected_level_by_volume": "2级",
+            "expected_level_by_height": "2级",
+            "expected_level_by_harm": "1级",
+            "expected_governing_dimension": "harm",
+            "explanation": "volume 800 万 m³ ∈ [500, 1000) → 2 级; max_height 140 m ∈ [100, 150) → 2 级; downstream_harm_class=严重 → 1 级; 就高不就低 min(2,2,1)=1 级"
+          },
+          {
+            "site_id": "D2",
+            "expected_level": "4级",
+            "expected_level_by_volume": "4级",
+            "expected_level_by_height": "4级",
+            "expected_level_by_harm": "4级",
+            "expected_governing_dimension": "volume",
+            "explanation": "volume 80 万 m³ ∈ [50, 100) → 4 级; max_height 50 m ∈ [20, 60) → 4 级; downstream_harm_class=较轻 → 4 级; min(4,4,4)=4 级"
+          }
+        ]
+      }
+    }
+  },
+  "facts": {
+    "field.fact.project.name": "河源市紫金县(虚构)水土保持方案合成样本-矿区弃渣场高风险",
+    "field.fact.project.code": "SAMPLE-HIGH-RISK-DISPOSAL-01",
+    "field.fact.project.industry_category": 30,
+    "field.fact.project.nature": "新建",
+    "field.fact.location.river_basin_agency": "珠江流域水资源保护局 (合成)",
+    "field.fact.location.province_list": [
+      "广东省"
+    ],
+    "field.fact.location.prefecture_list": [
+      "河源市"
+    ],
+    "field.fact.location.county_list": [
+      "紫金县"
+    ],
+    "field.fact.location.redline_geometry_ref": "fictional_redline_001",
+    "field.fact.investment.total_investment": {
+      "value": 120000,
+      "unit": "万元"
+    },
+    "field.fact.investment.civil_investment": {
+      "value": 85000,
+      "unit": "万元"
+    },
+    "field.fact.schedule.start_time": "2027-01",
+    "field.fact.schedule.end_time": "2030-12",
+    "field.fact.schedule.design_horizon_year": "2033",
+    "field.fact.land.total_area": {
+      "value": 45.0,
+      "unit": "hm²"
+    },
+    "field.fact.land.permanent_area": {
+      "value": 38.0,
+      "unit": "hm²"
+    },
+    "field.fact.land.temporary_area": {
+      "value": 7.0,
+      "unit": "hm²"
+    },
+    "field.fact.regulatory.compensation_fee_rate": {
+      "value": 0.6,
+      "unit": "元/m²",
+      "_source": "粤发改价格〔2021〕231 号 (Step 11A 首批 live regulatory field)"
+    },
+    "field.fact.earthwork.excavation": {
+      "value": 1200.0,
+      "unit": "万m³"
+    },
+    "field.fact.earthwork.fill": {
+      "value": 320.0,
+      "unit": "万m³"
+    },
+    "field.fact.earthwork.spoil": {
+      "value": 880.0,
+      "unit": "万m³"
+    },
+    "field.fact.earthwork.comprehensive_reuse": {
+      "value": 0,
+      "unit": "万m³"
+    },
+    "field.fact.earthwork.self_reuse": {
+      "value": 320.0,
+      "unit": "万m³"
+    },
+    "field.fact.earthwork.borrow": {
+      "value": 0,
+      "unit": "万m³"
+    },
+    "field.fact.prevention.control_standard_level": "一级",
+    "field.fact.prevention.control_standard_level_breakdown": [
+      {
+        "zone_id": "M1",
+        "zone_name": "主矿区",
+        "standard_level": "一级",
+        "area": {
+          "value": 45.0,
+          "unit": "hm²"
+        }
+      }
+    ],
+    "field.fact.natural.water_soil_zoning": "南方红壤区",
+    "field.fact.prevention.responsibility_range_area": {
+      "value": 45.0,
+      "unit": "hm²"
+    },
+    "field.fact.prevention.planned_vegetation_area": {
+      "value": 10.0,
+      "unit": "hm²"
+    },
+    "field.fact.disposal_site.failure_analysis_required": false,
+    "field.fact.disposal_site.level_assessment": [
+      {
+        "site_id": "D1",
+        "site_name": "主矿区西侧弃渣场 D1",
+        "volume": {
+          "value": 800.0,
+          "unit": "万m³"
+        },
+        "max_height": {
+          "value": 140.0,
+          "unit": "m"
+        },
+        "downstream_harm_class": "严重",
+        "_assessment_note": "D1 位于紫金县主矿区西侧山坳, 下游约 2.5 km 有村庄 (虚构: 'X 村') 120 户约 500 人, 距离 3 km 有县乡主干道 Y 路与 Z 水库引水渠. 失事情形下, 山坳泥石流可能直接覆盖 X 村居民区, 造成人员伤亡和重大财产损失. 按 GB 51018 注 3 判定为'严重': 相关建筑物遭到大的破坏或功能受到大的影响, 可能造成人员伤亡和重大财产损失."
+      },
+      {
+        "site_id": "D2",
+        "site_name": "主矿区东侧弃渣场 D2",
+        "volume": {
+          "value": 80.0,
+          "unit": "万m³"
+        },
+        "max_height": {
+          "value": 50.0,
+          "unit": "m"
+        },
+        "downstream_harm_class": "较轻",
+        "_assessment_note": "D2 位于紫金县主矿区东侧平缓坡地, 下游 5 km 内无村庄和敏感基础设施, 仅有项目自有辅路. 失事情形下, 坡体局部溜方可能损伤自有辅路, 无需修复即可绕行. 按 GB 51018 注 3 判定为'较轻': 相关建筑物受到的影响很小, 不影响原有功能, 无需修复即可投入正常使用."
+      }
+    ],
+    "field.fact.construction.temp_topsoil_site": [],
+    "field.fact.party.compile_unit": {
+      "name": "(合成样本) 样本用编制单位",
+      "legal_representative": "(合成)",
+      "unified_social_credit_code": "9144160000SAMPLE02",
+      "address": "广东省河源市 (虚构地址)",
+      "contact_person": "(合成)",
+      "phone": "0762-0000000",
+      "email": "sample@example.com"
+    },
+    "field.fact.party.construction_unit": {
+      "name": "(合成样本) 样本用建设单位",
+      "legal_representative": "(合成)",
+      "unified_social_credit_code": "9144160000SAMPLE03",
+      "address": "广东省河源市 (虚构地址)",
+      "contact_person": "(合成)",
+      "phone": "0762-0000001"
+    }
+  },
+  "derived": {
+    "field.derived.disposal_site.level_assessment": [
+      {
+        "site_id": "D1",
+        "site_name": "主矿区西侧弃渣场 D1",
+        "level": "1级",
+        "level_by_volume": "2级",
+        "level_by_height": "2级",
+        "level_by_harm": "1级",
+        "governing_dimension": "harm"
+      },
+      {
+        "site_id": "D2",
+        "site_name": "主矿区东侧弃渣场 D2",
+        "level": "4级",
+        "level_by_volume": "4级",
+        "level_by_height": "4级",
+        "level_by_harm": "4级",
+        "governing_dimension": "volume"
+      }
+    ]
+  },
+  "expected_gate_state": {
+    "_note": "高风险 disposal 样本期望 validator 运行后, 3 条高风险 disposal obligation 因 D1 = 1 级而全部触发 ✓"
+  },
+  "sample_assertions": {
+    "facts": {
+      "disposal_site_d1_governs_by_harm": true,
+      "disposal_site_d1_level_triggers_all_three_high_risk": true,
+      "disposal_site_d2_does_not_trigger_any_high_risk": true
+    }
+  }
+}

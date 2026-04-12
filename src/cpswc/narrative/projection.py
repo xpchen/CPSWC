@@ -42,6 +42,7 @@ from cpswc.narrative.templates.sec_4_topsoil import (
     render_balance as render_sec_4_2,
 )
 from cpswc.narrative.templates.sec_9_1_investment_summary import render as render_sec_9_1
+from cpswc.narrative.templates.sec_0_overview import render as render_sec_0
 
 
 # ============================================================
@@ -50,6 +51,7 @@ from cpswc.narrative.templates.sec_9_1_investment_summary import render as rende
 # key = section_id, value = render function
 _PILOT_TEMPLATES: dict[str, Any] = {
     # Step 14-0 pilot
+    "sec.overview": render_sec_0,
     "sec.overview.project_basic": render_sec_1_1,
     "sec.disposal_site.source_and_flow": render_5_1,
     "sec.disposal_site.site_selection": render_5_2,

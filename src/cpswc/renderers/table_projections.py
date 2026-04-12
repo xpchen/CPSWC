@@ -499,6 +499,8 @@ def project_investment_total_summary(snapshot: dict) -> TableData:
 
     rows = []
     subtotal_1_4 = 0.0
+    subtotal_1_5 = None
+    comp_amount = None
     for row_id, seq, name in _INVESTMENT_ROWS:
         amount = None
         cat = cat_map.get(row_id)
@@ -507,8 +509,16 @@ def project_investment_total_summary(snapshot: dict) -> TableData:
             subtotal_1_4 += amount
         elif row_id == "compensation" and comp_fee is not None:
             amount = comp_fee
+            comp_amount = comp_fee
         elif row_id == "subtotal_1_5" and subtotal_1_4 > 0:
             amount = round(subtotal_1_4, 2)  # 不含独立费用 (v0 无独立费用数据)
+            subtotal_1_5 = amount
+        elif row_id == "grand_total":
+            # I + II + III (subtotal_1_5 + reserve + compensation)
+            # v0: reserve = 0, 独立费用 = 0
+            parts = [v for v in [subtotal_1_5, comp_amount] if v is not None]
+            if parts:
+                amount = round(sum(parts), 2)
         rows.append({"seq": seq, "name": name, "amount": amount})
 
     # 动态脚注
@@ -565,6 +575,13 @@ def project_investment_split_summary(snapshot: dict) -> TableData:
                "part3": "监测措施", "part4": "临时措施"}
 
     rows = []
+    sum_new = 0.0
+    sum_existing = 0.0
+    sum_total = 0.0
+    has_parts = False
+    comp_new = None
+    comp_existing = None
+    comp_total = None
     for row_id, seq, name in _INVESTMENT_ROWS:
         scheme_new = None
         existing = None
@@ -574,10 +591,25 @@ def project_investment_split_summary(snapshot: dict) -> TableData:
             scheme_new = round(summary[cat]["new"], 2)
             existing = round(summary[cat]["existing"], 2)
             total = round(summary[cat]["total"], 2)
+            sum_new += scheme_new
+            sum_existing += existing
+            sum_total += total
+            has_parts = True
         elif row_id == "compensation" and comp_fee is not None:
             scheme_new = comp_fee
             existing = 0
             total = comp_fee
+            comp_new = scheme_new
+            comp_existing = existing
+            comp_total = total
+        elif row_id == "subtotal_1_5" and has_parts:
+            scheme_new = round(sum_new, 2)
+            existing = round(sum_existing, 2)
+            total = round(sum_total, 2)
+        elif row_id == "grand_total" and has_parts:
+            scheme_new = round(sum_new + (comp_new or 0), 2)
+            existing = round(sum_existing + (comp_existing or 0), 2)
+            total = round(sum_total + (comp_total or 0), 2)
         rows.append({
             "seq": seq, "name": name,
             "scheme_new": scheme_new, "existing": existing, "total": total,

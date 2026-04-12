@@ -13,7 +13,7 @@ table_projections.py — CPSWC P0 CAN_GENERATE 表格数据投影函数
 from __future__ import annotations
 from typing import Any
 
-from cpswc.renderers.table_protocol import TableColumn, TableSpec, TableData
+from cpswc.renderers.table_protocol import TableColumn, TableSpec, TableData, TableRenderPolicy
 
 
 # ============================================================
@@ -62,8 +62,11 @@ def project_total_land_occupation(snapshot: dict) -> TableData:
     if temp is None:
         warnings.append("field.fact.land.temporary_area 缺失")
 
+    policy = TableRenderPolicy.RENDER_WITH_VALUES
+    if perm is None and temp is None:
+        policy = TableRenderPolicy.RENDER_WITH_PLACEHOLDER
     return TableData(spec=SPEC_TOTAL_LAND, rows=[row], total_row=total_row,
-                     warnings=warnings)
+                     render_policy=policy, warnings=warnings)
 
 
 # ============================================================
@@ -99,7 +102,8 @@ def project_earthwork_balance(snapshot: dict) -> TableData:
         "spoil": _get(facts, "field.fact.earthwork.spoil"),
         "comprehensive_reuse": _get(facts, "field.fact.earthwork.comprehensive_reuse"),
     }
-    return TableData(spec=SPEC_EARTHWORK, rows=[row], total_row=row.copy())
+    return TableData(spec=SPEC_EARTHWORK, rows=[row], total_row=row.copy(),
+                     render_policy=TableRenderPolicy.RENDER_WITH_VALUES)
 
 
 # ============================================================
@@ -126,6 +130,7 @@ def project_land_occupation_by_county(snapshot: dict) -> TableData:
     breakdown = facts.get("field.fact.land.county_breakdown")
     if not isinstance(breakdown, list):
         return TableData(spec=SPEC_COUNTY_LAND, rows=[], total_row=None,
+                         render_policy=TableRenderPolicy.SKIP_RENDER,
                          warnings=["field.fact.land.county_breakdown 缺失或非 list"])
 
     rows = []
@@ -144,7 +149,8 @@ def project_land_occupation_by_county(snapshot: dict) -> TableData:
             total_area += float(area_val)
 
     total_row = {"county": "合计", "nature": "", "type": "", "area": total_area}
-    return TableData(spec=SPEC_COUNTY_LAND, rows=rows, total_row=total_row)
+    return TableData(spec=SPEC_COUNTY_LAND, rows=rows, total_row=total_row,
+                     render_policy=TableRenderPolicy.RENDER_WITH_VALUES)
 
 
 # ============================================================
@@ -188,8 +194,9 @@ def project_topsoil_balance(snapshot: dict) -> TableData:
     if r_vol is None:
         warnings.append("field.fact.topsoil.fill (回覆量) 为 placeholder stub, 待措施布设确认")
 
+    policy = TableRenderPolicy.RENDER_WITH_PLACEHOLDER if warnings else TableRenderPolicy.RENDER_WITH_VALUES
     return TableData(spec=SPEC_TOPSOIL, rows=[row], total_row=row.copy(),
-                     warnings=warnings)
+                     render_policy=policy, warnings=warnings)
 
 
 # ============================================================
@@ -217,6 +224,7 @@ def project_responsibility_range(snapshot: dict) -> TableData:
 
     if not isinstance(breakdown, list) or not breakdown:
         return TableData(spec=SPEC_RESP_RANGE, rows=[], total_row=None,
+                         render_policy=TableRenderPolicy.SKIP_RENDER,
                          warnings=["county_breakdown 缺失"])
 
     # v0 近似: 用各县占地面积合计作为分县责任范围
@@ -243,6 +251,7 @@ def project_responsibility_range(snapshot: dict) -> TableData:
         warnings.append(f"county_breakdown 合计 ({grand_total}) 与 responsibility_range_area ({total_resp}) 不一致")
 
     return TableData(spec=SPEC_RESP_RANGE, rows=rows, total_row=total_row,
+                     render_policy=TableRenderPolicy.RENDER_WITH_VALUES,
                      warnings=warnings)
 
 
@@ -320,7 +329,8 @@ def project_spoil_summary(snapshot: dict) -> TableData:
             "level": "不适用",   # 不适用弃渣场分级
         })
 
-    return TableData(spec=SPEC_SPOIL_SUMMARY, rows=rows)
+    policy = TableRenderPolicy.RENDER_WITH_VALUES if rows else TableRenderPolicy.RENDER_NOT_APPLICABLE
+    return TableData(spec=SPEC_SPOIL_SUMMARY, rows=rows, render_policy=policy)
 
 
 # ============================================================

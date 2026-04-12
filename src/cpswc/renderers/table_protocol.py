@@ -18,7 +18,29 @@ table_protocol.py — CPSWC P0 表格生成协议
 from __future__ import annotations
 
 from dataclasses import dataclass, field as dc_field
+from enum import Enum
 from typing import Any
+
+
+class TableRenderPolicy(str, Enum):
+    """
+    P0.5-1: 表格渲染四态 (所有表格必须声明其中之一)
+
+    - RENDER_WITH_VALUES: 数据就绪, 正常渲染表格 + 数据
+    - RENDER_WITH_PLACEHOLDER: 数据部分缺失, 渲染表结构 + "—" 占位
+    - RENDER_NOT_APPLICABLE: 本项目不适用此表, 渲染标题 + "本项目不涉及此表" 说明
+    - SKIP_RENDER: 完全不渲染 (条件不满足, 不保留任何占位)
+
+    规则:
+      - 投影函数返回 TableData 时必须设置 render_policy
+      - renderer 依据 policy 决定行为, 不做隐式推断
+      - RENDER_WITH_PLACEHOLDER 和 RENDER_WITH_VALUES 的区别:
+        前者有结构但缺值 (显示 —), 后者完整
+    """
+    RENDER_WITH_VALUES = "render_with_values"
+    RENDER_WITH_PLACEHOLDER = "render_with_placeholder"
+    RENDER_NOT_APPLICABLE = "render_not_applicable"
+    SKIP_RENDER = "skip_render"
 
 from docx import Document
 from docx.shared import Pt, RGBColor
@@ -51,6 +73,7 @@ class TableData:
     spec: TableSpec
     rows: list[dict]            # [{key: value, ...}, ...]
     total_row: dict | None = None  # 合计行 (key: value)
+    render_policy: TableRenderPolicy = TableRenderPolicy.RENDER_WITH_VALUES
     warnings: list[str] = dc_field(default_factory=list)
 
 
@@ -62,8 +85,8 @@ _HEADER_BG = "D9D9D9"
 
 
 def _format_value(value: Any, fmt: str) -> str:
-    """按格式规则格式化单个值"""
-    if value is None:
+    """按格式规则格式化单个值 (None 和空字符串都显示 —)"""
+    if value is None or value == "":
         return "—"
     try:
         if fmt == "int":
@@ -110,8 +133,27 @@ def render_data_table(doc: Document, table_data: TableData):
 
     所有 CAN_GENERATE 表格共用此函数。
     遵循 P0-2 表协议 (见 module docstring)。
+
+    P0.5-1 渲染策略:
+      RENDER_WITH_VALUES / RENDER_WITH_PLACEHOLDER → 正常渲染表格
+      RENDER_NOT_APPLICABLE → 只渲染标题 + "本项目不涉及此表"
+      SKIP_RENDER → 完全不输出
     """
+    policy = table_data.render_policy
+
+    if policy == TableRenderPolicy.SKIP_RENDER:
+        return None
+
     spec = table_data.spec
+
+    if policy == TableRenderPolicy.RENDER_NOT_APPLICABLE:
+        doc.add_heading(spec.title, level=3)
+        p = doc.add_paragraph()
+        run = p.add_run("本项目不涉及此表。")
+        run.font.size = Pt(9)
+        run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+        run.italic = True
+        return None
     cols = spec.columns
     n_cols = len(cols)
 

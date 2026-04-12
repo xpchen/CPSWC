@@ -2,11 +2,12 @@
 test_quota_connector.py — F2 Price Layer Connector 单测
 
 验证:
-  1. load_mapping: YAML 加载正确条数和字段
+  1. load_mapping: YAML 加载正确条数和字段 + 校准元数据
   2. lookup_consumption: 有映射→返回 QuotaConsumption; 无映射→None
   3. calculate_unit_price: 人工/机械/材料费计算正确
-  4. enrich_measures: 批量标注 price_source + quota_unit_price
+  4. enrich_measures: 批量标注 price_source (分级) + quota_unit_price
   5. 无 DB 文件时安全降级
+  6. 校准分级: calibrated→白名单, needs_section→risk, manual_review→review
 """
 import sys
 import sqlite3
@@ -26,6 +27,16 @@ from cpswc.quota_connector import (
     RegionalRates,
     DEFAULT_MAPPING_PATH,
     DB_PATH,
+    CALIBRATION_CALIBRATED,
+    CALIBRATION_NEEDS_SECTION,
+    CALIBRATION_MANUAL_REVIEW,
+    CALIBRATION_NOT_APPLICABLE,
+    PS_QUOTA_CALIBRATED,
+    PS_QUOTA_RAW,
+    PS_QUOTA_RISK,
+    PS_QUOTA_REVIEW,
+    PS_NO_MAPPING,
+    PS_NO_DB,
 )
 
 MAPPING_PATH = DEFAULT_MAPPING_PATH
@@ -73,13 +84,16 @@ def test_load_mapping_count():
 
 
 def test_load_mapping_fields():
-    """eng_02 字段正确."""
+    """eng_02 字段正确 (含校准元数据)."""
     mapping = load_mapping()
     e = mapping["eng_02"]
     assert e.measure_name == "M7.5浆砌石挡土墙"
     assert e.quota_code == "0309"
     assert e.detail_code == "03031"
     assert e.unit_convert == 0.01
+    assert e.calibration_status == CALIBRATION_CALIBRATED
+    assert e.whitelist is True
+    assert e.requires_section_params is False
 
 
 def test_load_mapping_no_quota():
@@ -88,6 +102,35 @@ def test_load_mapping_no_quota():
     e = mapping["temp_02"]
     assert e.quota_code is None
     assert e.detail_code is None
+    assert e.calibration_status == CALIBRATION_NOT_APPLICABLE
+    assert e.whitelist is False
+
+
+def test_load_mapping_calibration_distribution():
+    """校准状态分布: 3 calibrated, 3 needs_section, 1 manual_review, 2 not_applicable."""
+    mapping = load_mapping()
+    statuses = [e.calibration_status for e in mapping.values()]
+    assert statuses.count(CALIBRATION_CALIBRATED) == 3
+    assert statuses.count(CALIBRATION_NEEDS_SECTION) == 3
+    assert statuses.count(CALIBRATION_MANUAL_REVIEW) == 1
+    assert statuses.count(CALIBRATION_NOT_APPLICABLE) == 2
+
+
+def test_load_mapping_whitelist_count():
+    """白名单仅 3 条 (eng_02, plant_02, plant_03)."""
+    mapping = load_mapping()
+    wl = [mid for mid, e in mapping.items() if e.whitelist]
+    assert sorted(wl) == ["eng_02", "plant_02", "plant_03"]
+
+
+def test_load_mapping_needs_section():
+    """needs_section 的 3 条都有 section_formula."""
+    mapping = load_mapping()
+    for mid in ["eng_01", "eng_03", "temp_01"]:
+        e = mapping[mid]
+        assert e.calibration_status == CALIBRATION_NEEDS_SECTION
+        assert e.requires_section_params is True
+        assert len(e.section_formula) > 0
 
 
 # ============================================================
@@ -234,14 +277,17 @@ def test_enrich_with_test_db():
             measure_id="t1", measure_name="test", measure_unit="m³",
             quota_code="TEST01", detail_code="T001",
             quota_title="测试", quota_unit="100m³", unit_convert=0.01,
+            calibration_status=CALIBRATION_CALIBRATED, whitelist=True,
         ),
     }
     enriched = enrich_measures(measures, mapping=mapping, db_path=path)
 
-    assert enriched[0]["price_source"] == "quota_db"
+    assert enriched[0]["price_source"] == PS_QUOTA_CALIBRATED
     assert enriched[0]["quota_unit_price"] > 0
+    assert enriched[0]["whitelist"] is True
     assert "quota_breakdown" in enriched[0]
-    assert enriched[1]["price_source"] == "no_mapping"
+    assert enriched[1]["price_source"] == PS_NO_MAPPING
+    assert enriched[1]["whitelist"] is False
     path.unlink()
 
 
@@ -263,11 +309,53 @@ def test_enrich_preserves_original_price():
             measure_id="t1", measure_name="test", measure_unit="m³",
             quota_code="TEST01", detail_code="T001",
             quota_title="测试", quota_unit="100m³", unit_convert=0.01,
+            calibration_status=CALIBRATION_CALIBRATED, whitelist=True,
         ),
     }
     enriched = enrich_measures(measures, mapping=mapping, db_path=path)
     assert enriched[0]["unit_price"] == 999.0  # 原始价格不变
     assert enriched[0]["quota_unit_price"] != 999.0  # 定额价格另存
+    path.unlink()
+
+
+def test_enrich_grading_needs_section():
+    """needs_section → price_source = unit_convert_risk."""
+    path, conn = _make_test_db()
+    conn.close()
+
+    measures = [{"measure_id": "t1"}]
+    mapping = {
+        "t1": MappingEntry(
+            measure_id="t1", measure_name="test", measure_unit="m",
+            quota_code="TEST01", detail_code="T001",
+            quota_title="测试", quota_unit="100m³", unit_convert=0.01,
+            calibration_status=CALIBRATION_NEEDS_SECTION,
+            requires_section_params=True, whitelist=False,
+        ),
+    }
+    enriched = enrich_measures(measures, mapping=mapping, db_path=path)
+    assert enriched[0]["price_source"] == PS_QUOTA_RISK
+    assert enriched[0]["calibration_status"] == CALIBRATION_NEEDS_SECTION
+    path.unlink()
+
+
+def test_enrich_grading_manual_review():
+    """manual_review → price_source = manual_review_required."""
+    path, conn = _make_test_db()
+    conn.close()
+
+    measures = [{"measure_id": "t1"}]
+    mapping = {
+        "t1": MappingEntry(
+            measure_id="t1", measure_name="test", measure_unit="hm²",
+            quota_code="TEST01", detail_code="T001",
+            quota_title="测试", quota_unit="100m²", unit_convert=100.0,
+            calibration_status=CALIBRATION_MANUAL_REVIEW, whitelist=False,
+        ),
+    }
+    enriched = enrich_measures(measures, mapping=mapping, db_path=path)
+    assert enriched[0]["price_source"] == PS_QUOTA_REVIEW
+    assert enriched[0]["whitelist"] is False
     path.unlink()
 
 
@@ -285,14 +373,19 @@ def test_real_db_enrich():
     measures = [dict(r) for r in result.records]
     enriched = enrich_measures(measures)
 
-    # 7 条有映射, 2 条无映射
-    quota_db_count = sum(1 for m in enriched if m.get("price_source") == "quota_db")
-    no_mapping_count = sum(1 for m in enriched if m.get("price_source") == "no_mapping")
-    assert quota_db_count == 7
-    assert no_mapping_count == 2
+    # 按分级统计
+    sources = [m["price_source"] for m in enriched]
+    assert sources.count(PS_QUOTA_CALIBRATED) == 3   # eng_02, plant_02, plant_03
+    assert sources.count(PS_QUOTA_RISK) == 3         # eng_01, eng_03, temp_01
+    assert sources.count(PS_QUOTA_REVIEW) == 1       # plant_01
+    assert sources.count(PS_NO_MAPPING) == 2         # temp_02, temp_03
+
+    # 白名单仅 3 条
+    wl = [m for m in enriched if m.get("whitelist")]
+    assert len(wl) == 3
 
     # 有定额价格的都 > 0
     for m in enriched:
-        if m.get("price_source") == "quota_db":
+        if m["price_source"] not in (PS_NO_MAPPING, PS_NO_DB):
             assert m["quota_unit_price"] > 0
             assert m["quota_ref"] is not None

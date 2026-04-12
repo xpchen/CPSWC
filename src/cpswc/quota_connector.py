@@ -29,6 +29,22 @@ from cpswc.paths import PROJECT_ROOT
 # Data classes
 # ============================================================
 
+
+# 校准状态枚举
+CALIBRATION_CALIBRATED = "calibrated"         # 换算系数已验证, 可用于自动定价
+CALIBRATION_NEEDS_SECTION = "needs_section"   # 需断面/结构参数才能确定 unit_convert
+CALIBRATION_MANUAL_REVIEW = "manual_review"   # 定额价异常或映射存疑, 需人工审核
+CALIBRATION_NOT_APPLICABLE = "not_applicable" # 无定额条目, 市场采购
+
+# enrich 结果 price_source 枚举
+PS_QUOTA_CALIBRATED = "quota_db_calibrated"   # 定额价 + 校准通过 (白名单)
+PS_QUOTA_RAW = "quota_db"                     # 定额价但未校准 / 非白名单
+PS_QUOTA_RISK = "unit_convert_risk"           # 定额价但 unit_convert 需断面参数
+PS_QUOTA_REVIEW = "manual_review_required"    # 定额价异常, 需人工审核
+PS_NO_MAPPING = "no_mapping"                  # 无定额映射
+PS_NO_DB = "no_db"                            # DB 文件不存在
+
+
 @dataclass
 class MappingEntry:
     """一条措施→定额映射."""
@@ -41,6 +57,12 @@ class MappingEntry:
     quota_unit: str
     unit_convert: float          # 定额单位→措施单位的换算系数
     notes: str = ""
+    # 校准元数据 (Step 20.3)
+    calibration_status: str = CALIBRATION_NOT_APPLICABLE
+    requires_section_params: bool = False
+    section_formula: str = ""
+    whitelist: bool = False
+    review_note: str = ""
 
 
 @dataclass
@@ -128,6 +150,11 @@ def load_mapping(path: str | Path = DEFAULT_MAPPING_PATH) -> dict[str, MappingEn
             quota_unit=m.get("quota_unit", ""),
             unit_convert=float(m.get("unit_convert", 1.0)),
             notes=m.get("notes", ""),
+            calibration_status=m.get("calibration_status", CALIBRATION_NOT_APPLICABLE),
+            requires_section_params=bool(m.get("requires_section_params", False)),
+            section_formula=m.get("section_formula", ""),
+            whitelist=bool(m.get("whitelist", False)),
+            review_note=m.get("review_note", ""),
         )
     return result
 
@@ -321,7 +348,7 @@ def enrich_measures(
     db_path = Path(db_path)
     if not db_path.exists():
         for m in measures:
-            m["price_source"] = "no_db"
+            m["price_source"] = PS_NO_DB
         return measures
 
     conn = sqlite3.connect(str(db_path))
@@ -331,14 +358,18 @@ def enrich_measures(
         entry = mapping.get(mid)
 
         if not entry or not entry.quota_code:
-            m["price_source"] = "no_mapping"
+            m["price_source"] = PS_NO_MAPPING
             m["quota_ref"] = None
+            m["calibration_status"] = entry.calibration_status if entry else CALIBRATION_NOT_APPLICABLE
+            m["whitelist"] = False
             continue
 
         consumption = lookup_consumption(conn, entry)
         if not consumption:
-            m["price_source"] = "no_mapping"
+            m["price_source"] = PS_NO_MAPPING
             m["quota_ref"] = None
+            m["calibration_status"] = entry.calibration_status
+            m["whitelist"] = entry.whitelist
             continue
 
         price_result = calculate_unit_price(consumption, rates, material_prices)
@@ -349,7 +380,18 @@ def enrich_measures(
         m["quota_machine"] = price_result["machine_cost"]
         m["quota_material"] = price_result["material_cost"]
         m["quota_breakdown"] = price_result["breakdown"]
-        m["price_source"] = "quota_db"
+        m["calibration_status"] = entry.calibration_status
+        m["whitelist"] = entry.whitelist
+
+        # 根据校准状态分级 price_source
+        if entry.whitelist and entry.calibration_status == CALIBRATION_CALIBRATED:
+            m["price_source"] = PS_QUOTA_CALIBRATED
+        elif entry.calibration_status == CALIBRATION_NEEDS_SECTION:
+            m["price_source"] = PS_QUOTA_RISK
+        elif entry.calibration_status == CALIBRATION_MANUAL_REVIEW:
+            m["price_source"] = PS_QUOTA_REVIEW
+        else:
+            m["price_source"] = PS_QUOTA_RAW
 
     conn.close()
     return measures

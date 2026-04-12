@@ -10,12 +10,23 @@
 #                 例: 定额单位 "100m³" → 措施单位 "m³" → factor=0.01
 #   notes: 选型说明
 #
+# 校准字段 (Step 20.3):
+#   calibration_status: 校准状态
+#     - calibrated:       单位直通, 换算系数已验证
+#     - needs_section:    需断面/结构参数才能确定 unit_convert
+#     - manual_review:    定额价异常或映射存疑, 需人工审核
+#     - not_applicable:   无定额条目, 市场采购
+#   requires_section_params: bool — 是否需要断面/结构参数来校准 unit_convert
+#   section_formula: 断面→体积换算公式说明 (仅 requires_section_params=true 时)
+#   whitelist: bool — 是否可用于演示自动定价 (仅 calibrated 项为 true)
+#   review_note: 校准备注
+#
 # 映射原则:
 #   - 一条措施只映射一个定额子项 (1:1)
 #   - 映射不到时留空, 退回手工定价
 #   - unit_convert 保证定额消耗量 × factor = 每措施单位的消耗量
 
-version: "0.1"
+version: "0.2"
 edition: "2025"
 source_db: "data/quota_2025/quota_2025.db"
 
@@ -28,8 +39,15 @@ mappings:
     detail_code: "03029"        # 护底 (排水沟底板浆砌)
     quota_title: 浆砌块（片）石
     quota_unit: 100m³砌体方
-    unit_convert: 0.01          # 100m³ → m³, 但措施单位是 m (线性)
-    convert_note: "需结合断面尺寸: 1m 排水沟 ≈ 0.3×0.3=0.09m³ 砌体, factor=0.09/100=0.0009"
+    unit_convert: 0.01          # 占位值; 真实值需断面参数
+    calibration_status: needs_section
+    requires_section_params: true
+    section_formula: "1m 排水沟 ≈ (宽×高) m² 截面 × 壁厚 → V m³砌体, factor = V/100"
+    whitelist: false
+    review_note: |
+      措施单位 m (线性) vs 定额单位 100m³砌体方。
+      当前 unit_convert=0.01 等价于 1m³/m, 实际应按断面计算。
+      例: 梯形断面 底宽0.3m 高0.3m → 约 0.09m³/m → factor=0.0009。
     notes: 排水沟为浆砌石结构, 选 "护底" 子项
 
   eng_02:
@@ -39,7 +57,13 @@ mappings:
     detail_code: "03031"        # 挡土墙
     quota_title: 浆砌块（片）石
     quota_unit: 100m³砌体方
-    unit_convert: 0.01          # 100m³ → 1m³
+    unit_convert: 0.01          # 100m³ → 1m³ (直通)
+    calibration_status: calibrated
+    requires_section_params: false
+    whitelist: true
+    review_note: |
+      m³→m³ 直通换算, 系数已验证。
+      当前仅含人工+机械, 材料费 (块石+砂浆) 需 material_prices。
     notes: 浆砌块石挡土墙, 直接按砌体方计
 
   eng_03:
@@ -49,8 +73,15 @@ mappings:
     detail_code: "01004"        # 土类级别Ⅰ-Ⅱ (惠州以Ⅰ-Ⅱ类为主)
     quota_title: 人工挖排水沟、截水沟
     quota_unit: 100m³自然方
-    unit_convert: 0.01          # 100m³ → m³
-    convert_note: "需结合断面尺寸: 1m 截水沟 ≈ 0.4×0.3/2=0.06m³, factor=0.06/100=0.0006"
+    unit_convert: 0.01          # 占位值; 真实值需断面参数
+    calibration_status: needs_section
+    requires_section_params: true
+    section_formula: "1m 截水沟 ≈ (顶宽+底宽)×高/2 m² 截面 → V m³, factor = V/100"
+    whitelist: false
+    review_note: |
+      措施单位 m (线性) vs 定额单位 100m³自然方。
+      当前 unit_convert=0.01 等价于 1m³/m, 实际应按断面计算。
+      例: 梯形断面 底宽0.3m 顶宽0.5m 深0.3m → 约 0.06m³/m → factor=0.0006。
     notes: 土质截水沟, 仅开挖工作量
 
   # ======== 植物措施 ========
@@ -62,6 +93,16 @@ mappings:
     quota_title: 护坡撒草籽
     quota_unit: 100m²
     unit_convert: 100            # 1hm² = 10000m² = 100 × (100m²)
+    calibration_status: manual_review
+    requires_section_params: false
+    whitelist: false
+    review_note: |
+      换算系数数学上正确 (1hm²=100×100m²), 但定额人工费达 63000 元/hm²,
+      远超 CSV 手工估价 3500 元/hm²。可能原因:
+      1. 定额 10016 是"护坡撒草籽"含整地/覆土工序, 非简单撒播
+      2. 人工工时 630工时/100m² 偏高, 需核实定额子项是否对应
+      3. 该定额项可能对应坡面施工(高难度), 而非平地撒播
+      建议: 核实定额原书确认工时基准, 或换用更匹配的定额子项。
     notes: 护坡撒草籽, 含人工+草籽+无纺布
 
   plant_02:
@@ -71,7 +112,14 @@ mappings:
     detail_code: "08147"         # 土球直径20cm
     quota_title: 栽植带土球乔木
     quota_unit: 100株
-    unit_convert: 0.01           # 100株 → 1株
+    unit_convert: 0.01           # 100株 → 1株 (直通)
+    calibration_status: calibrated
+    requires_section_params: false
+    whitelist: true
+    review_note: |
+      株→株 直通换算, 系数已验证。
+      人工费 5.67 元/株合理 (小规格乔木)。
+      材料费需苗木+水单价。
     notes: 小叶榕等小乔木, 选最小规格 (土球20cm)
 
   plant_03:
@@ -81,7 +129,14 @@ mappings:
     detail_code: "08083"         # 满铺
     quota_title: 草皮铺种
     quota_unit: 100m²
-    unit_convert: 0.01           # 100m² → 1m²
+    unit_convert: 0.01           # 100m² → 1m² (直通)
+    calibration_status: calibrated
+    requires_section_params: false
+    whitelist: true
+    review_note: |
+      m²→m² 直通换算, 系数已验证。
+      人工费 19.0 元/m² 合理。
+      材料费需草皮+水单价。
     notes: 百慕大草皮满铺
 
   # ======== 临时措施 ========
@@ -92,8 +147,13 @@ mappings:
     detail_code: "01004"         # 土类级别Ⅰ-Ⅱ
     quota_title: 人工挖排水沟、截水沟
     quota_unit: 100m³自然方
-    unit_convert: 0.01
-    convert_note: "同 eng_03, 需结合断面尺寸换算"
+    unit_convert: 0.01           # 占位值; 同 eng_03
+    calibration_status: needs_section
+    requires_section_params: true
+    section_formula: "同 eng_03, 需结合断面尺寸换算"
+    whitelist: false
+    review_note: |
+      与 eng_03 共用同一定额, 同样需要断面参数校准。
     notes: 临时土质排水沟, 仅开挖
 
   temp_02:
@@ -101,6 +161,10 @@ mappings:
     measure_unit: m²
     quota_code: ~               # 定额库无直接对应条目
     detail_code: ~
+    calibration_status: not_applicable
+    requires_section_params: false
+    whitelist: false
+    review_note: 市场采购项, 无定额条目。
     notes: 密目网苫盖为市场采购项, 无定额条目, 保持手工定价
 
   temp_03:
@@ -108,4 +172,8 @@ mappings:
     measure_unit: 座
     quota_code: ~               # 非定额标准项
     detail_code: ~
+    calibration_status: not_applicable
+    requires_section_params: false
+    whitelist: false
+    review_note: 非标设施, 按市场报价。
     notes: 洗车池为非标设施, 按市场报价, 保持手工定价

@@ -335,6 +335,9 @@ artifacts:
     canonical_name: 工程单价汇总表
     parent: art.table.investment_appendix
     requirement: always
+    status: planned
+    deferred_to: v2
+    dependency: quota/定额数据库接入
     data_source_refs: [engine.InvestmentEstimationSubsystem]
     renderer: TableRenderer
 
@@ -343,6 +346,9 @@ artifacts:
     canonical_name: 施工机械台时费汇总表
     parent: art.table.investment_appendix
     requirement: always
+    status: planned
+    deferred_to: v2
+    dependency: quota/定额数据库接入
     data_source_refs: [engine.InvestmentEstimationSubsystem]
     renderer: TableRenderer
 
@@ -351,6 +357,9 @@ artifacts:
     canonical_name: 主要材料单价汇总表
     parent: art.table.investment_appendix
     requirement: always
+    status: planned
+    deferred_to: v2
+    dependency: 地区材料价格信息系统
     data_source_refs: [engine.InvestmentEstimationSubsystem]
     renderer: TableRenderer
 

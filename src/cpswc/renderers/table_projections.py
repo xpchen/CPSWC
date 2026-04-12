@@ -1495,6 +1495,109 @@ def project_six_indicator_breakdown(snapshot: dict) -> TableData:
         spec=SPEC_SIX_INDICATOR_BREAKDOWN, rows=rows, render_policy=policy)
 
 
+# ============================================================
+# Step 34: 措施工程量汇总表 (Measures Engineering Quantity Table)
+# ============================================================
+# 按防治分区和措施类别展开, 从 measures_registry 过滤。
+# 分"方案新增"和"主体已列"两张表, 共享同一 section_id。
+
+SPEC_MEASURES_NEW = TableSpec(
+    table_id="art.table.measures_quantity_new",
+    title="新增水土保持措施工程量及投资汇总表",
+    columns=[
+        TableColumn(key="category", header="措施类别", unit="", align="left", fmt="str"),
+        TableColumn(key="zone", header="防治分区", unit="", align="left", fmt="str"),
+        TableColumn(key="measure", header="措施名称", unit="", align="left", fmt="str"),
+        TableColumn(key="unit", header="单位", unit="", align="center", fmt="str"),
+        TableColumn(key="quantity", header="工程量", unit="", align="right", fmt="str"),
+        TableColumn(key="amount", header="投资", unit="万元", align="right", fmt="str"),
+    ],
+    has_total_row=True,
+    footnote="数据来源: field.fact.investment.measures_registry (source_attribution=方案新增)",
+    section_id="sec.soil_loss_prevention.construction_schedule",
+)
+
+SPEC_MEASURES_EXISTING = TableSpec(
+    table_id="art.table.measures_quantity_existing",
+    title="主体工程已列水土保持措施工程量及投资汇总表",
+    columns=[
+        TableColumn(key="category", header="措施类别", unit="", align="left", fmt="str"),
+        TableColumn(key="zone", header="防治分区", unit="", align="left", fmt="str"),
+        TableColumn(key="measure", header="措施名称", unit="", align="left", fmt="str"),
+        TableColumn(key="unit", header="单位", unit="", align="center", fmt="str"),
+        TableColumn(key="quantity", header="工程量", unit="", align="right", fmt="str"),
+        TableColumn(key="amount", header="投资", unit="万元", align="right", fmt="str"),
+    ],
+    has_total_row=True,
+    footnote="数据来源: field.fact.investment.measures_registry (source_attribution=主体已列)",
+    section_id="sec.soil_loss_prevention.construction_schedule",
+)
+
+# Fee category ordering
+_CATEGORY_ORDER = ["工程措施", "植物措施", "临时措施", "监测措施"]
+
+
+def _build_measures_table(snapshot: dict, spec: TableSpec,
+                          attribution_filter: str) -> TableData:
+    """Build measures quantity table filtered by source_attribution."""
+    facts = snapshot.get("_original_facts") or {}
+    registry = facts.get("field.fact.investment.measures_registry") or []
+
+    filtered = [m for m in registry
+                if m.get("source_attribution") == attribution_filter]
+
+    if not filtered:
+        return TableData(spec=spec, rows=[],
+                         render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+
+    # Sort: by category order, then zone, then measure name
+    def sort_key(m):
+        cat = m.get("fee_category", "")
+        idx = _CATEGORY_ORDER.index(cat) if cat in _CATEGORY_ORDER else 99
+        return (idx, m.get("prevention_zone", ""), m.get("measure_name", ""))
+
+    filtered.sort(key=sort_key)
+
+    rows = []
+    total_amount = 0.0
+    prev_cat = None
+    for m in filtered:
+        cat = m.get("fee_category", "—")
+        amt = m.get("amount_wan", 0) or 0
+        total_amount += amt
+
+        rows.append({
+            "category": cat if cat != prev_cat else "",  # merge same category
+            "zone": m.get("prevention_zone", "—"),
+            "measure": m.get("measure_name", "—"),
+            "unit": m.get("unit", "—"),
+            "quantity": str(m.get("quantity", "—")),
+            "amount": f"{amt:.2f}" if amt else "—",
+        })
+        prev_cat = cat
+
+    # Total row
+    rows.append({
+        "category": "合  计",
+        "zone": "",
+        "measure": "",
+        "unit": "",
+        "quantity": "",
+        "amount": f"{total_amount:.2f}",
+    })
+
+    return TableData(spec=spec, rows=rows,
+                     render_policy=TableRenderPolicy.RENDER_WITH_VALUES)
+
+
+def project_measures_quantity_new(snapshot: dict) -> TableData:
+    return _build_measures_table(snapshot, SPEC_MEASURES_NEW, "方案新增")
+
+
+def project_measures_quantity_existing(snapshot: dict) -> TableData:
+    return _build_measures_table(snapshot, SPEC_MEASURES_EXISTING, "主体已列")
+
+
 TABLE_PROJECTIONS = {
     "art.table.total_land_occupation": project_total_land_occupation,
     "art.table.earthwork_balance": project_earthwork_balance,
@@ -1517,4 +1620,6 @@ TABLE_PROJECTIONS = {
     "art.table.prediction.result": project_prediction_result,  # Step 31B
     "art.table.prediction.summary": project_prediction_summary,  # Step 31B
     "art.table.six_indicator_breakdown": project_six_indicator_breakdown,  # Step 32+
+    "art.table.measures_quantity_new": project_measures_quantity_new,  # Step 34
+    "art.table.measures_quantity_existing": project_measures_quantity_existing,  # Step 34
 }

@@ -499,6 +499,29 @@ artifacts:
       - field.derived.target.weighted_comprehensive_target
     renderer: TableProjection
 
+  # Step 34: 措施工程量汇总表 (新增 + 主体已列)
+  art.table.measures_quantity_new:
+    kind: table
+    canonical_name: 新增水土保持措施工程量及投资汇总表
+    source: 2026_template_7_4
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.soil_loss_prevention.construction_schedule
+    data_source_refs:
+      - field.fact.investment.measures_registry
+    renderer: TableProjection
+
+  art.table.measures_quantity_existing:
+    kind: table
+    canonical_name: 主体工程已列水土保持措施工程量及投资汇总表
+    source: 2026_template_7_4
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.soil_loss_prevention.construction_schedule
+    data_source_refs:
+      - field.fact.investment.measures_registry
+    renderer: TableProjection
+
   art.table.monitoring_points:
     kind: table
     canonical_name: 水土保持监测点位布设表

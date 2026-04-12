@@ -1,0 +1,90 @@
+# Investment Mock F1 Data — Huizhou Housing Project
+#
+# 性质: 演示性 mock 输入, 仅用于验证投资链路与附表渲染
+# 标记: demo_only=true, 不作为正式监管输出
+# 来源: 基于样稿 01 惠南智谷 量级估算, 非精确值
+#
+# 使用方式:
+#   from cpswc.investment_loader import load_investment_overlay
+#   overlay = load_investment_overlay("fixtures/investment_mock_huizhou.yaml")
+#   merged_snapshot = inject_overlay(snapshot, overlay)
+
+demo_only: true
+source_type: mock_f1
+not_for_regulatory_output: true
+target_sample: huizhou_housing_v0
+generated_at: 2026-04-12
+
+measures:
+  # ======== 第一部分 工程措施 ========
+  - measure_id: eng_01
+    measure_name: 浆砌石排水沟
+    fee_category: 工程措施
+    prevention_zone: 主体工程区
+    source_attribution: 方案新增
+    unit: m
+    quantity: 120
+    unit_price: 150
+    description: L型排水沟, 断面 0.3×0.3m
+
+  - measure_id: eng_02
+    measure_name: M7.5 浆砌石挡土墙
+    fee_category: 工程措施
+    prevention_zone: 临时堆土区
+    source_attribution: 方案新增
+    unit: m³
+    quantity: 35
+    unit_price: 380
+    description: 重力式挡土墙, 高 1.5m
+
+  # ======== 第二部分 植物措施 ========
+  - measure_id: plant_01
+    measure_name: 撒播草籽
+    fee_category: 植物措施
+    prevention_zone: 主体工程区
+    source_attribution: 方案新增
+    unit: hm²
+    quantity: 0.45
+    unit_price: 3500
+    description: 狗牙根+百喜草混播
+
+  - measure_id: plant_02
+    measure_name: 种植乔灌木
+    fee_category: 植物措施
+    prevention_zone: 施工生产生活区
+    source_attribution: 主体已列
+    unit: 株
+    quantity: 200
+    unit_price: 25
+    description: 小叶榕+红花继木
+
+  # ======== 第四部分 临时措施 ========
+  - measure_id: temp_01
+    measure_name: 临时排水沟
+    fee_category: 临时措施
+    prevention_zone: 主体工程区
+    source_attribution: 方案新增
+    unit: m
+    quantity: 80
+    unit_price: 65
+    description: 土质排水沟, 断面 0.2×0.2m
+
+  - measure_id: temp_02
+    measure_name: 密目网苫盖
+    fee_category: 临时措施
+    prevention_zone: 临时堆土区
+    source_attribution: 方案新增
+    unit: m²
+    quantity: 400
+    unit_price: 8
+    description: 2000 目密目网
+
+  - measure_id: temp_03
+    measure_name: 洗车池
+    fee_category: 临时措施
+    prevention_zone: 施工生产生活区
+    source_attribution: 主体已列
+    unit: 座
+    quantity: 1
+    unit_price: 5000
+    description: 标准洗车池, 含沉淀设施

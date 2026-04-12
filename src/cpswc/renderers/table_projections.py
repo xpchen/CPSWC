@@ -483,15 +483,32 @@ SPEC_INVESTMENT_TOTAL = TableSpec(
 
 
 def project_investment_total_summary(snapshot: dict) -> TableData:
-    """投资估算总表: 行骨架固定, 仅补偿费行有 live 数据"""
+    """投资估算总表: 行骨架固定, 从 measures_summary overlay 取分项数据"""
     derived = snapshot.get("derived_fields") or {}
+    facts = snapshot.get("_original_facts") or {}
     comp_fee = derived.get("field.derived.investment.compensation_fee_amount")
+    summary = facts.get("field.fact.investment.measures_summary") or {}
+
+    # 费用类目映射
+    cat_map = {
+        "part1": "工程措施",
+        "part2": "植物措施",
+        "part3": "监测措施",
+        "part4": "临时措施",
+    }
 
     rows = []
+    subtotal_1_4 = 0.0
     for row_id, seq, name in _INVESTMENT_ROWS:
         amount = None
-        if row_id == "compensation" and comp_fee is not None:
+        cat = cat_map.get(row_id)
+        if cat and cat in summary:
+            amount = round(summary[cat]["total"], 2)
+            subtotal_1_4 += amount
+        elif row_id == "compensation" and comp_fee is not None:
             amount = comp_fee
+        elif row_id == "subtotal_1_5" and subtotal_1_4 > 0:
+            amount = round(subtotal_1_4, 2)  # 不含独立费用 (v0 无独立费用数据)
         rows.append({"seq": seq, "name": name, "amount": amount})
 
     # 动态脚注
@@ -538,17 +555,27 @@ SPEC_INVESTMENT_SPLIT = TableSpec(
 
 
 def project_investment_split_summary(snapshot: dict) -> TableData:
-    """主体已列/方案新增汇总: v0 全部 '—' (无拆分数据), 仅展示结构"""
+    """主体已列/方案新增汇总: 从 measures_summary overlay 取拆分数据"""
     derived = snapshot.get("derived_fields") or {}
+    facts = snapshot.get("_original_facts") or {}
     comp_fee = derived.get("field.derived.investment.compensation_fee_amount")
+    summary = facts.get("field.fact.investment.measures_summary") or {}
+
+    cat_map = {"part1": "工程措施", "part2": "植物措施",
+               "part3": "监测措施", "part4": "临时措施"}
 
     rows = []
     for row_id, seq, name in _INVESTMENT_ROWS:
         scheme_new = None
         existing = None
         total = None
-        if row_id == "compensation" and comp_fee is not None:
-            scheme_new = comp_fee  # 补偿费全部属于"方案新增"
+        cat = cat_map.get(row_id)
+        if cat and cat in summary:
+            scheme_new = round(summary[cat]["new"], 2)
+            existing = round(summary[cat]["existing"], 2)
+            total = round(summary[cat]["total"], 2)
+        elif row_id == "compensation" and comp_fee is not None:
+            scheme_new = comp_fee
             existing = 0
             total = comp_fee
         rows.append({
@@ -644,15 +671,32 @@ _INDEPENDENT_FEE_ROWS = [
 
 
 def project_appendix_total(snapshot: dict) -> TableData:
-    """附表1: 和正文总表相同行骨架, 但多列 (建安/植物/独立/新增/已有/总计)"""
+    """附表1: 多列版投资总表, 从 overlay 取分项拆分"""
     derived = snapshot.get("derived_fields") or {}
+    facts = snapshot.get("_original_facts") or {}
     comp_fee = derived.get("field.derived.investment.compensation_fee_amount")
+    summary = facts.get("field.fact.investment.measures_summary") or {}
+
+    cat_map = {"part1": "工程措施", "part2": "植物措施",
+               "part3": "监测措施", "part4": "临时措施"}
+
     rows = []
     for row_id, seq, name in _INVESTMENT_ROWS:
         row = {"seq": seq, "name": name,
                "construction": None, "plant": None, "independent": None,
                "new_total": None, "existing": None, "grand_total": None}
-        if row_id == "compensation" and comp_fee is not None:
+        cat = cat_map.get(row_id)
+        if cat and cat in summary:
+            s = summary[cat]
+            # 工程措施/临时措施 → 建安工程费; 植物措施 → 植物措施费
+            if cat in ("工程措施", "临时措施", "监测措施"):
+                row["construction"] = round(s["total"], 2)
+            elif cat == "植物措施":
+                row["plant"] = round(s["total"], 2)
+            row["new_total"] = round(s["new"], 2)
+            row["existing"] = round(s["existing"], 2)
+            row["grand_total"] = round(s["total"], 2)
+        elif row_id == "compensation" and comp_fee is not None:
             row["new_total"] = comp_fee
             row["existing"] = 0
             row["grand_total"] = comp_fee
@@ -672,13 +716,38 @@ def project_appendix_total(snapshot: dict) -> TableData:
 
 
 def project_appendix_existing(snapshot: dict) -> TableData:
-    """附表3: 主体已列措施投资 — v0 全 '—' (无分项 facts)"""
-    rows = [{"seq": "—", "name": "（待录入主体已列措施条目）",
-             "unit": "—", "quantity": None, "unit_price": None, "amount": None}]
+    """附表3: 主体已列措施投资 — 从 overlay 取 source_attribution='主体已列' 的条目"""
+    facts = snapshot.get("_original_facts") or {}
+    registry = facts.get("field.fact.investment.measures_registry") or []
+
+    existing = [m for m in registry if m.get("source_attribution") == "主体已列"]
+
+    if not existing:
+        rows = [{"seq": "—", "name": "(待录入主体已列措施条目)",
+                 "unit": "—", "quantity": None, "unit_price": None, "amount": None}]
+        total_row = {"seq": "", "name": "合计", "unit": "", "quantity": None,
+                     "unit_price": None, "amount": None}
+        return TableData(spec=SPEC_APPENDIX_EXISTING, rows=rows, total_row=total_row,
+                         render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+
+    rows = []
+    total_amount = 0.0
+    for i, m in enumerate(existing, 1):
+        amt = m.get("amount_wan")
+        if amt is not None:
+            total_amount += float(amt)
+        rows.append({
+            "seq": str(i),
+            "name": m.get("measure_name", "—"),
+            "unit": m.get("unit", "—"),
+            "quantity": m.get("quantity"),
+            "unit_price": m.get("unit_price"),
+            "amount": amt,
+        })
     total_row = {"seq": "", "name": "合计", "unit": "", "quantity": None,
-                 "unit_price": None, "amount": None}
+                 "unit_price": None, "amount": round(total_amount, 2)}
     return TableData(spec=SPEC_APPENDIX_EXISTING, rows=rows, total_row=total_row,
-                     render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+                     render_policy=TableRenderPolicy.RENDER_WITH_VALUES)
 
 
 def project_appendix_fees(snapshot: dict) -> TableData:

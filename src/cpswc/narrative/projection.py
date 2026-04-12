@@ -58,6 +58,11 @@ from cpswc.narrative.templates.sec_7_3_design_horizon import render as render_se
 from cpswc.narrative.templates.sec_1_2_spec_sheet import render as render_sec_1_2
 from cpswc.narrative.templates.sec_7_1_responsibility_range import render as render_sec_7_1
 from cpswc.narrative.templates.sec_7_5_benefit_analysis import render as render_sec_7_5
+from cpswc.narrative.templates.sec_7_8_construction_schedule import render as render_sec_7_8
+from cpswc.narrative.templates.sec_8_1_monitoring_scope import render as render_sec_8_1
+from cpswc.narrative.templates.sec_8_3_monitoring_points import render as render_sec_8_3
+from cpswc.narrative.templates.sec_8_2_monitoring_content import render as render_sec_8_2
+from cpswc.narrative.templates.sec_10_management import render as render_sec_10
 
 
 # ============================================================
@@ -94,6 +99,12 @@ _PILOT_TEMPLATES: dict[str, Any] = {
     "sec.soil_loss_prevention.responsibility_range": render_sec_7_1,
     "sec.soil_loss_prevention.design_horizon": render_sec_7_horizon,
     "sec.soil_loss_prevention.benefit_analysis": render_sec_7_5,
+    # v1 Facts Package 1
+    "sec.soil_loss_prevention.construction_schedule": render_sec_7_8,
+    "sec.monitoring.scope_and_period": render_sec_8_1,
+    "sec.monitoring.contents_methods_frequency": render_sec_8_2,
+    "sec.monitoring.point_layout": render_sec_8_3,
+    "sec.management": render_sec_10,
 }
 
 # Parent chapter headers: section_id → 1-sentence intro text
@@ -111,6 +122,8 @@ _PARENT_INTROS: dict[str, str] = {
         "本章论述水土流失防治责任范围、防治目标、措施布局及效益分析。",
     "sec.investment":
         "本章汇总水土保持工程投资估算，包括措施费、补偿费及分项明细。",
+    "sec.monitoring":
+        "本章论述项目水土保持监测的范围、时段、内容、方法、频次及点位布设。",
 }
 
 

@@ -448,6 +448,136 @@ def project_six_indicator_review(snapshot: dict) -> TableData:
 
 
 # ============================================================
+# Step 16: Investment Summary Tables
+# ============================================================
+# 对齐样稿: 表10.2-3 (报告表) / 附表1 (报告书)
+# 行骨架: 五部分 + 预备费 + 补偿费 + 总投资
+# v0: 仅补偿费行 live, 其余 "—"
+# 空值三态: "—" = 未提供, "0.00" = 明确为零, "/" = 不适用
+
+# 投资行骨架 (固定, 对齐样稿)
+_INVESTMENT_ROWS = [
+    ("part1", "一", "第一部分 工程措施"),
+    ("part2", "二", "第二部分 植物措施"),
+    ("part3", "三", "第三部分 监测措施"),
+    ("part4", "四", "第四部分 临时措施"),
+    ("part5", "五", "第五部分 独立费用"),
+    ("subtotal_1_5", "I", "一至五部分合计"),
+    ("reserve", "II", "基本预备费"),
+    ("compensation", "III", "水土保持补偿费"),
+    ("grand_total", "", "水土保持工程总投资 (I+II+III)"),
+]
+
+SPEC_INVESTMENT_TOTAL = TableSpec(
+    table_id="art.table.investment.total_summary",
+    title="水土保持工程总投资估算表",
+    columns=[
+        TableColumn(key="seq", header="序号", unit="", align="center", fmt="str"),
+        TableColumn(key="name", header="工程或费用名称", unit="", align="left", fmt="str"),
+        TableColumn(key="amount", header="金额", unit="万元", align="right", fmt="2f"),
+    ],
+    has_total_row=False,  # 总计行已内含在行骨架里
+    footnote="",  # 脚注在 projection 里动态设置
+    section_id="sec.investment.summary",
+)
+
+
+def project_investment_total_summary(snapshot: dict) -> TableData:
+    """投资估算总表: 行骨架固定, 仅补偿费行有 live 数据"""
+    derived = snapshot.get("derived_fields") or {}
+    comp_fee = derived.get("field.derived.investment.compensation_fee_amount")
+
+    rows = []
+    for row_id, seq, name in _INVESTMENT_ROWS:
+        amount = None
+        if row_id == "compensation" and comp_fee is not None:
+            amount = comp_fee
+        rows.append({"seq": seq, "name": name, "amount": amount})
+
+    # 动态脚注
+    live_items = ["水土保持补偿费 (cal.compensation.fee)"] if comp_fee is not None else []
+    footnote = (
+        f"v0 阶段 live 数据: {', '.join(live_items) if live_items else '无'}。"
+        f"其余分项待 InvestmentEstimationSubsystem 及分项事实数据完善后自动填充。"
+        f"'—' 表示数据未提供, 非计算错误。"
+    )
+
+    spec = TableSpec(
+        table_id=SPEC_INVESTMENT_TOTAL.table_id,
+        title=SPEC_INVESTMENT_TOTAL.title,
+        columns=SPEC_INVESTMENT_TOTAL.columns,
+        has_total_row=False,
+        footnote=footnote,
+        section_id=SPEC_INVESTMENT_TOTAL.section_id,
+    )
+
+    return TableData(
+        spec=spec, rows=rows,
+        render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER,
+    )
+
+
+# ============================================================
+# 主体已列 / 方案新增 汇总表
+# ============================================================
+
+SPEC_INVESTMENT_SPLIT = TableSpec(
+    table_id="art.table.investment.split_summary",
+    title="水土保持投资分类汇总表 (主体已列 / 方案新增)",
+    columns=[
+        TableColumn(key="seq", header="序号", unit="", align="center", fmt="str"),
+        TableColumn(key="name", header="费用项", unit="", align="left", fmt="str"),
+        TableColumn(key="scheme_new", header="方案新增", unit="万元", align="right", fmt="2f"),
+        TableColumn(key="existing", header="主体已有", unit="万元", align="right", fmt="2f"),
+        TableColumn(key="total", header="总投资", unit="万元", align="right", fmt="2f"),
+    ],
+    has_total_row=False,
+    footnote="",
+    section_id="sec.investment.summary",
+)
+
+
+def project_investment_split_summary(snapshot: dict) -> TableData:
+    """主体已列/方案新增汇总: v0 全部 '—' (无拆分数据), 仅展示结构"""
+    derived = snapshot.get("derived_fields") or {}
+    comp_fee = derived.get("field.derived.investment.compensation_fee_amount")
+
+    rows = []
+    for row_id, seq, name in _INVESTMENT_ROWS:
+        scheme_new = None
+        existing = None
+        total = None
+        if row_id == "compensation" and comp_fee is not None:
+            scheme_new = comp_fee  # 补偿费全部属于"方案新增"
+            existing = 0
+            total = comp_fee
+        rows.append({
+            "seq": seq, "name": name,
+            "scheme_new": scheme_new, "existing": existing, "total": total,
+        })
+
+    footnote = (
+        "v0 阶段仅补偿费行有数据 (全额计入方案新增)。"
+        "主体已列/方案新增的拆分由设计院在录入工程量时标注, 系统不自动判断。"
+        "'—' 表示数据未提供。"
+    )
+
+    spec = TableSpec(
+        table_id=SPEC_INVESTMENT_SPLIT.table_id,
+        title=SPEC_INVESTMENT_SPLIT.title,
+        columns=SPEC_INVESTMENT_SPLIT.columns,
+        has_total_row=False,
+        footnote=footnote,
+        section_id=SPEC_INVESTMENT_SPLIT.section_id,
+    )
+
+    return TableData(
+        spec=spec, rows=rows,
+        render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER,
+    )
+
+
+# ============================================================
 # Registry
 # ============================================================
 
@@ -458,5 +588,7 @@ TABLE_PROJECTIONS = {
     "art.table.topsoil_balance": project_topsoil_balance,
     "art.table.responsibility_range_by_admin_division": project_responsibility_range,
     "art.table.spoil_summary": project_spoil_summary,
-    "art.table.six_indicator_review": project_six_indicator_review,  # N2
+    "art.table.six_indicator_review": project_six_indicator_review,
+    "art.table.investment.total_summary": project_investment_total_summary,  # Step 16
+    "art.table.investment.split_summary": project_investment_split_summary,  # Step 16
 }

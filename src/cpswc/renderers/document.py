@@ -8,7 +8,7 @@ document_renderer.py — CPSWC v0 Formal Table Renderer (Step 13B-1)
 本轮只渲染 3 个输出件:
   1. 项目运行摘要页
   2. AT-02 加权综合防治指标计算表
-  3. 补偿费计算表
+  3. 补偿费计费表
 
 设计边界:
   - 只从 snapshot / frozen / calculator_results 取数, 不回读 sample
@@ -228,13 +228,13 @@ def _render_weighted_target_table(doc: Document, snapshot: dict):
 
 
 # ============================================================
-# 3. 补偿费计算表
+# 3. 补偿费计费表
 # ============================================================
 
 def _render_compensation_fee_table(doc: Document, snapshot: dict, calc_results_dir: Path | None):
-    """渲染水土保持补偿费计算表"""
+    """渲染水土保持补偿费计费表"""
     doc.add_page_break()
-    _add_heading(doc, "水土保持补偿费计算表", level=1)
+    _add_heading(doc, "水土保持补偿费计费表", level=1)
 
     derived = snapshot.get("derived_fields") or {}
     fee_amount = derived.get("field.derived.investment.compensation_fee_amount")
@@ -712,8 +712,9 @@ def render_narrative_skeleton(
     doc.add_page_break()
     _add_heading(doc, "附表", level=1)
     _add_footnote(doc,
-        "本骨架版仅包含 AT-02 加权综合防治指标计算表 和 补偿费计算表 (嵌入正文对应章节)。"
-        "其余附表 (AT-01 特性表, AT-03 投资附件等) 将在后续版本中补齐。")
+        "正文已嵌入的表格：防治目标表、六项指标复核表、补偿费计费表、"
+        "监测点位布设表、预测范围及时段表、侵蚀模数取值表、预测成果表、预测汇总表等。"
+        "其余附表 (AT-01 特性表, AT-03 投资附件等) 见 formal_tables_v0.docx。")
     _add_footnote(doc,
         f"Snapshot: {snapshot.get('snapshot_id', '')} | "
         f"Version: {(frozen or {}).get('content_hash', 'N/A')[:16]}...")

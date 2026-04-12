@@ -352,6 +352,38 @@ artifacts:
     data_source_refs: [engine.InvestmentEstimationSubsystem]
     renderer: TableRenderer
 
+  art.table.investment.split_summary:
+    kind: table
+    canonical_name: 水土保持投资分类汇总表
+    parent: art.table.investment_appendix
+    requirement: always
+    data_source_refs: [engine.InvestmentEstimationSubsystem]
+    renderer: TableProjection
+
+  art.table.investment.appendix_total:
+    kind: table
+    canonical_name: 附表1 水土保持工程投资估算总表
+    parent: art.table.investment_appendix
+    requirement: always
+    data_source_refs: [engine.InvestmentEstimationSubsystem]
+    renderer: TableProjection
+
+  art.table.investment.appendix_existing:
+    kind: table
+    canonical_name: 附表3 主体工程已列水土保持措施投资
+    parent: art.table.investment_appendix
+    requirement: always
+    data_source_refs: [engine.InvestmentEstimationSubsystem]
+    renderer: TableProjection
+
+  art.table.investment.appendix_fees:
+    kind: table
+    canonical_name: 附表4 独立费用/预备费/专项费用估算表
+    parent: art.table.investment_appendix
+    requirement: always
+    data_source_refs: [engine.InvestmentEstimationSubsystem]
+    renderer: TableProjection
+
 # ============================================================
 # 4. 正文内嵌表 (不是附表, 是正文章节内的表)
 # ============================================================

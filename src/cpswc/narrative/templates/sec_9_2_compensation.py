@@ -73,7 +73,7 @@ def render(facts: dict, derived: dict, triggered: set[str],
                 f"（广东口径含临时占地），"
                 f"经 cal.compensation.fee 计算，"
                 f"本项目应缴水土保持补偿费为{fee_str}。"
-                f"详见补偿费计算表。"
+                f"详见水土保持补偿费计费表。"
             ),
             evidence_refs=[
                 "field.fact.land.permanent_area",

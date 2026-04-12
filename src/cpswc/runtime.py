@@ -336,6 +336,22 @@ def run_project(
                 error_message=str(e),
             ))
 
+    # Step 3.5: F2 Price Layer enrich (仅白名单措施)
+    measures_registry = facts.get("field.fact.investment.measures_registry")
+    if isinstance(measures_registry, list) and measures_registry:
+        try:
+            from cpswc.quota_connector import (  # type: ignore
+                enrich_measures, PS_QUOTA_CALIBRATED,
+            )
+            enriched = enrich_measures(measures_registry)
+            # 只把白名单结果写回, 非白名单保留原始 CSV 价格
+            for m in enriched:
+                if m.get("price_source") == PS_QUOTA_CALIBRATED:
+                    m["quota_enriched"] = True
+            facts["field.fact.investment.measures_registry"] = enriched
+        except Exception:
+            pass  # DB 不存在或其他问题, 静默跳过
+
     # Step 4: 合并 facts + derived → unified lookup
     # 优先级: runtime computed derived > sample pre-stored derived > facts
     unified: dict[str, Any] = {}

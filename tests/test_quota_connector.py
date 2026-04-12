@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from cpswc.quota_connector import (
     load_mapping,
+    load_material_prices,
     lookup_consumption,
     calculate_unit_price,
     enrich_measures,
@@ -26,6 +27,7 @@ from cpswc.quota_connector import (
     QuotaConsumption,
     RegionalRates,
     DEFAULT_MAPPING_PATH,
+    DEFAULT_MATERIAL_PRICES_PATH,
     DB_PATH,
     CALIBRATION_CALIBRATED,
     CALIBRATION_NEEDS_SECTION,
@@ -105,6 +107,35 @@ def test_load_mapping_no_quota():
     assert e.calibration_status == CALIBRATION_NOT_APPLICABLE
     assert e.whitelist is False
 
+
+# ============================================================
+# Tests: load_material_prices
+# ============================================================
+
+def test_load_material_prices_count():
+    """YAML 包含 5 种材料."""
+    prices = load_material_prices()
+    assert len(prices) == 5
+
+
+def test_load_material_prices_values():
+    """材料价格值正确."""
+    prices = load_material_prices()
+    assert prices["块（片）石"] == 85.0
+    assert prices["砂浆"] == 350.0
+    assert prices["草皮"] == 8.0
+    assert prices["水"] == 5.0
+
+
+def test_load_material_prices_missing_file():
+    """不存在的文件 → 空 dict."""
+    prices = load_material_prices("/tmp/nonexistent_mat_12345.yaml")
+    assert prices == {}
+
+
+# ============================================================
+# Tests: calibration (continued)
+# ============================================================
 
 def test_load_mapping_calibration_distribution():
     """校准状态分布: 3 calibrated, 3 needs_section, 1 manual_review, 2 not_applicable."""
@@ -259,6 +290,53 @@ def test_breakdown_count():
     assert len(result["breakdown"]) == 3
 
 
+def test_calculate_misc_material_pct():
+    """百分比材料费 = direct_cost × pct / 100."""
+    cons = QuotaConsumption(
+        quota_code="X", detail_code="X1", quota_title="",
+        spec_label="", quota_unit="100m³", unit_convert=0.01,
+        items=[
+            ConsumptionItem("人工", 10.0, "工时", "人工", ""),
+            ConsumptionItem("块石", 5.0, "m³", "材料", ""),
+            ConsumptionItem("其他材料费", 0.5, "%", "材料", ""),
+        ],
+    )
+    rates = RegionalRates(labor_rate=25.0)
+    mat_prices = {"块石": 100.0}
+    result = calculate_unit_price(cons, rates, mat_prices)
+    labor = 10.0 * 0.01 * 25.0   # 2.5
+    mat_entity = 5.0 * 0.01 * 100.0  # 5.0
+    direct = labor + mat_entity   # 7.5
+    misc = direct * 0.5 * 0.01 / 100.0  # 0.000375
+    assert result["misc_material_cost"] == round(misc, 2)
+    assert result["material_cost"] == round(mat_entity + misc, 2)
+
+
+def test_calculate_composite_with_all_components():
+    """综合单价 = 人工 + 实体材料 + 百分比材料 + 机械."""
+    cons = QuotaConsumption(
+        quota_code="X", detail_code="X1", quota_title="",
+        spec_label="", quota_unit="100m³", unit_convert=0.01,
+        items=[
+            ConsumptionItem("人工", 10.0, "工时", "人工", ""),
+            ConsumptionItem("块石", 5.0, "m³", "材料", ""),
+            ConsumptionItem("搅拌机", 2.0, "台时", "机械", "JX001"),
+            ConsumptionItem("其他材料费", 0.5, "%", "材料", ""),
+        ],
+        machine_rates={"JX001": 80.0},
+    )
+    rates = RegionalRates(labor_rate=25.0)
+    mat_prices = {"块石": 100.0}
+    result = calculate_unit_price(cons, rates, mat_prices)
+    assert result["labor_cost"] > 0
+    assert result["material_cost"] > 0
+    assert result["machine_cost"] > 0
+    assert result["misc_material_cost"] >= 0
+    assert result["unit_price"] == round(
+        result["labor_cost"] + result["material_cost"] + result["machine_cost"], 2
+    )
+
+
 # ============================================================
 # Tests: enrich_measures
 # ============================================================
@@ -389,3 +467,34 @@ def test_real_db_enrich():
         if m["price_source"] not in (PS_NO_MAPPING, PS_NO_DB):
             assert m["quota_unit_price"] > 0
             assert m["quota_ref"] is not None
+
+    # 白名单 3 条现在应该有非零材料费 (material_prices 自动加载)
+    for m in wl:
+        assert m["quota_material"] > 0, f'{m["measure_id"]} should have material cost'
+        assert "quota_misc_material" in m
+
+
+def test_real_db_composite_prices():
+    """白名单综合单价合理性检查."""
+    if not DB_PATH.exists():
+        return  # skip
+
+    from cpswc.investment_loader import load_csv
+    result = load_csv(str(Path(__file__).resolve().parent.parent / "fixtures" / "investment_huizhou_f1.csv"))
+    measures = [dict(r) for r in result.records]
+    enriched = enrich_measures(measures)
+
+    by_id = {m["measure_id"]: m for m in enriched}
+
+    # eng_02: 综合单价应 > 人工费 (加了材料)
+    eng02 = by_id["eng_02"]
+    assert eng02["quota_unit_price"] > eng02["quota_labor"]
+    assert eng02["quota_material"] > 100  # 块石+砂浆应超 100 元/m³
+
+    # plant_02: 苗木费应占主体
+    p02 = by_id["plant_02"]
+    assert p02["quota_material"] > p02["quota_labor"]
+
+    # plant_03: 单价应在合理范围 (15-50 元/m²)
+    p03 = by_id["plant_03"]
+    assert 15 < p03["quota_unit_price"] < 50

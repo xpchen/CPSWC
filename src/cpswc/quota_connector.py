@@ -9,9 +9,10 @@ quota_connector.py — F2 Price Layer Connector
 
 核心函数:
   load_mapping(path) → dict[measure_id, MappingEntry]
+  load_material_prices(path) → dict[spec_name, float]
   lookup_consumption(db, mapping_entry) → QuotaConsumption
-  calculate_unit_price(consumption, regional_rates) → float
-  enrich_measures(measures, mapping, db, rates) → list[dict]
+  calculate_unit_price(consumption, regional_rates, material_prices) → dict
+  enrich_measures(measures, mapping, db, rates, material_prices) → list[dict]
 """
 from __future__ import annotations
 
@@ -131,6 +132,7 @@ class QuotaConsumption:
 # ============================================================
 
 DEFAULT_MAPPING_PATH = PROJECT_ROOT / "registries" / "quota_measure_mapping_v0.yaml"
+DEFAULT_MATERIAL_PRICES_PATH = PROJECT_ROOT / "registries" / "material_prices_v0.yaml"
 
 
 def load_mapping(path: str | Path = DEFAULT_MAPPING_PATH) -> dict[str, MappingEntry]:
@@ -156,6 +158,24 @@ def load_mapping(path: str | Path = DEFAULT_MAPPING_PATH) -> dict[str, MappingEn
             whitelist=bool(m.get("whitelist", False)),
             review_note=m.get("review_note", ""),
         )
+    return result
+
+
+def load_material_prices(
+    path: str | Path = DEFAULT_MATERIAL_PRICES_PATH,
+) -> dict[str, float]:
+    """加载材料单价 YAML, 返回 {spec_name: price}."""
+    path = Path(path)
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    result: dict[str, float] = {}
+    for name, info in (data.get("materials") or {}).items():
+        try:
+            result[name] = float(info["price"])
+        except (KeyError, ValueError, TypeError):
+            continue
     return result
 
 
@@ -273,8 +293,19 @@ def calculate_unit_price(
     # 机械费
     machine_cost = consumption.machine_cost_per_unit()
 
-    # 材料费 (有价格的材料)
+    # 实体材料费 (有价格的材料, 不含百分比项)
     material_cost = consumption.material_cost_per_unit(material_prices)
+
+    # 百分比材料费 (零星材料费 / 其他材料费): 按 (人工+实体材料+机械) 的百分比计
+    direct_cost = labor_cost + material_cost + machine_cost
+    misc_material_cost = 0.0
+    for it in consumption.items:
+        if it.type_name == "材料" and "%" in it.spec_unit:
+            pct = it.spec_value * consumption.unit_convert
+            misc_material_cost += direct_cost * pct / 100.0
+    material_cost += misc_material_cost
+
+    unit_price = labor_cost + material_cost + machine_cost
 
     # 明细
     breakdown = []
@@ -289,6 +320,9 @@ def calculate_unit_price(
         elif it.type_name == "材料" and "%" not in it.spec_unit:
             up = material_prices.get(it.spec_name) or material_prices.get(it.jx_id, 0.0)
             st = qty_per_unit * up
+        elif it.type_name == "材料" and "%" in it.spec_unit:
+            up = 0.0
+            st = round(direct_cost * qty_per_unit / 100.0, 2)
         else:
             up = 0.0
             st = 0.0
@@ -302,12 +336,11 @@ def calculate_unit_price(
             "type": it.type_name,
         })
 
-    unit_price = labor_cost + material_cost + machine_cost
-
     return {
         "labor_cost": round(labor_cost, 2),
         "material_cost": round(material_cost, 2),
         "machine_cost": round(machine_cost, 2),
+        "misc_material_cost": round(misc_material_cost, 2),
         "unit_price": round(unit_price, 2),
         "breakdown": breakdown,
         "source": "quota_db",
@@ -344,6 +377,8 @@ def enrich_measures(
         mapping = load_mapping()
     if rates is None:
         rates = RegionalRates()
+    if material_prices is None:
+        material_prices = load_material_prices()
 
     db_path = Path(db_path)
     if not db_path.exists():
@@ -379,6 +414,7 @@ def enrich_measures(
         m["quota_labor"] = price_result["labor_cost"]
         m["quota_machine"] = price_result["machine_cost"]
         m["quota_material"] = price_result["material_cost"]
+        m["quota_misc_material"] = price_result["misc_material_cost"]
         m["quota_breakdown"] = price_result["breakdown"]
         m["calibration_status"] = entry.calibration_status
         m["whitelist"] = entry.whitelist

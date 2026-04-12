@@ -1,0 +1,62 @@
+# 材料单价表 (v0 Pilot)
+#
+# 为 F2 Price Layer 提供材料单价, 用于与定额消耗量相乘计算材料费。
+#
+# 字段说明:
+#   spec_name: 材料名称 (与 quota_details.spec_name 精确匹配)
+#   unit: 计量单位
+#   price: 单价 (元/单位)
+#   source: 价格来源说明
+#   region: 适用地区
+#   period: 价格时期
+#   confidence: high / medium / low — 价格可信度
+#     high:   来自官方信息价或实际采购价
+#     medium: 来自市场调研或经验估算
+#     low:    粗估, 仅供演示
+#
+# 当前覆盖: 白名单 3 条措施所需的 5 种实体材料
+# 百分比项 (其他材料费) 按比例计算, 不在此处列价
+
+version: "0.1"
+region: "广东省惠州市"
+period: "2024-2025"
+
+materials:
+  # ---- eng_02 M7.5浆砌石挡土墙 ----
+  "块（片）石":
+    unit: m³
+    price: 85.0
+    source: 广东省建设工程造价信息 2024Q4 参考 (含运费)
+    confidence: medium
+    notes: 花岗岩块石, 惠州本地取材
+
+  "砂浆":
+    unit: m³
+    price: 350.0
+    source: M7.5 水泥砂浆, 广东省信息价参考
+    confidence: medium
+    notes: M7.5 强度等级水泥砂浆, 含搅拌
+
+  # ---- plant_02 种植乔灌木 ----
+  "乔木（带土球）":
+    unit: 株
+    price: 35.0
+    source: 惠州苗木市场参考价 (小叶榕 土球20cm)
+    confidence: low
+    notes: 小规格乔木 (胸径3-5cm, 土球直径20cm), 品种/规格差异大
+
+  # ---- plant_03 铺设草皮 ----
+  "草皮":
+    unit: m²
+    price: 8.0
+    source: 百慕大草皮惠州市场参考价
+    confidence: medium
+    notes: 百慕大/马尼拉草皮, 含运费
+
+  # ---- 通用 ----
+  "水":
+    unit: m³
+    price: 5.0
+    source: 施工用水参考价
+    confidence: high
+    notes: 市政供水或现场取水

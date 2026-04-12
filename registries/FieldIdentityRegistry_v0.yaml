@@ -332,6 +332,18 @@ fields:
         - sec.overview
         - sec.investment.summary
 
+  field.fact.investment.annual_allocation:
+    canonical_name: 分年度投资显式分配
+    semantic_type: AnnualAllocationDict
+    protection_level: PROTECTED
+    source: user_input
+    note: |
+      可选。格式 {"2026": {"工程措施": 1.8, "植物措施": 0.3, ...}, "2027": {...}}。
+      优先于均匀分摊兜底。仅含方案新增部分。
+    lineage:
+      projection_target_refs:
+        - art.table.investment.annual_breakdown
+
   # -------- 工期与时点 --------
   field.fact.schedule.start_time:
     canonical_name: 开工时间

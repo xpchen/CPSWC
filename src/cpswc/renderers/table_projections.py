@@ -1598,6 +1598,154 @@ def project_measures_quantity_existing(snapshot: dict) -> TableData:
     return _build_measures_table(snapshot, SPEC_MEASURES_EXISTING, "主体已列")
 
 
+# ============================================================
+# Step 35: 新增水土保持措施分年度投资估算表
+# ============================================================
+# Contract:
+#   - 只覆盖方案新增, 不含主体已列
+#   - 优先级: A(investment.annual_allocation) > C(均匀分摊兜底)
+#   - 年列 = start_year ~ end_year (闭区间), 不含恢复期
+#   - 补偿费 100% 归第一年, 其他均匀分摊
+#   - 缺 measures_summary 时输出 placeholder, 不伪造
+
+# 固定 8 行 (费用类别)
+_ANNUAL_ROWS = [
+    ("一", "工程措施", "工程措施"),
+    ("二", "植物措施", "植物措施"),
+    ("三", "监测措施", "监测措施"),
+    ("四", "临时措施", "临时措施"),
+    ("五", "独立费用", "独立费用"),
+    ("六", "预备费", "预备费"),
+    ("七", "补偿费", None),            # source: derived.compensation_fee_amount
+    ("八", "新增总投资", None),         # sum of above
+]
+
+
+def project_annual_investment(snapshot: dict) -> TableData:
+    """分年度投资估算表: A(显式) > C(均匀分摊) 兜底"""
+    facts = snapshot.get("_original_facts") or {}
+    derived = snapshot.get("derived_fields") or {}
+
+    # Parse year range
+    start_str = facts.get("field.fact.schedule.start_time") or ""
+    end_str = facts.get("field.fact.schedule.end_time") or ""
+    try:
+        start_year = int(start_str[:4])
+        end_year = int(end_str[:4])
+    except (ValueError, IndexError):
+        # Cannot determine year range → placeholder
+        spec = _make_annual_spec([])
+        return TableData(spec=spec, rows=[],
+                         render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+
+    if end_year < start_year:
+        end_year = start_year
+    years = list(range(start_year, end_year + 1))
+
+    # Check if we have enough data to produce a real table
+    ms = facts.get("field.fact.investment.measures_summary") or {}
+    comp_fee = derived.get("field.derived.investment.compensation_fee_amount")
+    # 必须有 measures_summary 才出真表; 仅有补偿费不足以支撑完整分年度表
+    has_data = bool(ms)
+
+    if not has_data:
+        spec = _make_annual_spec(years)
+        return TableData(spec=spec, rows=[],
+                         render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+
+    # Strategy A: explicit annual_allocation
+    alloc = facts.get("field.fact.investment.annual_allocation")
+
+    # Build category totals from single authoritative source
+    cat_totals = {}
+    for _, label, ms_key in _ANNUAL_ROWS:
+        if label == "补偿费":
+            cat_totals[label] = float(comp_fee) if comp_fee is not None else 0.0
+        elif label == "新增总投资":
+            continue  # computed from sum
+        elif ms_key and ms_key in ms:
+            cat_totals[label] = float(ms[ms_key].get("new", 0))
+        else:
+            cat_totals[label] = 0.0
+
+    cat_totals["新增总投资"] = sum(cat_totals.values())
+
+    # Build per-year allocation
+    n_years = len(years)
+    year_data: dict[str, dict[int, float]] = {}  # {category: {year: amount}}
+
+    for _, label, _ in _ANNUAL_ROWS:
+        total = cat_totals.get(label, 0.0)
+        if label == "新增总投资":
+            continue  # sum per year later
+
+        if alloc and isinstance(alloc, dict):
+            # Strategy A: read from explicit allocation
+            year_data[label] = {}
+            for y in years:
+                y_alloc = alloc.get(str(y)) or alloc.get(y) or {}
+                year_data[label][y] = float(y_alloc.get(label, 0))
+        else:
+            # Strategy C: uniform distribution
+            year_data[label] = {}
+            if label == "补偿费":
+                # 100% first year
+                for y in years:
+                    year_data[label][y] = total if y == years[0] else 0.0
+            else:
+                per_year = round(total / n_years, 2) if n_years > 0 else 0.0
+                remainder = round(total - per_year * n_years, 2)
+                for i, y in enumerate(years):
+                    # Put remainder in last year to ensure exact sum
+                    year_data[label][y] = per_year + (remainder if i == n_years - 1 else 0.0)
+
+    # Compute 新增总投资 per year
+    year_data["新增总投资"] = {}
+    for y in years:
+        year_data["新增总投资"][y] = sum(
+            year_data[label].get(y, 0.0)
+            for _, label, _ in _ANNUAL_ROWS if label != "新增总投资"
+        )
+
+    # Build rows
+    spec = _make_annual_spec(years)
+    rows = []
+    for seq, label, _ in _ANNUAL_ROWS:
+        row = {"seq": seq, "name": label}
+        row_total = 0.0
+        for y in years:
+            amt = year_data.get(label, {}).get(y, 0.0)
+            row[f"y_{y}"] = f"{amt:.2f}" if amt else "—"
+            row_total += amt
+        row["total"] = f"{row_total:.2f}" if row_total else "—"
+        rows.append(row)
+
+    return TableData(spec=spec, rows=rows,
+                     render_policy=TableRenderPolicy.RENDER_WITH_VALUES)
+
+
+def _make_annual_spec(years: list[int]) -> TableSpec:
+    """Dynamically build TableSpec with year columns."""
+    cols = [
+        TableColumn(key="seq", header="序号", unit="", align="center", fmt="str"),
+        TableColumn(key="name", header="工程或费用名称", unit="", align="left", fmt="str"),
+    ]
+    for y in years:
+        cols.append(TableColumn(
+            key=f"y_{y}", header=f"{y} 年", unit="万元", align="right", fmt="str"))
+    cols.append(TableColumn(
+        key="total", header="合计", unit="万元", align="right", fmt="str"))
+
+    return TableSpec(
+        table_id="art.table.investment.annual_breakdown",
+        title="新增水土保持措施分年度投资估算表",
+        columns=cols,
+        has_total_row=False,
+        footnote="分配规则: 补偿费一次性计征归首年, 其他费用按施工年份均匀分摊 | 仅含方案新增部分",
+        section_id="sec.investment.summary",
+    )
+
+
 TABLE_PROJECTIONS = {
     "art.table.total_land_occupation": project_total_land_occupation,
     "art.table.earthwork_balance": project_earthwork_balance,
@@ -1622,4 +1770,5 @@ TABLE_PROJECTIONS = {
     "art.table.six_indicator_breakdown": project_six_indicator_breakdown,  # Step 32+
     "art.table.measures_quantity_new": project_measures_quantity_new,  # Step 34
     "art.table.measures_quantity_existing": project_measures_quantity_existing,  # Step 34
+    "art.table.investment.annual_breakdown": project_annual_investment,  # Step 35
 }

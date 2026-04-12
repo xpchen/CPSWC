@@ -289,14 +289,20 @@ artifacts:
 
   art.table.investment.annual_breakdown:
     kind: table
-    canonical_name: 分年度投资估算表
+    canonical_name: 新增水土保持措施分年度投资估算表
     parent: art.table.investment_appendix
     requirement: always
+    chapter_ref: sec.investment.summary
+    note: |
+      仅含方案新增部分。优先使用 investment.annual_allocation (A),
+      兜底均匀分摊 (C)。补偿费 100% 归首年。年列 = start_year~end_year。
     data_source_refs:
-      - engine.InvestmentEstimationSubsystem
+      - field.fact.investment.measures_summary
+      - field.derived.investment.compensation_fee_amount
       - field.fact.schedule.start_time
       - field.fact.schedule.end_time
-    renderer: TableRenderer
+      - field.fact.investment.annual_allocation
+    renderer: TableProjection
 
   art.table.investment.independent_fees:
     kind: table

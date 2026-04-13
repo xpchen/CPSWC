@@ -42,6 +42,26 @@
     "field.fact.investment.total_investment": {"value": 5321.84, "unit": "万元", "precision": 0.01},
     "field.fact.investment.civil_investment": {"value": 3957.07, "unit": "万元", "precision": 0.01},
 
+    "field.fact.investment.measures_registry": [
+      {"measure_id": "eng_01", "measure_name": "浆砌石排水沟", "fee_category": "工程措施", "prevention_zone": "主体工程区", "source_attribution": "方案新增", "unit": "m", "quantity": 40.0, "unit_price": 150.0, "amount_wan": 0.6, "description": "场地边坡排水沟"},
+      {"measure_id": "eng_02", "measure_name": "C20混凝土护坡", "fee_category": "工程措施", "prevention_zone": "主体工程区", "source_attribution": "方案新增", "unit": "m²", "quantity": 80.0, "unit_price": 120.0, "amount_wan": 0.96, "description": "开挖边坡混凝土护面"},
+      {"measure_id": "plant_01", "measure_name": "撒播草籽", "fee_category": "植物措施", "prevention_zone": "绿化区", "source_attribution": "方案新增", "unit": "hm²", "quantity": 0.12, "unit_price": 3500.0, "amount_wan": 0.04, "description": "裸露坡面植草"},
+      {"measure_id": "plant_02", "measure_name": "绿化种植", "fee_category": "植物措施", "prevention_zone": "绿化区", "source_attribution": "主体已列", "unit": "m²", "quantity": 500.0, "unit_price": 15.0, "amount_wan": 0.75, "description": "场区绿化已列入主体工程"},
+      {"measure_id": "monitor_01", "measure_name": "水土保持监测", "fee_category": "监测措施", "prevention_zone": "全区", "source_attribution": "方案新增", "unit": "项", "quantity": 1.0, "unit_price": 30000.0, "amount_wan": 3.0, "description": "小型项目委托监测, 含影像+量测"},
+      {"measure_id": "temp_01", "measure_name": "密目网苫盖", "fee_category": "临时措施", "prevention_zone": "主体工程区", "source_attribution": "方案新增", "unit": "m²", "quantity": 800.0, "unit_price": 8.0, "amount_wan": 0.064, "description": "裸土临时苫盖"},
+      {"measure_id": "temp_02", "measure_name": "临时排水沟", "fee_category": "临时措施", "prevention_zone": "主体工程区", "source_attribution": "方案新增", "unit": "m", "quantity": 30.0, "unit_price": 65.0, "amount_wan": 0.2, "description": "施工期临时排水"}
+    ],
+    "field.fact.investment.measures_summary": {
+      "工程措施": {"new": 1.56, "existing": 0.0, "total": 1.56},
+      "植物措施": {"new": 0.04, "existing": 0.75, "total": 0.79},
+      "监测措施": {"new": 3.0, "existing": 0.0, "total": 3.0},
+      "临时措施": {"new": 0.26, "existing": 0.0, "total": 0.26}
+    },
+    "field.fact.investment.fee_consulting": {"value": 0.15, "unit": "万元"},
+    "field.fact.investment.fee_supervision": {"value": 0.06, "unit": "万元"},
+    "field.fact.investment.fee_cost_consulting": {"value": 0.05, "unit": "万元"},
+    "field.fact.investment.fee_acceptance": {"value": 0.8, "unit": "万元"},
+
     "field.fact.schedule.start_time": "2022-03",
     "field.fact.schedule.end_time": "2023-06",
     "field.fact.schedule.design_horizon_year": 2024,

@@ -482,14 +482,67 @@ SPEC_INVESTMENT_TOTAL = TableSpec(
 )
 
 
+def _compute_independent_fees(snapshot: dict) -> dict:
+    """计算独立费用各项及预备费, 供 total_summary 和 appendix_fees 共用.
+
+    Returns dict with keys:
+      base: 计费基数 (新增一至四部分合计, 万元) or None
+      indep_total: 独立费用小计 (万元) or 0
+      reserve: 预备费 (万元) or None
+      items: dict[row_id → amount(万元) or None]
+    """
+    facts = snapshot.get("_original_facts") or {}
+    summary = facts.get("field.fact.investment.measures_summary") or {}
+
+    cats = ["工程措施", "植物措施", "监测措施", "临时措施"]
+    parts = [summary[c].get("new", 0) or 0 for c in cats if c in summary]
+    base = sum(parts) if parts else None
+
+    items = {}
+    indep_total = 0.0
+    has_value = False
+
+    for row_id, _seq, _name, rate_pct, _basis, fact_key in _INDEP_FEE_DEFS:
+        amount = None
+        if row_id == "tender":
+            amount = 0.0
+        elif rate_pct is not None and base is not None:
+            amount = round(base * rate_pct, 2)
+            has_value = True
+        elif fact_key is not None:
+            v = facts.get(fact_key)
+            if isinstance(v, dict) and "value" in v:
+                amount = round(float(v["value"]), 2)
+                has_value = True
+            elif isinstance(v, (int, float)):
+                amount = round(float(v), 2)
+                has_value = True
+        if amount is not None:
+            indep_total += amount
+        items[row_id] = amount
+
+    reserve = None
+    if base is not None:
+        reserve = round((base + indep_total) * 0.10, 2)
+        has_value = True
+
+    return {
+        "base": base,
+        "indep_total": round(indep_total, 2) if has_value else None,
+        "reserve": reserve,
+        "items": items,
+        "has_value": has_value,
+    }
+
+
 def project_investment_total_summary(snapshot: dict) -> TableData:
-    """投资估算总表: 行骨架固定, 从 measures_summary overlay 取分项数据"""
+    """投资估算总表: 行骨架固定, 从 measures_summary + 独立费用计算填充"""
     derived = snapshot.get("derived_fields") or {}
     facts = snapshot.get("_original_facts") or {}
     comp_fee = derived.get("field.derived.investment.compensation_fee_amount")
     summary = facts.get("field.fact.investment.measures_summary") or {}
+    indep = _compute_independent_fees(snapshot)
 
-    # 费用类目映射
     cat_map = {
         "part1": "工程措施",
         "part2": "植物措施",
@@ -500,6 +553,7 @@ def project_investment_total_summary(snapshot: dict) -> TableData:
     rows = []
     subtotal_1_4 = 0.0
     subtotal_1_5 = None
+    reserve_amount = None
     comp_amount = None
     for row_id, seq, name in _INVESTMENT_ROWS:
         amount = None
@@ -507,25 +561,34 @@ def project_investment_total_summary(snapshot: dict) -> TableData:
         if cat and cat in summary:
             amount = round(summary[cat]["total"], 2)
             subtotal_1_4 += amount
+        elif row_id == "part5" and indep["indep_total"] is not None:
+            amount = indep["indep_total"]
+        elif row_id == "subtotal_1_5" and subtotal_1_4 > 0:
+            indep_val = indep["indep_total"] or 0
+            amount = round(subtotal_1_4 + indep_val, 2)
+            subtotal_1_5 = amount
+        elif row_id == "reserve" and indep["reserve"] is not None:
+            amount = indep["reserve"]
+            reserve_amount = amount
         elif row_id == "compensation" and comp_fee is not None:
             amount = comp_fee
             comp_amount = comp_fee
-        elif row_id == "subtotal_1_5" and subtotal_1_4 > 0:
-            amount = round(subtotal_1_4, 2)  # 不含独立费用 (v0 无独立费用数据)
-            subtotal_1_5 = amount
         elif row_id == "grand_total":
-            # I + II + III (subtotal_1_5 + reserve + compensation)
-            # v0: reserve = 0, 独立费用 = 0
-            parts = [v for v in [subtotal_1_5, comp_amount] if v is not None]
+            parts = [v for v in [subtotal_1_5, reserve_amount, comp_amount]
+                     if v is not None]
             if parts:
                 amount = round(sum(parts), 2)
         rows.append({"seq": seq, "name": name, "amount": amount})
 
-    # 动态脚注
-    live_items = ["水土保持补偿费 (cal.compensation.fee)"] if comp_fee is not None else []
+    live_items = []
+    if indep["has_value"]:
+        live_items.append(f"独立费用={indep['indep_total']:.2f}")
+    if indep["reserve"] is not None:
+        live_items.append(f"预备费={indep['reserve']:.2f}")
+    if comp_fee is not None:
+        live_items.append("补偿费")
     footnote = (
-        f"v0 阶段 live 数据: {', '.join(live_items) if live_items else '无'}。"
-        f"其余分项待 InvestmentEstimationSubsystem 及分项事实数据完善后自动填充。"
+        f"live 数据: {', '.join(live_items) if live_items else '无'}。"
         f"'—' 表示数据未提供, 非计算错误。"
     )
 
@@ -565,11 +628,12 @@ SPEC_INVESTMENT_SPLIT = TableSpec(
 
 
 def project_investment_split_summary(snapshot: dict) -> TableData:
-    """主体已列/方案新增汇总: 从 measures_summary overlay 取拆分数据"""
+    """主体已列/方案新增汇总: 从 measures_summary + 独立费用计算填充"""
     derived = snapshot.get("derived_fields") or {}
     facts = snapshot.get("_original_facts") or {}
     comp_fee = derived.get("field.derived.investment.compensation_fee_amount")
     summary = facts.get("field.fact.investment.measures_summary") or {}
+    indep = _compute_independent_fees(snapshot)
 
     cat_map = {"part1": "工程措施", "part2": "植物措施",
                "part3": "监测措施", "part4": "临时措施"}
@@ -579,9 +643,6 @@ def project_investment_split_summary(snapshot: dict) -> TableData:
     sum_existing = 0.0
     sum_total = 0.0
     has_parts = False
-    comp_new = None
-    comp_existing = None
-    comp_total = None
     for row_id, seq, name in _INVESTMENT_ROWS:
         scheme_new = None
         existing = None
@@ -595,29 +656,41 @@ def project_investment_split_summary(snapshot: dict) -> TableData:
             sum_existing += existing
             sum_total += total
             has_parts = True
-        elif row_id == "compensation" and comp_fee is not None:
-            scheme_new = comp_fee
+        elif row_id == "part5" and indep["indep_total"] is not None:
+            scheme_new = indep["indep_total"]
             existing = 0
-            total = comp_fee
-            comp_new = scheme_new
-            comp_existing = existing
-            comp_total = total
+            total = indep["indep_total"]
+            sum_new += scheme_new
+            sum_total += total
+            has_parts = True
         elif row_id == "subtotal_1_5" and has_parts:
             scheme_new = round(sum_new, 2)
             existing = round(sum_existing, 2)
             total = round(sum_total, 2)
+        elif row_id == "reserve" and indep["reserve"] is not None:
+            scheme_new = indep["reserve"]
+            existing = 0
+            total = indep["reserve"]
+            sum_new += scheme_new
+            sum_total += total
+        elif row_id == "compensation" and comp_fee is not None:
+            scheme_new = comp_fee
+            existing = 0
+            total = comp_fee
+            sum_new += scheme_new
+            sum_total += total
         elif row_id == "grand_total" and has_parts:
-            scheme_new = round(sum_new + (comp_new or 0), 2)
-            existing = round(sum_existing + (comp_existing or 0), 2)
-            total = round(sum_total + (comp_total or 0), 2)
+            scheme_new = round(sum_new, 2)
+            existing = round(sum_existing, 2)
+            total = round(sum_total, 2)
         rows.append({
             "seq": seq, "name": name,
             "scheme_new": scheme_new, "existing": existing, "total": total,
         })
 
     footnote = (
-        "v0 阶段仅补偿费行有数据 (全额计入方案新增)。"
-        "主体已列/方案新增的拆分由设计院在录入工程量时标注, 系统不自动判断。"
+        "独立费用/预备费由公式计算 (全额计入方案新增)。"
+        "主体已列/方案新增的拆分由设计院在录入工程量时标注。"
         "'—' 表示数据未提供。"
     )
 
@@ -681,33 +754,39 @@ SPEC_APPENDIX_FEES = TableSpec(
     title="附表 4 独立费用 / 预备费 / 专项费用估算表",
     columns=[
         TableColumn(key="seq", header="序号", unit="", align="center", fmt="str"),
-        TableColumn(key="name", header="费用项", unit="", align="left", fmt="str"),
+        TableColumn(key="name", header="费用名称", unit="", align="left", fmt="str"),
+        TableColumn(key="basis", header="计算依据", unit="", align="left", fmt="str"),
         TableColumn(key="rate", header="费率", unit="", align="center", fmt="str"),
         TableColumn(key="base", header="计费基数 (万元)", unit="", align="right", fmt="2f"),
-        TableColumn(key="amount", header="金额 (万元)", unit="", align="right", fmt="2f"),
+        TableColumn(key="amount", header="费用 (万元)", unit="", align="right", fmt="2f"),
     ],
-    has_total_row=True,
-    footnote="费率依据: 水总[2024]323号 | v0 缺建安费基数, 全部 '—'",
+    has_total_row=False,
+    footnote="",
     section_id="",
 )
 
-_INDEPENDENT_FEE_ROWS = [
-    ("1", "建设单位管理费"),
-    ("2", "招标业务费"),
-    ("3", "经济技术咨询费"),
-    ("4", "工程建设监理费"),
-    ("5", "工程造价咨询服务费"),
-    ("6", "科研勘测设计费"),
-    ("7", "水土保持设施验收咨询费"),
+# 独立费用 7 子项定义
+# row_id: (seq, name, rate_pct|None, basis_text, fact_key|None)
+# rate_pct: 有百分比费率的行, 可从 base 计算
+# fact_key: 无公式、需从 facts 读取金额的行
+_INDEP_FEE_DEFS = [
+    ("mgmt",    "1", "建设单位管理费",       0.03,  "(一至四部分)×3%",                   None),
+    ("tender",  "2", "招标业务费",           None,  "不发生",                            None),
+    ("consult", "3", "经济技术咨询费",       None,  "按实际计列",                        "field.fact.investment.fee_consulting"),
+    ("supv",    "4", "工程建设监理费",       None,  "发改价格[2007]670号",               "field.fact.investment.fee_supervision"),
+    ("cost_sv", "5", "工程造价咨询服务费",   None,  "粤价函[2011]724号",                 "field.fact.investment.fee_cost_consulting"),
+    ("survey",  "6", "科研勘测设计费",       0.0108, "(一至四部分)×1.08%",               None),
+    ("accept",  "7", "水土保持设施验收咨询费", None, "按市场价",                          "field.fact.investment.fee_acceptance"),
 ]
 
 
 def project_appendix_total(snapshot: dict) -> TableData:
-    """附表1: 多列版投资总表, 从 overlay 取分项拆分"""
+    """附表1: 多列版投资总表, 从 overlay + 独立费用计算填充"""
     derived = snapshot.get("derived_fields") or {}
     facts = snapshot.get("_original_facts") or {}
     comp_fee = derived.get("field.derived.investment.compensation_fee_amount")
     summary = facts.get("field.fact.investment.measures_summary") or {}
+    indep = _compute_independent_fees(snapshot)
 
     cat_map = {"part1": "工程措施", "part2": "植物措施",
                "part3": "监测措施", "part4": "临时措施"}
@@ -720,7 +799,6 @@ def project_appendix_total(snapshot: dict) -> TableData:
         cat = cat_map.get(row_id)
         if cat and cat in summary:
             s = summary[cat]
-            # 工程措施/临时措施 → 建安工程费; 植物措施 → 植物措施费
             if cat in ("工程措施", "临时措施", "监测措施"):
                 row["construction"] = round(s["total"], 2)
             elif cat == "植物措施":
@@ -728,6 +806,15 @@ def project_appendix_total(snapshot: dict) -> TableData:
             row["new_total"] = round(s["new"], 2)
             row["existing"] = round(s["existing"], 2)
             row["grand_total"] = round(s["total"], 2)
+        elif row_id == "part5" and indep["indep_total"] is not None:
+            row["independent"] = indep["indep_total"]
+            row["new_total"] = indep["indep_total"]
+            row["existing"] = 0
+            row["grand_total"] = indep["indep_total"]
+        elif row_id == "reserve" and indep["reserve"] is not None:
+            row["new_total"] = indep["reserve"]
+            row["existing"] = 0
+            row["grand_total"] = indep["reserve"]
         elif row_id == "compensation" and comp_fee is not None:
             row["new_total"] = comp_fee
             row["existing"] = 0
@@ -735,7 +822,7 @@ def project_appendix_total(snapshot: dict) -> TableData:
         rows.append(row)
     footnote = (
         "附表版投资估算总表 (对齐样稿附表1) | "
-        "v0 仅补偿费行有数据, 其余待 InvestmentEstimationSubsystem 完善"
+        "独立费用/预备费由公式计算, 补偿费由 cal.compensation.fee 计算"
     )
     spec = TableSpec(
         table_id=SPEC_APPENDIX_TOTAL.table_id,
@@ -783,15 +870,97 @@ def project_appendix_existing(snapshot: dict) -> TableData:
 
 
 def project_appendix_fees(snapshot: dict) -> TableData:
-    """附表4: 独立费用/预备费 — v0 全 '—' (缺建安费基数)"""
+    """附表4: 独立费用 / 预备费 / 补偿费估算表
+
+    计算逻辑:
+      base = 新增(工程措施 + 植物措施 + 监测措施 + 临时措施)
+      建设管理费 = base × 3%
+      科研勘测设计费 = base × 1.08%
+      其余子项 = 从 facts 读取 (按实际/市场价, 无通用公式)
+      预备费 = (一至五部分合计) × 10%
+      补偿费 = 从 calculator derived
+    """
+    derived = snapshot.get("derived_fields") or {}
+    indep = _compute_independent_fees(snapshot)
+    base = indep["base"]
+    has_any_value = indep["has_value"]
+
     rows = []
-    for seq, name in _INDEPENDENT_FEE_ROWS:
-        rows.append({"seq": seq, "name": name, "rate": "—", "base": None, "amount": None})
-    rows.append({"seq": "", "name": "独立费用小计", "rate": "", "base": None, "amount": None})
-    rows.append({"seq": "", "name": "基本预备费 (10%)", "rate": "10%", "base": None, "amount": None})
-    total_row = {"seq": "", "name": "合计", "rate": "", "base": None, "amount": None}
-    return TableData(spec=SPEC_APPENDIX_FEES, rows=rows, total_row=total_row,
-                     render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+    indep_total = 0.0
+
+    for row_id, seq, name, rate_pct, basis_text, _fact_key in _INDEP_FEE_DEFS:
+        amount = indep["items"].get(row_id)
+        rate_str = ""
+        base_val = None
+
+        if rate_pct is not None and base is not None:
+            base_val = round(base, 2)
+            rate_str = f"{rate_pct * 100:.0f}%" if rate_pct >= 0.01 else f"{rate_pct * 100:.2f}%"
+
+        if amount is not None:
+            indep_total += amount
+
+        rows.append({
+            "seq": seq, "name": name, "basis": basis_text,
+            "rate": rate_str, "base": base_val, "amount": amount,
+        })
+
+    # 独立费用小计
+    rows.append({
+        "seq": "五", "name": "独立费用小计", "basis": "",
+        "rate": "", "base": None,
+        "amount": indep["indep_total"],
+    })
+
+    # 预备费
+    reserve_base = round(base + indep_total, 2) if base is not None else None
+    rows.append({
+        "seq": "六", "name": "基本预备费", "basis": "(一至五)×10%",
+        "rate": "10%", "base": reserve_base, "amount": indep["reserve"],
+    })
+
+    # 补偿费
+    comp_fee = derived.get("field.derived.investment.compensation_fee_amount")
+    if comp_fee is not None:
+        has_any_value = True
+    rows.append({
+        "seq": "七", "name": "水土保持补偿费", "basis": "cal.compensation.fee",
+        "rate": "", "base": None, "amount": comp_fee,
+    })
+
+    # 合计行
+    grand_parts = [indep["indep_total"] or 0, indep["reserve"] or 0, comp_fee or 0]
+    grand_total = round(sum(grand_parts), 2) if has_any_value else None
+    rows.append({
+        "seq": "", "name": "合  计", "basis": "",
+        "rate": "", "base": None, "amount": grand_total,
+    })
+
+    # 动态脚注
+    live = []
+    if base is not None:
+        live.append(f"计费基数={base:.2f}万元 (新增一至四部分)")
+    if comp_fee is not None:
+        live.append(f"补偿费={comp_fee:.2f}万元")
+    footnote = (
+        "费率依据: 建设管理费3% / 科研勘测设计费1.08% / 预备费10% | "
+        + ("; ".join(live) if live else "measures_summary 未提供, 公式行留白")
+    )
+
+    spec = TableSpec(
+        table_id=SPEC_APPENDIX_FEES.table_id,
+        title=SPEC_APPENDIX_FEES.title,
+        columns=SPEC_APPENDIX_FEES.columns,
+        has_total_row=False,
+        footnote=footnote,
+        section_id="",
+    )
+
+    return TableData(
+        spec=spec, rows=rows,
+        render_policy=(TableRenderPolicy.RENDER_WITH_VALUES if has_any_value
+                       else TableRenderPolicy.RENDER_WITH_PLACEHOLDER),
+    )
 
 
 # ============================================================

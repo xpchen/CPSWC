@@ -305,14 +305,22 @@ artifacts:
 
   art.table.investment.independent_fees:
     kind: table
-    canonical_name: 独立费用计算表
+    canonical_name: 独立费用 / 预备费 / 补偿费估算表
     parent: art.table.investment_appendix
     requirement: always
     content_spec: |
-      按水总[2024]323 号计算
-      含: 建设管理费 / 水土保持监理费 / 科研勘测设计费
-    data_source_refs: [engine.InvestmentEstimationSubsystem]
-    renderer: TableRenderer
+      公式行: 建设管理费=(一至四)×3%, 科研勘测设计费=(一至四)×1.08%
+      市场价行: 经济技术咨询费/监理费/造价咨询费/验收咨询费 → 从 facts 读取
+      预备费=(一至五)×10%, 补偿费=cal.compensation.fee
+      对齐样稿: 世维表7.1-4 / 惠南表10.2-7
+    data_source_refs:
+      - field.fact.investment.measures_summary
+      - field.fact.investment.fee_consulting
+      - field.fact.investment.fee_supervision
+      - field.fact.investment.fee_cost_consulting
+      - field.fact.investment.fee_acceptance
+      - field.derived.investment.compensation_fee_amount
+    renderer: TableProjection
 
   art.table.investment.compensation_fee:
     kind: table
@@ -341,8 +349,8 @@ artifacts:
     parent: art.table.investment_appendix
     requirement: always
     status: planned
-    deferred_to: v2
-    dependency: quota/定额数据库接入
+    deferred_to: v1
+    dependency: quota_connector 白名单扩充
     data_source_refs: [engine.InvestmentEstimationSubsystem]
     renderer: TableRenderer
 
@@ -352,8 +360,8 @@ artifacts:
     parent: art.table.investment_appendix
     requirement: always
     status: planned
-    deferred_to: v2
-    dependency: quota/定额数据库接入
+    deferred_to: v1
+    dependency: quota_connector 机械台班费已有数据 (172台)
     data_source_refs: [engine.InvestmentEstimationSubsystem]
     renderer: TableRenderer
 
@@ -363,8 +371,8 @@ artifacts:
     parent: art.table.investment_appendix
     requirement: always
     status: planned
-    deferred_to: v2
-    dependency: 地区材料价格信息系统
+    deferred_to: v1
+    dependency: material_prices_v0.yaml (5种) + 地区信息价扩充
     data_source_refs: [engine.InvestmentEstimationSubsystem]
     renderer: TableRenderer
 

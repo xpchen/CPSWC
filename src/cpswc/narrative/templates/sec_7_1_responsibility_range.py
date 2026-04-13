@@ -123,3 +123,84 @@ def render(facts: dict, derived: dict, triggered: set[str],
         template_version=TEMPLATE_SPEC.template_version,
         normative_basis=TEMPLATE_SPEC.normative_basis,
     )
+
+
+# ============================================================
+# 7.1.1 分县级行政区防治责任范围 (Step 42 补完)
+# ============================================================
+TEMPLATE_SPEC_BY_COUNTY = NarrativeTemplateSpec(
+    template_id="nt.sec_7_1_1.responsibility_range_by_county.v1",
+    section_id="sec.soil_loss_prevention.responsibility_range_by_county",
+    template_version="v1",
+    template_author="cpswc_v0.5",
+    normative_basis=[
+        "rule.template_2026.section_7",
+        "rule.2023_177.review_dimension_county_breakdown",
+    ],
+    supported_variants=["default"],
+    input_fields=[
+        "field.fact.land.county_breakdown",
+        "field.fact.location.county_list",
+    ],
+)
+
+
+def render_by_county(facts: dict, derived: dict, triggered: set[str],
+                     **kwargs) -> NarrativeBlock:
+    """7.1.1 分县级行政区防治责任范围"""
+    county_list = _v(facts, "field.fact.location.county_list")
+    breakdown = facts.get("field.fact.land.county_breakdown")
+
+    # 跨行政区才有实际内容
+    is_multi_admin = "ob.sensitive_overlay.multi_admin_breakdown" in triggered
+
+    if not is_multi_admin:
+        return NarrativeBlock(
+            section_id="sec.soil_loss_prevention.responsibility_range_by_county",
+            title="分县级行政区防治责任范围",
+            render_status=RenderStatus.NOT_APPLICABLE,
+            paragraphs=[],
+            variant_id="default",
+            template_id=TEMPLATE_SPEC_BY_COUNTY.template_id,
+            template_version=TEMPLATE_SPEC_BY_COUNTY.template_version,
+            normative_basis=TEMPLATE_SPEC_BY_COUNTY.normative_basis,
+        )
+
+    paragraphs = []
+
+    p1_text = f"本项目涉及{county_list}等行政区域。根据审查要点要求，跨行政区项目应按县级行政区分别列出防治责任范围面积。"
+    paragraphs.append(NarrativeParagraph(
+        text=p1_text,
+        evidence_refs=["field.fact.location.county_list"],
+        source_rule_refs=["rule.2023_177.review_dimension_county_breakdown"],
+    ))
+
+    if isinstance(breakdown, list) and breakdown:
+        # 尝试按 county 分组
+        by_county: dict[str, float] = {}
+        for rec in breakdown:
+            county = rec.get("county") or rec.get("zone_id", "未知")
+            area = rec.get("area", {})
+            a = float(area.get("value", 0)) if isinstance(area, dict) else float(area or 0)
+            by_county[county] = by_county.get(county, 0) + a
+
+        if by_county:
+            parts = [f"{c}：{a:.2f} hm²" for c, a in by_county.items()]
+            p2 = NarrativeParagraph(
+                text=f"各行政区防治责任范围面积分别为：{'；'.join(parts)}。详见分县级行政区防治责任范围统计表。",
+                evidence_refs=["field.fact.land.county_breakdown",
+                               "art.table.responsibility_range_by_admin_division"],
+                source_rule_refs=["rule.template_2026.section_7"],
+            )
+            paragraphs.append(p2)
+
+    return NarrativeBlock(
+        section_id="sec.soil_loss_prevention.responsibility_range_by_county",
+        title="分县级行政区防治责任范围",
+        render_status=RenderStatus.FULL,
+        paragraphs=paragraphs,
+        variant_id="default",
+        template_id=TEMPLATE_SPEC_BY_COUNTY.template_id,
+        template_version=TEMPLATE_SPEC_BY_COUNTY.template_version,
+        normative_basis=TEMPLATE_SPEC_BY_COUNTY.normative_basis,
+    )

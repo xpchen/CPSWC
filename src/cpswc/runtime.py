@@ -77,6 +77,43 @@ class CalcResultSummary:
     error_message: str | None = None
 
 
+# ============================================================
+# 宪法 #3: SubmissionProfile + SubmissionLifecycle
+# 对应 ARCHITECTURE_DECISIONS.md 前提 B (三轴分派):
+#   ObligationSet = f(ProjectSemanticGraph, SubmissionProfile)
+#   ExportGate    = g(ObligationSet, AssuranceState, SubmissionLifecycle)
+# ============================================================
+
+@dataclass
+class SubmissionProfile:
+    """静态申报上下文 — 承载 obligation 输入。
+
+    v0 字段:
+      species: 法律物种 (报告书 / 报告表 / 整体变更报告书 / 弃渣场补充报告书)
+      compilation_intent: 编制意图 (NEW / MODIFICATION / SUPPLEMENT)
+      industry_category: 行业代码 (如 "29-房地产")
+      ruleset: 规则集标识 (如 "v2026_gd_package")
+    """
+    species: str                   # 法律物种
+    compilation_intent: str        # 编制意图
+    industry_category: str         # 行业代码
+    ruleset: str                   # 规则集
+
+
+@dataclass
+class SubmissionLifecycle:
+    """动态申报上下文 — 承载 gate 输入, 不进入 ObligationSet 计算。
+
+    v0 字段:
+      stage: 当前阶段 (pre_submission / under_review / approved / modification)
+      review_round: 审查轮次 (0 = 首次)
+      freeze_state: 冻结状态 (unfrozen / frozen)
+    """
+    stage: str = "pre_submission"
+    review_round: int = 0
+    freeze_state: str = "unfrozen"
+
+
 @dataclass
 class RuntimeManifest:
     """本次运行包含了什么"""
@@ -119,8 +156,12 @@ class RuntimeSnapshot:
     snapshot_id: str
     timestamp: str
 
-    # ProjectFactSheet (宪法 #1 收口)
+    # 宪法 #1 ProjectFactSheet 收口
     fact_sheet: ProjectFactSheet | None = None
+
+    # 宪法 #3 SubmissionProfile + SubmissionLifecycle 收口
+    submission_profile: SubmissionProfile | None = None
+    submission_lifecycle: SubmissionLifecycle | None = None
 
 
 @dataclass
@@ -339,6 +380,16 @@ def run_project(
     # 与 Step 4 的 unified lookup 口径一致
     fact_sheet = _build_fact_sheet(facts, unified)
 
+    # 宪法 #3: SubmissionProfile (静态) + SubmissionLifecycle (动态)
+    sample_meta = project_input.get("sample_meta") or {}
+    profile = SubmissionProfile(
+        species=sample_meta.get("species", ""),
+        compilation_intent=sample_meta.get("compilation_intent", "NEW"),
+        industry_category=facts.get("field.fact.project.industry_category") or "",
+        ruleset=ruleset,
+    )
+    lc = SubmissionLifecycle(stage=lifecycle)
+
     return RuntimeSnapshot(
         project_input_summary=project_summary,
         facts_count=len(facts),
@@ -352,6 +403,8 @@ def run_project(
         required_artifacts=sorted(required_artifacts),
         required_assurances=sorted(required_assurances),
         fact_sheet=fact_sheet,
+        submission_profile=profile,
+        submission_lifecycle=lc,
         manifest=manifest,
         snapshot_id=snapshot_id,
         timestamp=now,

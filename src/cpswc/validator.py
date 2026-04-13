@@ -57,7 +57,7 @@ def _run_calculator_cross_check(
     loaded_registries: dict,
 ) -> tuple[bool, list[tuple[str, str]]]:
     """对 calculator 产出 vs sample 做双向 cross-check。返回 (ok, reports)"""
-    from cpswc.runtime import _get_field  # type: ignore
+    from cpswc.condition_engine import _get_field  # type: ignore
 
     calc_ok = True
     reports: list[tuple[str, str]] = []

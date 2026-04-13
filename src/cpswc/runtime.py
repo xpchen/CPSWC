@@ -23,6 +23,11 @@ Step 12A: 把 5 个脚本 (lint / validator / calculator_engine / registries / s
     - 不做 override runtime (决议 9: v0 不消费 override)
     - 签名预留 ruleset / lifecycle 参数, 本轮走默认值
 
+宪法收口:
+    - Step 38A: ConditionEngine 抽取为独立模块 (condition_engine.py)
+    - Step 38B: ProjectFactSheet 作为正式契约对象挂在 RuntimeSnapshot 上
+    - Step 38C: FIR 补登记 4 个独立费用字段, lint ERROR 清零
+
 退出码 (CLI 模式):
     0 成功
     1 运行时错误
@@ -33,7 +38,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 import sys
 from dataclasses import dataclass, field as dc_field, asdict
 from datetime import datetime, timezone
@@ -48,6 +52,15 @@ except ImportError:
 
 
 from cpswc.paths import REGISTRIES_DIR, SAMPLES_DIR, GOVERNANCE_DIR, PROJECT_ROOT  # noqa
+from cpswc.condition_engine import (  # noqa: F401 — re-export for backward compat
+    ObligationResult,
+    evaluate_all as _evaluate_all_obligations,
+)
+from cpswc.project_fact_sheet import (  # noqa: F401
+    ProjectFactSheet,
+    build as _build_fact_sheet,
+)
+
 SPECS_DIR = REGISTRIES_DIR  # backward compat alias
 
 # ============================================================
@@ -62,14 +75,6 @@ class CalcResultSummary:
     unit: str
     status: str  # "ok" | "error"
     error_message: str | None = None
-
-
-@dataclass
-class ObligationResult:
-    obligation_id: str
-    triggered: bool | None  # None = pending
-    mode: str
-    py_expr: str
 
 
 @dataclass
@@ -113,6 +118,9 @@ class RuntimeSnapshot:
     # 元数据
     snapshot_id: str
     timestamp: str
+
+    # ProjectFactSheet (宪法 #1 收口)
+    fact_sheet: ProjectFactSheet | None = None
 
 
 @dataclass
@@ -160,106 +168,6 @@ def load_all_registries(specs_dir: Path | None = None) -> dict:
             with path.open(encoding="utf-8") as f:
                 loaded[name] = yaml.safe_load(f)
     return loaded
-
-
-# ============================================================
-# DSL evaluation (从 sample_validator 提取的核心逻辑)
-# ============================================================
-
-def _get_field(path: str, unified: dict) -> Any:
-    """从 unified lookup (facts + derived) 按 field id 取值"""
-    return unified.get(path)
-
-
-def _get_value(path: str, unified: dict) -> Any:
-    """取值并处理 Quantity {value, unit} 结构"""
-    v = _get_field(path, unified)
-    if v is None:
-        return 0
-    if isinstance(v, dict) and "value" in v:
-        return v["value"]
-    if isinstance(v, (int, float)):
-        return v
-    return 0
-
-
-def _transform_dsl(expr: str) -> str:
-    """将 trigger.when DSL 转为 Python eval 可求值的表达式"""
-    if not expr or str(expr).strip().lower() == "always":
-        return "True"
-    s = re.sub(r"\s+", " ", str(expr)).strip()
-
-    # any(field.X.Y.f in [values])
-    def h_any_in(m: re.Match) -> str:
-        list_path, attr, values = m.group(1), m.group(2), m.group(3)
-        return (f'any(_item.get({attr!r}) in [{values}] '
-                f'for _item in (_get_field({list_path!r}, unified) or []))')
-    s = re.sub(r"any\((field\.[\w.]+?)\.(\w+)\s+in\s+\[([^\]]*)\]\)", h_any_in, s)
-
-    # count(distinct(field.X.Y.f))
-    def h_count_distinct(m: re.Match) -> str:
-        list_path, attr = m.group(1), m.group(2)
-        return (f'len(set(_item.get({attr!r}) '
-                f'for _item in (_get_field({list_path!r}, unified) or [])))')
-    s = re.sub(r"count\(distinct\((field\.[\w.]+?)\.(\w+)\)\)", h_count_distinct, s)
-
-    # count(field.X.Y)
-    s = re.sub(r"count\((field\.[\w.]+)\)",
-               lambda m: f"len(_get_field({m.group(1)!r}, unified) or [])", s)
-
-    # has_any(field.X.Y)
-    s = re.sub(r"has_any\((field\.[\w.]+)\)",
-               lambda m: f"bool(_get_field({m.group(1)!r}, unified))", s)
-
-    # field.X.Y.value
-    s = re.sub(r"(?<!')(field\.[\w.]+?)\.value\b",
-               lambda m: f"_get_value({m.group(1)!r}, unified)", s)
-
-    # bare field.X.Y
-    s = re.sub(r"(?<!')field\.[\w.]+",
-               lambda m: f"_get_field({m.group(0)!r}, unified)", s)
-
-    s = re.sub(r"\bAND\b", " and ", s)
-    s = re.sub(r"\bOR\b", " or ", s)
-    s = re.sub(r"\bNOT\b", " not ", s)
-    s = re.sub(r"(?<!')\btrue\b", "True", s)
-    s = re.sub(r"(?<!')\bfalse\b", "False", s)
-    return s
-
-
-def _evaluate_obligation(ob_id: str, ob_def: dict,
-                         unified: dict) -> ObligationResult:
-    """对单条 obligation 求值"""
-    trigger = ob_def.get("trigger") or {}
-    mode = trigger.get("mode", "conditional")
-    when = trigger.get("when", "")
-
-    if mode == "always" or str(when).strip().lower() == "always":
-        return ObligationResult(ob_id, True, mode, "True (always)")
-
-    if mode == "driven_by_obligation":
-        return ObligationResult(ob_id, None, mode, "pending driven_by")
-
-    if not when:
-        return ObligationResult(ob_id, False, mode, "no when clause")
-
-    try:
-        py_expr = _transform_dsl(str(when))
-    except Exception as e:
-        return ObligationResult(ob_id, False, mode, f"DSL error: {e}")
-
-    ns = {
-        "_get_field": _get_field,
-        "_get_value": _get_value,
-        "unified": unified,
-        "__builtins__": {"len": len, "set": set, "bool": bool, "any": any, "all": all},
-    }
-    try:
-        result = eval(py_expr, ns)  # noqa: S307
-    except Exception as e:
-        return ObligationResult(ob_id, False, mode, f"eval error: {e} | {py_expr}")
-
-    return ObligationResult(ob_id, bool(result), mode, py_expr)
 
 
 # ============================================================
@@ -359,36 +267,11 @@ def run_project(
     unified.update(existing_derived)  # sample 里的 pre-stored derived
     unified.update(derived_fields)    # runtime 计算的 derived 覆盖 pre-stored
 
-    # Step 5: 评估 obligations
-    obligation_details: list[ObligationResult] = []
-    triggered: set[str] = set()
-    not_triggered: set[str] = set()
-    pending: set[str] = set()
-
-    for ob_id, ob_def in obligations_reg.items():
-        if not isinstance(ob_def, dict):
-            continue
-        result = _evaluate_obligation(ob_id, ob_def, unified)
-        obligation_details.append(result)
-        if result.triggered is True:
-            triggered.add(ob_id)
-        elif result.triggered is False:
-            not_triggered.add(ob_id)
-        else:
-            pending.add(ob_id)
-
-    # Resolve driven_by_obligation
-    for ob_result in obligation_details:
-        if ob_result.triggered is not None:
-            continue
-        ob_def = obligations_reg.get(ob_result.obligation_id) or {}
-        driven = (ob_def.get("trigger") or {}).get("driven_by_refs") or []
-        if any(d in triggered for d in driven):
-            ob_result.triggered = True
-            triggered.add(ob_result.obligation_id)
-        else:
-            ob_result.triggered = False
-            not_triggered.add(ob_result.obligation_id)
+    # Step 5: 评估 obligations (委托 ConditionEngine_v0)
+    engine_result = _evaluate_all_obligations(obligations_reg, unified)
+    obligation_details = engine_result.obligation_details
+    triggered = engine_result.triggered
+    not_triggered = engine_result.not_triggered
 
     # Step 6: 收集 required artifacts / assurances
     required_artifacts: set[str] = set()
@@ -452,6 +335,10 @@ def run_project(
     now = datetime.now(timezone.utc).isoformat()
     snapshot_id = f"snap_{hashlib.sha256(now.encode()).hexdigest()[:12]}"
 
+    # ProjectFactSheet: unified = facts + pre-stored derived + runtime derived
+    # 与 Step 4 的 unified lookup 口径一致
+    fact_sheet = _build_fact_sheet(facts, unified)
+
     return RuntimeSnapshot(
         project_input_summary=project_summary,
         facts_count=len(facts),
@@ -464,6 +351,7 @@ def run_project(
         obligation_details=obligation_details,
         required_artifacts=sorted(required_artifacts),
         required_assurances=sorted(required_assurances),
+        fact_sheet=fact_sheet,
         manifest=manifest,
         snapshot_id=snapshot_id,
         timestamp=now,

@@ -332,6 +332,62 @@ fields:
         - sec.overview
         - sec.investment.summary
 
+  field.fact.investment.fee_consulting:
+    canonical_name: 经济技术咨询费
+    semantic_type: Currency
+    unit: 万元
+    precision: 0.01
+    protection_level: PROTECTED
+    source: user_input
+    note: |
+      按实际计列, 由设计院/建设单位提供。无通用公式, 属 F2 外部输入。
+    lineage:
+      projection_target_refs:
+        - art.table.investment.independent_fees
+        - art.table.investment.appendix_fees
+
+  field.fact.investment.fee_supervision:
+    canonical_name: 工程建设监理费
+    semantic_type: Currency
+    unit: 万元
+    precision: 0.01
+    protection_level: PROTECTED
+    source: user_input
+    note: |
+      依据发改价格[2007]670号计列, 由设计院提供。属 F2 外部输入。
+    lineage:
+      projection_target_refs:
+        - art.table.investment.independent_fees
+        - art.table.investment.appendix_fees
+
+  field.fact.investment.fee_cost_consulting:
+    canonical_name: 工程造价咨询服务费
+    semantic_type: Currency
+    unit: 万元
+    precision: 0.01
+    protection_level: PROTECTED
+    source: user_input
+    note: |
+      依据粤价函[2011]724号计列, 由设计院提供。属 F2 外部输入。
+    lineage:
+      projection_target_refs:
+        - art.table.investment.independent_fees
+        - art.table.investment.appendix_fees
+
+  field.fact.investment.fee_acceptance:
+    canonical_name: 水土保持设施验收咨询费
+    semantic_type: Currency
+    unit: 万元
+    precision: 0.01
+    protection_level: PROTECTED
+    source: user_input
+    note: |
+      按市场价计列, 由建设单位提供。属 F2 外部输入。
+    lineage:
+      projection_target_refs:
+        - art.table.investment.independent_fees
+        - art.table.investment.appendix_fees
+
   field.fact.investment.annual_allocation:
     canonical_name: 分年度投资显式分配
     semantic_type: AnnualAllocationDict

@@ -998,9 +998,38 @@ def _fmt_q(facts: dict, key: str, suffix: str = "") -> str:
 
 
 def project_spec_sheet(snapshot: dict) -> TableData:
-    """工程特性表: 三部分 key-value 投影"""
-    facts = snapshot.get("_original_facts") or {}
-    derived = snapshot.get("derived_fields") or {}
+    """工程特性表: 从 ProjectFactSheet 投影 (宪法 #1 数一致)。
+
+    v0 拉通: 本函数优先从 snapshot["fact_sheet"] 取值 (typed, 已解 Quantity),
+    确保特性表与 runtime 其他消费者看到同一份事实。
+    若 fact_sheet 不在 snapshot 中, 回退到 _original_facts (向后兼容)。
+    """
+    fs = snapshot.get("fact_sheet")
+    if fs and not isinstance(fs, dict):
+        # dataclass 实例 → 转 dict
+        from dataclasses import asdict
+        fs = asdict(fs)
+
+    if fs:
+        return _spec_sheet_from_fact_sheet(fs, snapshot)
+    # Fallback: legacy path
+    return _spec_sheet_from_raw_facts(snapshot)
+
+
+def _fs_fmt(val, unit: str = "") -> str:
+    """Format a ProjectFactSheet field value for display."""
+    if val is None:
+        return "—"
+    if isinstance(val, list):
+        return "、".join(str(x) for x in val) if val else "—"
+    s = str(val)
+    if unit:
+        s = f"{s} {unit}"
+    return s if s else "—"
+
+
+def _spec_sheet_from_fact_sheet(fs: dict, snapshot: dict) -> TableData:
+    """特性表投影 — 从 ProjectFactSheet dict 取值"""
     rows: list[dict] = []
 
     def _add(item: str, value: str):
@@ -1011,42 +1040,32 @@ def project_spec_sheet(snapshot: dict) -> TableData:
 
     # ── 一、项目基本情况 ──
     _section("一、项目基本情况")
-    _add("项目名称", _fmt_q(facts, "field.fact.project.name"))
-    code = facts.get("field.fact.project.code")
-    if code:
-        _add("项目代码", str(code))
-    _add("建设单位", _fmt_q(facts, "field.fact.project.builder"))
-    _add("编制单位", _fmt_q(facts, "field.fact.project.compiler"))
-    _add("行业类别", _fmt_q(facts, "field.fact.project.industry_category"))
-    _add("建设性质", _fmt_q(facts, "field.fact.project.nature"))
+    _add("项目名称", _fs_fmt(fs.get("project_name")))
+    if fs.get("project_code"):
+        _add("项目代码", str(fs["project_code"]))
+    _add("建设单位", _fs_fmt(fs.get("builder")))
+    _add("编制单位", _fs_fmt(fs.get("compiler")))
+    _add("行业类别", _fs_fmt(fs.get("industry_category")))
+    _add("建设性质", _fs_fmt(fs.get("construction_nature")))
 
-    # 位置
-    province = _fmt_q(facts, "field.fact.location.province_list")
-    prefecture = _fmt_q(facts, "field.fact.location.prefecture_list")
-    county = _fmt_q(facts, "field.fact.location.county_list")
-    _add("涉及省（市、区）", province)
-    _add("涉及地市", prefecture)
-    _add("涉及县", county)
-    _add("流域管理机构", _fmt_q(facts, "field.fact.location.river_basin_agency"))
+    _add("涉及省（市、区）", _fs_fmt(fs.get("province_list")))
+    _add("涉及地市", _fs_fmt(fs.get("prefecture_list")))
+    _add("涉及县", _fs_fmt(fs.get("county_list")))
+    _add("流域管理机构", _fs_fmt(fs.get("river_basin_agency")))
 
-    # 投资
-    _add("总投资", _fmt_q(facts, "field.fact.investment.total_investment"))
-    _add("土建投资", _fmt_q(facts, "field.fact.investment.civil_investment"))
+    _add("总投资", _fs_fmt(fs.get("total_investment"), "万元"))
+    _add("土建投资", _fs_fmt(fs.get("civil_investment"), "万元"))
 
-    # 工期
-    start = _fmt_q(facts, "field.fact.schedule.start_time")
-    end = _fmt_q(facts, "field.fact.schedule.end_time")
-    _add("动工时间", start)
-    _add("完工时间", end)
-    _add("设计水平年", _fmt_q(facts, "field.fact.schedule.design_horizon_year"))
+    _add("动工时间", _fs_fmt(fs.get("start_time")))
+    _add("完工时间", _fs_fmt(fs.get("end_time")))
+    _add("设计水平年", _fs_fmt(fs.get("design_horizon_year")))
 
-    # 占地
-    _add("总占地面积", _fmt_q(facts, "field.fact.land.total_area"))
-    _add("永久占地", _fmt_q(facts, "field.fact.land.permanent_area"))
-    _add("临时占地", _fmt_q(facts, "field.fact.land.temporary_area"))
+    _add("总占地面积", _fs_fmt(fs.get("total_land_area"), "hm²"))
+    _add("永久占地", _fs_fmt(fs.get("permanent_land_area"), "hm²"))
+    _add("临时占地", _fs_fmt(fs.get("temporary_land_area"), "hm²"))
 
     # ── 二、项目组成及占地情况 ──
-    breakdown = facts.get("field.fact.land.county_breakdown")
+    breakdown = fs.get("county_breakdown")
     if isinstance(breakdown, list) and breakdown:
         _section("二、项目组成及占地情况")
         for rec in breakdown:
@@ -1058,12 +1077,88 @@ def project_spec_sheet(snapshot: dict) -> TableData:
 
     # ── 三、土石方平衡 ──
     _section("三、土石方平衡")
+    _add("挖方量", _fs_fmt(fs.get("earthwork_excavation"), "万m³"))
+    _add("填方量", _fs_fmt(fs.get("earthwork_fill"), "万m³"))
+    _add("借方量", _fs_fmt(fs.get("earthwork_borrow"), "万m³"))
+    _add("弃方量", _fs_fmt(fs.get("earthwork_spoil"), "万m³"))
+
+    # ── 四、水土保持相关 ──
+    _section("四、水土保持相关")
+    _add("侵蚀类型", _fs_fmt(fs.get("soil_erosion_type")))
+    _add("侵蚀强度", _fs_fmt(fs.get("soil_erosion_intensity")))
+    # 原地貌侵蚀模数不在 fact_sheet (不投影到 spec_sheet), 从 raw facts 取
+    facts = snapshot.get("_original_facts") or {}
+    _add("原地貌侵蚀模数", _fmt_q(facts, "field.fact.natural.original_erosion_modulus"))
+    _add("容许土壤流失量", _fs_fmt(fs.get("allowable_loss"), "t/(km²·a)"))
+    _add("水土保持区划", _fs_fmt(fs.get("water_soil_zoning")))
+    level = fs.get("control_standard_level")
+    if level:
+        _add("防治标准等级", str(level))
+    _add("可剥离表土量", _fs_fmt(fs.get("topsoil_excavation"), "万m³"))
+
+    # 水保投资 (derived)
+    comp_fee = fs.get("compensation_fee_amount")
+    if comp_fee is not None:
+        _add("水土保持补偿费", f"{comp_fee} 万元")
+
+    return TableData(
+        spec=SPEC_SPEC_SHEET,
+        rows=rows,
+        total_row=None,
+        render_policy=TableRenderPolicy.RENDER_WITH_VALUES,
+    )
+
+
+def _spec_sheet_from_raw_facts(snapshot: dict) -> TableData:
+    """特性表投影 — 向后兼容: 从 _original_facts 散取"""
+    facts = snapshot.get("_original_facts") or {}
+    derived = snapshot.get("derived_fields") or {}
+    rows: list[dict] = []
+
+    def _add(item: str, value: str):
+        rows.append({"item": item, "value": value})
+
+    def _section(title: str):
+        rows.append({"item": title, "value": ""})
+
+    _section("一、项目基本情况")
+    _add("项目名称", _fmt_q(facts, "field.fact.project.name"))
+    code = facts.get("field.fact.project.code")
+    if code:
+        _add("项目代码", str(code))
+    _add("建设单位", _fmt_q(facts, "field.fact.project.builder"))
+    _add("编制单位", _fmt_q(facts, "field.fact.project.compiler"))
+    _add("行业类别", _fmt_q(facts, "field.fact.project.industry_category"))
+    _add("建设性质", _fmt_q(facts, "field.fact.project.nature"))
+    _add("涉及省（市、区）", _fmt_q(facts, "field.fact.location.province_list"))
+    _add("涉及地市", _fmt_q(facts, "field.fact.location.prefecture_list"))
+    _add("涉及县", _fmt_q(facts, "field.fact.location.county_list"))
+    _add("流域管理机构", _fmt_q(facts, "field.fact.location.river_basin_agency"))
+    _add("总投资", _fmt_q(facts, "field.fact.investment.total_investment"))
+    _add("土建投资", _fmt_q(facts, "field.fact.investment.civil_investment"))
+    _add("动工时间", _fmt_q(facts, "field.fact.schedule.start_time"))
+    _add("完工时间", _fmt_q(facts, "field.fact.schedule.end_time"))
+    _add("设计水平年", _fmt_q(facts, "field.fact.schedule.design_horizon_year"))
+    _add("总占地面积", _fmt_q(facts, "field.fact.land.total_area"))
+    _add("永久占地", _fmt_q(facts, "field.fact.land.permanent_area"))
+    _add("临时占地", _fmt_q(facts, "field.fact.land.temporary_area"))
+
+    breakdown = facts.get("field.fact.land.county_breakdown")
+    if isinstance(breakdown, list) and breakdown:
+        _section("二、项目组成及占地情况")
+        for rec in breakdown:
+            comp = rec.get("type", "—")
+            area = rec.get("area", {})
+            area_str = f"{area.get('value', '—')} {area.get('unit', '')}".strip() if isinstance(area, dict) else str(area)
+            nature = rec.get("nature", "")
+            _add(comp, f"{area_str}（{nature}）" if nature else area_str)
+
+    _section("三、土石方平衡")
     _add("挖方量", _fmt_q(facts, "field.fact.earthwork.excavation"))
     _add("填方量", _fmt_q(facts, "field.fact.earthwork.fill"))
     _add("借方量", _fmt_q(facts, "field.fact.earthwork.borrow"))
     _add("弃方量", _fmt_q(facts, "field.fact.earthwork.spoil"))
 
-    # ── 四、水土保持相关 ──
     _section("四、水土保持相关")
     _add("侵蚀类型", _fmt_q(facts, "field.fact.natural.soil_erosion_type"))
     _add("侵蚀强度", _fmt_q(facts, "field.fact.natural.soil_erosion_intensity"))
@@ -1075,7 +1170,6 @@ def project_spec_sheet(snapshot: dict) -> TableData:
         _add("防治标准等级", level)
     _add("可剥离表土量", _fmt_q(facts, "field.fact.topsoil.stripable_volume"))
 
-    # 水保投资 (derived)
     comp_fee = derived.get("field.derived.investment.compensation_fee_amount")
     if comp_fee is not None:
         _add("水土保持补偿费", f"{comp_fee} 万元")

@@ -40,10 +40,12 @@ def _extract(facts: dict, key: str) -> Any:
 
 
 def _extract_str(facts: dict, key: str) -> str | None:
-    """取字符串值"""
+    """取字符串值。list 类型用顿号拼接。"""
     v = _extract(facts, key)
     if v is None:
         return None
+    if isinstance(v, list):
+        return "、".join(str(x) for x in v) if v else None
     return str(v)
 
 

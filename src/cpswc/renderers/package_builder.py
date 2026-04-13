@@ -141,6 +141,10 @@ def build_package(
     registries = load_all_registries()
     snapshot_dict = json.loads(snapshot_json)
     snapshot_dict["_original_facts"] = project_input.get("facts") or {}
+    # ProjectFactSheet: 注入 fact_sheet dict 供 table projections 使用
+    if snapshot.fact_sheet is not None:
+        from dataclasses import asdict as _asdict
+        snapshot_dict["fact_sheet"] = _asdict(snapshot.fact_sheet)
     html = render_workbench(snapshot_dict, frozen_dict, version_dict, registries)
     (pkg_dir / "workbench.html").write_text(html, encoding="utf-8")
     file_hashes["workbench.html"] = _sha256(html)
@@ -187,6 +191,9 @@ def build_package(
         snapshot_d = json.loads(snapshot_json)
         # Attach original facts for narrative projection + workbench
         snapshot_d["_original_facts"] = project_input.get("facts") or {}
+        if snapshot.fact_sheet is not None:
+            from dataclasses import asdict as _asdict2
+            snapshot_d["fact_sheet"] = _asdict2(snapshot.fact_sheet)
 
         # 13B-1: formal tables
         docx_paths = render_formal_tables(

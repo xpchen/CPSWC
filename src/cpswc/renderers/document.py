@@ -1,25 +1,22 @@
 #!/usr/bin/env python3
 """
-document_renderer.py — CPSWC v0 Formal Table Renderer (Step 13B-1)
+document.py — CPSWC v0 DocumentRenderer (宪法 #10)
 
 从 RuntimeSnapshot / FrozenSubmissionInput / calculator_results 取数,
-生成正式 DOCX 文档。
+生成正式报告书。
 
-本轮只渲染 3 个输出件:
-  1. 项目运行摘要页
-  2. AT-02 加权综合防治指标计算表
-  3. 补偿费计费表
+统一入口:
+  render_report(snapshot, ...) → {"docx": Path, "pdf": Path, "tables_docx": Path}
 
-设计边界:
-  - 只从 snapshot / frozen / calculator_results 取数, 不回读 sample
-  - 不做整本报告书 / 封面 / 目录 / 正文
-  - 不做 PDF
-  - 不做 Word 模板大系统
-  - 表格格式: 中文行业惯例 (表头灰底加粗, 文字左对齐, 数字右对齐, 带标题和来源注脚)
+产出:
+  1. report_v0.docx — 完整报告书 (封面湖蓝色 + 页眉 + 装订参数 + 10 章正文 + 附表)
+  2. report_v0.pdf  — PDF 版本 (LibreOffice headless 转换)
+  3. formal_tables_v0.docx — 独立正式表格 (向后兼容)
 
-使用方式:
-  from cpswc.renderers.document import render_formal_tables
-  docx_paths = render_formal_tables(snapshot_dict, frozen_dict, calc_results_dir, output_dir)
+封面/页眉/装订:
+  - 封面: 湖蓝色 (#0070C0) 项目名称 + 报告类型
+  - 页眉: 项目名称 + 报告类型, 8pt 灰色, 底线分隔
+  - 装订: A4, 上下 2.54cm, 左右 3.17cm (GB 50433 / 2018 格式)
 """
 
 from __future__ import annotations
@@ -292,6 +289,51 @@ def _render_compensation_fee_table(doc: Document, snapshot: dict, calc_results_d
 # Step 13B-2: NarrativeBook Skeleton
 # ============================================================
 # ============================================================
+# 装订参数 + 页眉 (宪法 #10 DocumentRenderer_v0)
+# GB 50433 / 2018 格式: A4, 上下 2.54cm, 左右 3.17cm
+# ============================================================
+
+def _apply_page_layout(doc: Document):
+    """设置页面布局: A4 纸张, 标准装订参数"""
+    for section in doc.sections:
+        section.page_width = Cm(21.0)
+        section.page_height = Cm(29.7)
+        section.top_margin = Cm(2.54)
+        section.bottom_margin = Cm(2.54)
+        section.left_margin = Cm(3.17)
+        section.right_margin = Cm(3.17)
+        section.header_distance = Cm(1.5)
+        section.footer_distance = Cm(1.75)
+
+
+def _apply_header(doc: Document, project_name: str):
+    """设置页眉: 项目名称 + 报告类型"""
+    for section in doc.sections:
+        header = section.header
+        header.is_linked_to_previous = False
+        if header.paragraphs:
+            hp = header.paragraphs[0]
+        else:
+            hp = header.add_paragraph()
+        hp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = hp.add_run(f"{project_name} — 水土保持方案报告书")
+        run.font.size = Pt(8)
+        run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+        # 页眉底线
+        from docx.oxml.ns import qn as _qn
+        pPr = hp._element.get_or_add_pPr()
+        pBdr = pPr.makeelement(_qn("w:pBdr"), {})
+        bottom = pBdr.makeelement(_qn("w:bottom"), {
+            _qn("w:val"): "single",
+            _qn("w:sz"): "4",
+            _qn("w:space"): "1",
+            _qn("w:color"): "CCCCCC",
+        })
+        pBdr.append(bottom)
+        pPr.append(pBdr)
+
+
+# ============================================================
 # DisplayNumberingPolicy_v0: 从 YAML config 加载章节树
 # 宪法必做项 #6: renderer 不再硬编码章节号树
 # ============================================================
@@ -479,27 +521,54 @@ def render_narrative_skeleton(
     style = doc.styles["Normal"]
     style.font.size = Pt(10)
 
-    # 封面 (极简, 不做精修)
-    title_p = doc.add_paragraph()
-    title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = title_p.add_run("\n\n\n")
+    # ── 装订参数: GB 50433 / 2018 格式 ──
+    _apply_page_layout(doc)
+
+    # ── 页眉 ──
     summary = snapshot.get("project_input_summary") or {}
     project_name = summary.get("name", "（项目名称）")
+    _apply_header(doc, project_name)
+
+    # ── 封面: 湖蓝色主题 ──
+    _LAKE_BLUE = RGBColor(0x00, 0x70, 0xC0)  # 湖蓝色
+
+    for _ in range(6):
+        doc.add_paragraph()
+
+    title_p = doc.add_paragraph()
+    title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = title_p.add_run(project_name)
-    run.font.size = Pt(18)
+    run.font.size = Pt(22)
     run.bold = True
+    run.font.color.rgb = _LAKE_BLUE
+
     doc.add_paragraph()
+
     subtitle = doc.add_paragraph()
     subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = subtitle.add_run("水土保持方案报告书")
-    run.font.size = Pt(16)
+    run.font.size = Pt(18)
     run.bold = True
+    run.font.color.rgb = _LAKE_BLUE
+
     doc.add_paragraph()
-    meta_p = doc.add_paragraph()
-    meta_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = meta_p.add_run(f"（骨架版 v0 · {snapshot.get('ruleset', '')} · {snapshot.get('timestamp', '')[:10]}）")
-    run.font.size = Pt(10)
-    run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+    doc.add_paragraph()
+
+    # 编制单位 (如有)
+    fs = snapshot.get("fact_sheet") or {}
+    compiler = fs.get("compiler") or ""
+    if compiler:
+        cp = doc.add_paragraph()
+        cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = cp.add_run(f"编制单位：{compiler}")
+        run.font.size = Pt(12)
+
+    # 日期
+    date_p = doc.add_paragraph()
+    date_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    ts = snapshot.get('timestamp', '')[:10]
+    run = date_p.add_run(ts if ts else "")
+    run.font.size = Pt(12)
 
     doc.add_page_break()
 
@@ -566,6 +635,93 @@ def render_formal_tables(
     doc.save(str(docx_path))
 
     return [docx_path]
+
+
+# ============================================================
+# DocumentRenderer_v0 — 统一入口 (宪法 #10)
+# ============================================================
+
+def _convert_to_pdf(docx_path: Path) -> Path | None:
+    """用 LibreOffice headless 将 docx 转为 PDF。
+
+    返回 PDF 路径, 或 None (转换失败)。
+    """
+    import shutil
+    import subprocess
+
+    soffice = shutil.which("soffice") or shutil.which("libreoffice")
+    if not soffice:
+        return None
+
+    output_dir = docx_path.parent
+    try:
+        subprocess.run(
+            [soffice, "--headless", "--convert-to", "pdf",
+             "--outdir", str(output_dir), str(docx_path)],
+            capture_output=True, timeout=60,
+        )
+        pdf_path = output_dir / f"{docx_path.stem}.pdf"
+        if pdf_path.exists():
+            return pdf_path
+    except Exception:
+        pass
+    return None
+
+
+def render_report(
+    snapshot: dict,
+    frozen: dict | None = None,
+    calc_results_dir: Path | None = None,
+    output_dir: Path | str = ".",
+    narrative_blocks: list | None = None,
+    *,
+    pdf: bool = True,
+) -> dict[str, Path]:
+    """
+    DocumentRenderer_v0 统一入口 — 生成完整报告书。
+
+    产出:
+      - report_v0.docx: 完整报告书 (封面+正文+附表)
+      - report_v0.pdf:  PDF 版本 (如 LibreOffice 可用)
+      - formal_tables_v0.docx: 独立正式表格 (保留向后兼容)
+
+    返回:
+      {"docx": Path, "pdf": Path | None, "tables_docx": Path}
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. 生成骨架报告书 docx (含封面/页眉/装订/narrative)
+    docx_path = render_narrative_skeleton(
+        snapshot=snapshot,
+        frozen=frozen,
+        calc_results_dir=calc_results_dir,
+        output_dir=output_dir,
+        narrative_blocks=narrative_blocks,
+    )
+    # 重命名为正式名称
+    report_docx = output_dir / "report_v0.docx"
+    docx_path.rename(report_docx)
+
+    # 2. 生成独立正式表格 docx (保留向后兼容)
+    tables_paths = render_formal_tables(
+        snapshot=snapshot,
+        frozen=frozen,
+        calc_results_dir=calc_results_dir,
+        output_dir=output_dir,
+    )
+    tables_docx = tables_paths[0] if tables_paths else None
+
+    # 3. PDF 转换
+    pdf_path = None
+    if pdf:
+        pdf_path = _convert_to_pdf(report_docx)
+
+    return {
+        "docx": report_docx,
+        "pdf": pdf_path,
+        "tables_docx": tables_docx,
+    }
 
 
 # ============================================================

@@ -188,7 +188,7 @@ def build_package(
     rendered_dir.mkdir(exist_ok=True)
 
     try:
-        from cpswc.renderers.document import render_formal_tables, render_narrative_skeleton  # type: ignore
+        from cpswc.renderers.document import render_report  # type: ignore
         snapshot_d = json.loads(snapshot_json)
         # Attach original facts for narrative projection + workbench
         snapshot_d["_original_facts"] = project_input.get("facts") or {}
@@ -197,27 +197,18 @@ def build_package(
             from dataclasses import asdict as _asdict2
             snapshot_d["fact_sheet"] = _asdict2(snapshot.fact_sheet)
 
-        # 13B-1: formal tables
-        docx_paths = render_formal_tables(
+        # DocumentRenderer_v0 统一入口
+        report = render_report(
             snapshot=snapshot_d,
             frozen=frozen_dict,
             calc_results_dir=calc_dir,
             output_dir=rendered_dir,
         )
-        for dp in docx_paths:
-            rel = f"rendered/{dp.name}"
-            content = dp.read_bytes()
-            file_hashes[rel] = hashlib.sha256(content).hexdigest()
-
-        # 13B-2: narrative skeleton
-        skel_path = render_narrative_skeleton(
-            snapshot=snapshot_d,
-            frozen=frozen_dict,
-            calc_results_dir=calc_dir,
-            output_dir=rendered_dir,
-        )
-        rel = f"rendered/{skel_path.name}"
-        file_hashes[rel] = hashlib.sha256(skel_path.read_bytes()).hexdigest()
+        for key in ("docx", "pdf", "tables_docx"):
+            p = report.get(key)
+            if p is not None and p.exists():
+                rel = f"rendered/{p.name}"
+                file_hashes[rel] = hashlib.sha256(p.read_bytes()).hexdigest()
 
     except Exception as e:
         import sys

@@ -351,6 +351,13 @@ def lint_field_protection_levels(registries, report: LintReport):
             report.add("ERROR", "CORE_CONTRACTS_007",
                        f"field missing protection_level: {fid}",
                        f"fields.yaml:{fid}")
+        else:
+            pl = fdef["protection_level"]
+            if pl not in ("CRITICAL", "PROTECTED", "ADVISORY", "EDITORIAL"):
+                report.add("ERROR", "BOUNDARY_001",
+                           f"protection_level '{pl}' not in ProtectedBoundaryPolicy "
+                           f"(must be CRITICAL/PROTECTED/ADVISORY/EDITORIAL): {fid}",
+                           f"fields.yaml:{fid}")
 
         lineage = fdef.get("lineage")
         if lineage is None:

@@ -1,0 +1,112 @@
+# ProtectedBoundaryPolicy_v0.yaml
+#
+# 宪法必做项 #15: 机器可读 config, 供 CI / lint / 导出 gate 共用
+# 对应 ARCHITECTURE_DECISIONS.md 决议 4 + 前提 B (ExportGate 公式)
+#
+# ExportGate = g(ObligationSet, AssuranceState, SubmissionLifecycle)
+#
+# 本 config 定义:
+#   1. protection_level 四级语义 + 导出行为
+#   2. export gate 检查规则
+#   3. assurance enforcement 映射
+
+version: protected_boundary_policy_v0.1
+
+# ============================================================
+# 1. Protection Level 定义
+# ============================================================
+# 每个 field 在 FieldIdentityRegistry_v0 中声明 protection_level
+# 本节定义每级的导出行为
+
+protection_levels:
+  CRITICAL:
+    description: 缺失即不可导出, 法定必填
+    export_gate_action: BLOCK
+    override_allowed: false
+    examples:
+      - field.fact.land.total_area
+      - field.fact.investment.total_investment
+      - field.fact.earthwork.excavation
+
+  PROTECTED:
+    description: 缺失时阻止导出, 但 reviewer 可显式 override
+    export_gate_action: BLOCK
+    override_allowed: true
+    override_requires: reviewer_sign_off
+    examples:
+      - field.fact.investment.measures_registry
+      - field.fact.investment.annual_allocation
+
+  ADVISORY:
+    description: 缺失时警告, 不阻止导出
+    export_gate_action: WARN
+    override_allowed: true
+    examples:
+      - field.fact.project.code
+
+  EDITORIAL:
+    description: 信息性, 不影响导出
+    export_gate_action: INFO
+    override_allowed: true
+    examples: []
+
+# ============================================================
+# 2. Export Gate 检查规则
+# ============================================================
+
+export_gate_rules:
+  # Rule 1: CRITICAL fields 必须有值
+  - rule_id: GATE_001
+    description: 所有 CRITICAL 级别字段必须有值
+    check: all_critical_fields_present
+    action_on_fail: BLOCK
+    message: "CRITICAL 字段 {field_id} 缺失, 不允许导出"
+
+  # Rule 2: Required obligations 必须全部 triggered 或 not_applicable
+  - rule_id: GATE_002
+    description: 必选 obligation 不能处于 pending 状态
+    check: no_pending_obligations
+    action_on_fail: BLOCK
+    message: "Obligation {ob_id} 仍为 pending, 不允许导出"
+
+  # Rule 3: Required assurances 必须 PROVIDED
+  - rule_id: GATE_003
+    description: 所有 required assurance 必须已提供
+    check: all_required_assurances_provided
+    action_on_fail: BLOCK
+    message: "Assurance {as_id} 未提供, 不允许导出"
+    v0_note: |
+      v0 AssuranceRegistry 仅两态 (REQUIRED / PROVIDED),
+      gate 检查: required_assurances 列表中的每一项都有对应 PROVIDED 记录。
+      v0 暂无 assurance 录入机制, 此规则在 v0 做 WARN 而非 BLOCK。
+
+  # Rule 4: Lifecycle freeze check
+  - rule_id: GATE_004
+    description: 正式导出前 lifecycle 应为 frozen
+    check: lifecycle_frozen_or_bypass
+    action_on_fail: WARN
+    message: "SubmissionLifecycle.freeze_state={state}, 建议冻结后再导出"
+    v0_note: |
+      v0 阶段 freeze_state 默认 unfrozen, 此规则做 WARN 而非 BLOCK,
+      允许开发/演示场景下直接导出。v1 升级为 BLOCK。
+
+# ============================================================
+# 3. Assurance → Gate 映射
+# ============================================================
+
+assurance_enforcement:
+  as.signature.responsibility_page:
+    gate: BLOCK
+    description: 责任页签名必须在导出前确认
+  as.seal.compile_unit_sealing:
+    gate: BLOCK
+    description: 编制单位盖章必须在导出前确认
+  as.commitment.spoil_failure_report_truth:
+    gate: WARN
+    description: 弃渣场失事分析真实性承诺
+  as.geo.cgcs2000_compliance:
+    gate: WARN
+    description: CGCS2000 坐标系合规
+  as.geo.downstream_coverage_verified:
+    gate: WARN
+    description: 下游影响覆盖验证

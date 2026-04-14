@@ -141,6 +141,7 @@ def build_package(
     registries = load_all_registries()
     snapshot_dict = json.loads(snapshot_json)
     snapshot_dict["_original_facts"] = project_input.get("facts") or {}
+    snapshot_dict["_pre_stored_derived"] = project_input.get("derived") or {}
     # ProjectFactSheet: 注入 fact_sheet dict 供 table projections 使用
     if snapshot.fact_sheet is not None:
         from dataclasses import asdict as _asdict
@@ -191,6 +192,7 @@ def build_package(
         snapshot_d = json.loads(snapshot_json)
         # Attach original facts for narrative projection + workbench
         snapshot_d["_original_facts"] = project_input.get("facts") or {}
+        snapshot_d["_pre_stored_derived"] = project_input.get("derived") or {}
         if snapshot.fact_sheet is not None:
             from dataclasses import asdict as _asdict2
             snapshot_d["fact_sheet"] = _asdict2(snapshot.fact_sheet)

@@ -28,6 +28,9 @@ import json
 from pathlib import Path
 from typing import Any
 
+import yaml
+from cpswc.paths import GOVERNANCE_DIR
+
 from docx import Document
 from docx.shared import Pt, Cm, RGBColor, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -288,198 +291,31 @@ def _render_compensation_fee_table(doc: Document, snapshot: dict, calc_results_d
 # ============================================================
 # Step 13B-2: NarrativeBook Skeleton
 # ============================================================
-# _CHAPTER_TREE: 2026 模板 10 章骨架, 内嵌 (先内嵌后提升策略)
-#
-# 每个节点:
-#   stable_id:                sec.* 命名空间
-#   display_number:           固定编号 (决议 3: 不前移, 不重编)
-#   display_title:            中文标题
-#   render_policy:            always | shell_if_false | omit_if_false
-#   conditional_on_obligation: ob.* id (可空, render_policy=always 时空)
-#   children:                 子节点列表
-#   placeholder_text:         v0 骨架版的占位文字 (不是成熟散文)
+# ============================================================
+# DisplayNumberingPolicy_v0: 从 YAML config 加载章节树
+# 宪法必做项 #6: renderer 不再硬编码章节号树
 # ============================================================
 
-_CHAPTER_TREE = [
-    {
-        "stable_id": "sec.overview",
-        "display_number": "1",
-        "display_title": "综合说明",
-        "render_policy": "always",
-        "children": [
-            {"stable_id": "sec.overview.project_basic", "display_number": "1.1",
-             "display_title": "项目基本情况", "render_policy": "always",
-             "placeholder_text": "（项目名称、代码、行业、建设性质、投资、工期等基本信息）"},
-            {"stable_id": "sec.overview.spec_sheet_end", "display_number": "1.2",
-             "display_title": "水土保持工程特性表", "render_policy": "always",
-             "placeholder_text": "(特性表见附表)"},
-        ],
-    },
-    {
-        "stable_id": "sec.project_overview",
-        "display_number": "2",
-        "display_title": "项目概况",
-        "render_policy": "always",
-        "children": [
-            {"stable_id": "sec.project_overview.land_occupation", "display_number": "2.1",
-             "display_title": "占地面积", "render_policy": "always",
-             "placeholder_text": "（永久占地、临时占地、分县占地情况）"},
-            {"stable_id": "sec.project_overview.earthwork_balance", "display_number": "2.2",
-             "display_title": "土石方平衡", "render_policy": "always",
-             "placeholder_text": "（挖方、填方、借方、弃渣、综合利用情况）"},
-            {"stable_id": "sec.project_overview.progress", "display_number": "2.3",
-             "display_title": "施工进度", "render_policy": "always",
-             "placeholder_text": "（施工进度安排、双线横道图）"},
-            {"stable_id": "sec.project_overview.sensitive_areas", "display_number": "2.4",
-             "display_title": "敏感区域", "render_policy": "shell_if_false",
-             "conditional_on_obligation": "ob.unavoidability.redline_conflict",
-             "placeholder_text": "（项目涉及的水土保持敏感区域及不可避让论证）"},
-            {"stable_id": "sec.project_overview.climate", "display_number": "2.5",
-             "display_title": "气候与自然概况", "render_policy": "always",
-             "placeholder_text": "（气候类型、降雨、气温、水文、土壤、植被等）"},
-            {"stable_id": "sec.project_overview.water_soil_zoning", "display_number": "2.6",
-             "display_title": "水土保持区划", "render_policy": "always",
-             "placeholder_text": "（所属水土保持区划、防治标准等级）"},
-        ],
-    },
-    {
-        "stable_id": "sec.evaluation",
-        "display_number": "3",
-        "display_title": "项目水土保持评价",
-        "render_policy": "always",
-        "children": [
-            {"stable_id": "sec.evaluation.site_selection", "display_number": "3.1",
-             "display_title": "选址选线水土保持评价", "render_policy": "shell_if_false",
-             "conditional_on_obligation": "ob.unavoidability.redline_conflict",
-             "placeholder_text": "（建设方案的水土保持合理性分析）"},
-            {"stable_id": "sec.evaluation.earthwork_balance", "display_number": "3.2",
-             "display_title": "土石方平衡评价", "render_policy": "always",
-             "placeholder_text": "（挖填平衡、借弃方流向、利用率分析）"},
-        ],
-    },
-    {
-        "stable_id": "sec.topsoil",
-        "display_number": "4",
-        "display_title": "表土资源保护与利用",
-        "render_policy": "always",
-        "children": [
-            {"stable_id": "sec.topsoil.stripping", "display_number": "4.1",
-             "display_title": "表土剥离", "render_policy": "always",
-             "placeholder_text": "（可剥离表土面积、体积、剥离方案）"},
-            {"stable_id": "sec.topsoil.balance", "display_number": "4.2",
-             "display_title": "表土平衡", "render_policy": "always",
-             "placeholder_text": "（表土堆存、回覆、综合利用平衡情况）"},
-        ],
-    },
-    {
-        "stable_id": "sec.disposal_site",
-        "display_number": "5",
-        "display_title": "弃渣与临时堆土场处置",
-        "render_policy": "shell_if_false",
-        "conditional_on_obligation": "ob.disposal_site.site_selection",
-        "children": [
-            {"stable_id": "sec.disposal_site.source_and_flow", "display_number": "5.1",
-             "display_title": "弃渣来源与流向", "render_policy": "shell_if_false",
-             "conditional_on_obligation": "ob.disposal_site.site_selection",
-             "placeholder_text": "（弃渣来源、流向、运距、堆置方式; 含临时堆土场/中转场说明）"},
-            {"stable_id": "sec.disposal_site.site_selection", "display_number": "5.2",
-             "display_title": "弃渣场（或临时堆土场）选址与堆置论证",
-             "render_policy": "shell_if_false",
-             "conditional_on_obligation": "ob.disposal_site.site_selection",
-             "placeholder_text": "（弃渣场位置、容量、级别评定、拦挡措施设计; 不设永久弃渣场的项目说明弃渣综合利用方案及临时堆土场安排）"},
-        ],
-    },
-    {
-        "stable_id": "sec.soil_loss_analysis",
-        "display_number": "6",
-        "display_title": "水土流失分析与预测",
-        "render_policy": "always",
-        "children": [
-            {"stable_id": "sec.soil_loss_analysis.current_state", "display_number": "6.1",
-             "display_title": "水土流失现状", "render_policy": "always",
-             "placeholder_text": "（项目区水土流失现状调查与分析）"},
-            {"stable_id": "sec.soil_loss_analysis.prediction_result", "display_number": "6.2",
-             "display_title": "水土流失预测", "render_policy": "always",
-             "placeholder_text": "（施工期和自然恢复期水土流失预测结果）"},
-        ],
-    },
-    {
-        "stable_id": "sec.soil_loss_prevention",
-        "display_number": "7",
-        "display_title": "水土流失防治",
-        "render_policy": "always",
-        "children": [
-            {"stable_id": "sec.soil_loss_prevention.responsibility_range", "display_number": "7.1",
-             "display_title": "防治责任范围", "render_policy": "always",
-             "placeholder_text": "（防治责任范围面积及划分依据）"},
-            {"stable_id": "sec.soil_loss_prevention.responsibility_range_by_county",
-             "display_number": "7.1.1",
-             "display_title": "分县级行政区防治责任范围", "render_policy": "shell_if_false",
-             "conditional_on_obligation": "ob.sensitive_overlay.multi_admin_breakdown",
-             "placeholder_text": "（跨行政区项目需按县级行政区分别列出防治责任范围面积）"},
-            {"stable_id": "sec.soil_loss_prevention.targets", "display_number": "7.2",
-             "display_title": "防治目标",
-             "render_policy": "always",
-             "placeholder_text": "（六项防治指标目标值）"},
-            {"stable_id": "sec.soil_loss_prevention.design_horizon", "display_number": "7.3",
-             "display_title": "设计水平年", "render_policy": "always",
-             "placeholder_text": "（设计水平年的确定依据与结论）"},
-            {"stable_id": "sec.soil_loss_prevention.benefit_analysis", "display_number": "7.4",
-             "display_title": "效益分析", "render_policy": "always",
-             "placeholder_text": "（水土保持措施的生态、社会、经济效益分析）"},
-            {"stable_id": "sec.soil_loss_prevention.construction_schedule", "display_number": "7.5",
-             "display_title": "施工组织与进度安排", "render_policy": "always",
-             "placeholder_text": "（水土保持措施施工进度安排、双线横道图）"},
-        ],
-    },
-    {
-        "stable_id": "sec.monitoring",
-        "display_number": "8",
-        "display_title": "水土保持监测",
-        "render_policy": "always",
-        "children": [
-            {"stable_id": "sec.monitoring.scope_and_period", "display_number": "8.1",
-             "display_title": "监测范围与时段", "render_policy": "always",
-             "placeholder_text": "（监测范围、监测时段划分）"},
-            {"stable_id": "sec.monitoring.contents_methods_frequency", "display_number": "8.2",
-             "display_title": "监测内容、方法与频次", "render_policy": "always",
-             "placeholder_text": "（各防治分区的监测内容、方法和频次）"},
-            {"stable_id": "sec.monitoring.point_layout", "display_number": "8.3",
-             "display_title": "监测点布设", "render_policy": "always",
-             "placeholder_text": "（监测点位置、数量及布设依据）"},
-        ],
-    },
-    {
-        "stable_id": "sec.investment",
-        "display_number": "9",
-        "display_title": "水土保持投资及效益分析",
-        "render_policy": "always",
-        "children": [
-            {"stable_id": "sec.investment.summary", "display_number": "9.1",
-             "display_title": "投资估算汇总", "render_policy": "always",
-             "placeholder_text": "（水土保持工程投资估算汇总表）"},
-            {"stable_id": "sec.investment_estimation.compensation_fee", "display_number": "9.2",
-             "display_title": "水土保持补偿费", "render_policy": "always",
-             "placeholder_text": "（水土保持补偿费计算）"},
-        ],
-    },
-    {
-        "stable_id": "sec.management",
-        "display_number": "10",
-        "display_title": "水土保持管理",
-        "render_policy": "always",
-        "children": [],
-        "placeholder_text": "（水土保持管理制度、组织机构、管理措施）",
-    },
-    {
-        "stable_id": "sec.conclusion",
-        "display_number": "11",
-        "display_title": "结论",
-        "render_policy": "always",
-        "children": [],
-        "placeholder_text": "（水土保持方案综合结论）",
-    },
-]
+def _load_chapter_tree() -> list:
+    """从 DisplayNumberingPolicy_v0.yaml 加载章节树。"""
+    policy_path = GOVERNANCE_DIR / "DisplayNumberingPolicy_v0.yaml"
+    if not policy_path.exists():
+        raise FileNotFoundError(
+            f"DisplayNumberingPolicy_v0.yaml not found: {policy_path}")
+    with policy_path.open(encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    return data.get("chapter_tree") or []
+
+
+# 延迟加载, 模块级缓存
+_CHAPTER_TREE: list | None = None
+
+
+def _get_chapter_tree() -> list:
+    global _CHAPTER_TREE
+    if _CHAPTER_TREE is None:
+        _CHAPTER_TREE = _load_chapter_tree()
+    return _CHAPTER_TREE
 
 
 def _try_render_section_table(doc: Document, section_id: str, snapshot: dict):
@@ -668,7 +504,7 @@ def render_narrative_skeleton(
     doc.add_page_break()
 
     # 遍历章节树 (narrative_lookup 优先于 placeholder)
-    for chapter in _CHAPTER_TREE:
+    for chapter in _get_chapter_tree():
         _render_section_node(doc, chapter, triggered, snapshot,
                              calc_results_dir, depth=1,
                              narrative_lookup=narrative_lookup)

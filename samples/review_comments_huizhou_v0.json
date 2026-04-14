@@ -1,0 +1,64 @@
+{
+  "$schema": "CPSWC_ReviewComment_v0",
+  "sample_ref": "sample.huizhou_housing_v0",
+  "review_round": 1,
+  "reviewer_info": {
+    "institution": "惠州市水务局（合成）",
+    "disclaimer": "本审查意见为合成样本, 用于 CPSWC 管线验证, 不对应任何真实审查记录"
+  },
+  "comments": [
+    {
+      "comment_id": "RC-001",
+      "round": 1,
+      "target_type": "field",
+      "target_ref": "field.fact.land.total_area",
+      "comment_text": "总占地面积应与用地红线范围内实际面积一致，请核实是否包含代征道路面积。",
+      "reviewer": "张三（合成）",
+      "status": "open",
+      "created_at": "2026-04-15T10:00:00+08:00"
+    },
+    {
+      "comment_id": "RC-002",
+      "round": 1,
+      "target_type": "narrative",
+      "target_ref": "sec.evaluation.earthwork_balance",
+      "comment_text": "土石方平衡分析中弃方量较大，请补充说明弃方综合利用方案或外运处置协议。",
+      "reviewer": "张三（合成）",
+      "status": "open",
+      "created_at": "2026-04-15T10:05:00+08:00"
+    },
+    {
+      "comment_id": "RC-003",
+      "round": 1,
+      "target_type": "obligation",
+      "target_ref": "ob.topsoil.balance_required",
+      "comment_text": "表土剥离与回覆平衡表中，回覆量大于剥离量，请说明多余表土来源。",
+      "reviewer": "李四（合成）",
+      "status": "resolved",
+      "resolution_note": "已在 sec.topsoil.balance 中补充说明：多余 0.02 万m³ 来自场地平整产生的耕作层土壤。",
+      "created_at": "2026-04-15T10:10:00+08:00",
+      "resolved_at": "2026-04-15T14:30:00+08:00"
+    },
+    {
+      "comment_id": "RC-004",
+      "round": 1,
+      "target_type": "artifact",
+      "target_ref": "art.table.investment.total_summary",
+      "comment_text": "投资估算总表中监测措施费用偏高（8.0 万元），请补充监测方案依据及费用计算过程。",
+      "reviewer": "李四（合成）",
+      "status": "open",
+      "created_at": "2026-04-15T10:15:00+08:00"
+    },
+    {
+      "comment_id": "RC-005",
+      "round": 1,
+      "target_type": "general",
+      "target_ref": "",
+      "comment_text": "请在综合说明部分补充项目投资变更情况说明（如有调概）。",
+      "reviewer": "张三（合成）",
+      "status": "deferred",
+      "resolution_note": "项目无调概，不适用。",
+      "created_at": "2026-04-15T10:20:00+08:00"
+    }
+  ]
+}

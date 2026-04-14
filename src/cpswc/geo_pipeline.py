@@ -168,6 +168,22 @@ def _render_figure(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import matplotlib.patches as patches
+    import matplotlib.font_manager as fm
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
+
+    # 中文字体: 按优先级查找可用字体
+    _CJK_CANDIDATES = ["Heiti TC", "PingFang SC", "STHeiti",
+                        "Arial Unicode MS", "SimHei", "Noto Sans CJK SC"]
+    _cjk_font = None
+    for name in _CJK_CANDIDATES:
+        matches = [f for f in fm.fontManager.ttflist if f.name == name]
+        if matches:
+            _cjk_font = name
+            break
+    if _cjk_font:
+        matplotlib.rcParams["font.sans-serif"] = [_cjk_font, "DejaVu Sans"]
+        matplotlib.rcParams["axes.unicode_minus"] = False
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
 
@@ -200,7 +216,7 @@ def _render_figure(
         (geo.center_lon, geo.center_lat),
         textcoords="offset points", xytext=(10, 10),
         fontsize=8, color="#333333",
-        fontfamily=["Heiti TC", "Arial Unicode MS", "SimHei", "sans-serif"],
+        fontfamily="sans-serif",
     )
 
     # 防治分区 (F-04)
@@ -219,7 +235,7 @@ def _render_figure(
                 (geo.center_lon - d_lon_r * 0.8,
                  geo.center_lat + offset_lat),
                 fontsize=7, color=colors[i % len(colors)],
-                fontfamily=["Heiti TC", "Arial Unicode MS", "SimHei", "sans-serif"],
+                fontfamily="sans-serif",
             )
 
     # 弃渣场标记 (F-12)
@@ -235,7 +251,7 @@ def _render_figure(
                 (s_lon, s_lat),
                 textcoords="offset points", xytext=(8, 5),
                 fontsize=7, color="#663300",
-                fontfamily=["Heiti TC", "Arial Unicode MS", "SimHei", "sans-serif"],
+                fontfamily="sans-serif",
             )
 
     # 借土场标记
@@ -248,7 +264,7 @@ def _render_figure(
             (b_lon, b_lat),
             textcoords="offset points", xytext=(8, 5),
             fontsize=7, color="#336699",
-            fontfamily=["Heiti TC", "Arial Unicode MS", "SimHei", "sans-serif"],
+            fontfamily="sans-serif",
         )
 
     # 图例
@@ -270,19 +286,17 @@ def _render_figure(
             f"{scale_km:.1f} km", ha="center", fontsize=7)
 
     # 坐标系标注
-    _cjk = ["Heiti TC", "Arial Unicode MS", "SimHei", "sans-serif"]
-    ax.set_xlabel(f"经度 (°E) — {geo.crs} / EPSG:{geo.epsg}", fontsize=8,
-                  fontfamily=_cjk)
-    ax.set_ylabel("纬度 (°N)", fontsize=8, fontfamily=_cjk)
+    ax.set_xlabel(f"经度 (°E) — {geo.crs} / EPSG:{geo.epsg}", fontsize=8)
+    ax.set_ylabel("纬度 (°N)", fontsize=8)
     ax.set_title(title, fontsize=12, fontweight="bold",
-                 fontfamily=["Heiti TC", "Arial Unicode MS", "SimHei", "sans-serif"])
+                 fontfamily="sans-serif")
 
     # 县区标注
     if geo.county_list:
         county_text = "涉及: " + "、".join(geo.county_list)
         ax.text(0.02, 0.02, county_text, transform=ax.transAxes,
                 fontsize=7, color="#666666", va="bottom",
-                fontfamily=["Heiti TC", "Arial Unicode MS", "SimHei", "sans-serif"])
+                fontfamily="sans-serif")
 
     fig.tight_layout()
     fig.savefig(str(output_path), dpi=150, bbox_inches="tight")

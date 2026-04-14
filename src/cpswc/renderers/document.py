@@ -15,8 +15,13 @@ document.py — CPSWC v0 DocumentRenderer (宪法 #10)
 
 封面/页眉/装订:
   - 封面: 湖蓝色 (#0070C0) 项目名称 + 报告类型
-  - 页眉: 项目名称 + 报告类型, 8pt 灰色, 底线分隔
+  - 页眉: Word field 域 (TITLE + SUBJECT + PAGE), 自动跟踪文档属性
   - 装订: A4, 上下 2.54cm, 左右 3.17cm (GB 50433 / 2018 格式)
+
+主从关系:
+  - report_v0.docx — 主件: 完整报告书 (封面 + 10 章正文 + 章内嵌入表 + 附表说明)
+  - report_v0.pdf  — 主件 PDF 版本
+  - formal_tables_v0.docx — 补充件: 摘要页 + 独立正式表格 (供审查人员单独查表)
 """
 
 from __future__ import annotations
@@ -307,7 +312,19 @@ def _apply_page_layout(doc: Document):
 
 
 def _apply_header(doc: Document, project_name: str):
-    """设置页眉: 项目名称 + 报告类型"""
+    """设置页眉: 项目名称 (DOCPROPERTY field 域) + 报告类型 + 页码
+
+    使用 Word field code (fldSimple / instrText), 不是静态文本。
+    这样在 Word 中修改文档属性后页眉会自动更新。
+    """
+    from docx.oxml.ns import qn as _qn
+    from lxml import etree
+
+    # 先设置文档属性 (custom property: project_name)
+    # python-docx 不直接支持 custom properties, 用 core_properties.title 作为载体
+    doc.core_properties.title = project_name
+    doc.core_properties.subject = "水土保持方案报告书"
+
     for section in doc.sections:
         header = section.header
         header.is_linked_to_previous = False
@@ -316,11 +333,34 @@ def _apply_header(doc: Document, project_name: str):
         else:
             hp = header.add_paragraph()
         hp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = hp.add_run(f"{project_name} — 水土保持方案报告书")
-        run.font.size = Pt(8)
-        run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+
+        # 清空已有内容
+        for run in hp.runs:
+            run.clear()
+
+        # field 域: TITLE (项目名称)
+        _add_field_code(hp, "TITLE", project_name, font_size=8,
+                        font_color="999999")
+
+        # 静态分隔符
+        sep_run = hp.add_run(" — ")
+        sep_run.font.size = Pt(8)
+        sep_run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+
+        # field 域: SUBJECT (报告类型)
+        _add_field_code(hp, "SUBJECT", "水土保持方案报告书", font_size=8,
+                        font_color="999999")
+
+        # 空格 + field 域: PAGE (页码)
+        space_run = hp.add_run("    第 ")
+        space_run.font.size = Pt(8)
+        space_run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+        _add_field_code(hp, "PAGE", "1", font_size=8, font_color="999999")
+        page_suffix = hp.add_run(" 页")
+        page_suffix.font.size = Pt(8)
+        page_suffix.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+
         # 页眉底线
-        from docx.oxml.ns import qn as _qn
         pPr = hp._element.get_or_add_pPr()
         pBdr = pPr.makeelement(_qn("w:pBdr"), {})
         bottom = pBdr.makeelement(_qn("w:bottom"), {
@@ -331,6 +371,34 @@ def _apply_header(doc: Document, project_name: str):
         })
         pBdr.append(bottom)
         pPr.append(pBdr)
+
+
+def _add_field_code(paragraph, field_name: str, default_text: str,
+                    font_size: int = 10, font_color: str = "000000"):
+    """在 paragraph 中插入 Word field code (fldSimple)。
+
+    生成的 XML 形如:
+      <w:fldSimple w:instr=" TITLE ">
+        <w:r><w:rPr>...</w:rPr><w:t>默认文本</w:t></w:r>
+      </w:fldSimple>
+    """
+    from docx.oxml.ns import qn as _qn
+
+    fld = paragraph._element.makeelement(_qn("w:fldSimple"), {
+        _qn("w:instr"): f" {field_name} ",
+    })
+    run_elem = fld.makeelement(_qn("w:r"), {})
+    rPr = run_elem.makeelement(_qn("w:rPr"), {})
+    sz = rPr.makeelement(_qn("w:sz"), {_qn("w:val"): str(font_size * 2)})
+    color = rPr.makeelement(_qn("w:color"), {_qn("w:val"): font_color})
+    rPr.append(sz)
+    rPr.append(color)
+    run_elem.append(rPr)
+    t = run_elem.makeelement(_qn("w:t"), {})
+    t.text = default_text
+    run_elem.append(t)
+    fld.append(run_elem)
+    paragraph._element.append(fld)
 
 
 # ============================================================

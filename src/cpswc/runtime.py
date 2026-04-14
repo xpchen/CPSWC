@@ -19,14 +19,16 @@ Step 12A: 把 5 个脚本 (lint / validator / calculator_engine / registries / s
 
 设计边界:
     - 纯 Python, 不涉及 UI / web / CLI panels
-    - 不做 DocumentRenderer / ReviewComment / ModificationReport
     - 不做 override runtime (决议 9: v0 不消费 override)
     - 签名预留 ruleset / lifecycle 参数, 本轮走默认值
 
-宪法收口:
-    - Step 38A: ConditionEngine 抽取为独立模块 (condition_engine.py)
-    - Step 38B: ProjectFactSheet 作为正式契约对象挂在 RuntimeSnapshot 上
-    - Step 38C: FIR 补登记 4 个独立费用字段, lint ERROR 清零
+已闭项的宪法模块 (runtime 不直接执行, 但对象挂在 snapshot 上):
+    - DocumentRenderer_v0 → renderers/document.py (render_report)
+    - ReviewComment_v0 → review_comment.py (独立对象层, runtime 不消费)
+    - ModificationReport_v0 → modification_report.py (消费 snapshot 产出 diff)
+    - ConditionEngine_v0 → condition_engine.py (runtime 委托调用)
+    - ProjectFactSheet_v0 → project_fact_sheet.py (挂在 RuntimeSnapshot.fact_sheet)
+    - ExportGate → export_gate.py (package_builder 调用)
 
 退出码 (CLI 模式):
     0 成功

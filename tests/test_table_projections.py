@@ -187,7 +187,7 @@ def test_spoil_disposal():
 def test_section_id_all_registered():
     """Every spec.section_id must exist in _CHAPTER_TREE"""
     from cpswc.renderers import table_projections as tp
-    from cpswc.renderers.document import _CHAPTER_TREE
+    from cpswc.renderers.document import _get_chapter_tree
 
     # Collect all section_ids from chapter tree
     def collect_ids(nodes):
@@ -197,7 +197,7 @@ def test_section_id_all_registered():
             ids.update(collect_ids(node.get("children") or []))
         return ids
 
-    tree_ids = collect_ids(_CHAPTER_TREE)
+    tree_ids = collect_ids(_get_chapter_tree())
 
     for attr_name in dir(tp):
         if attr_name.startswith("SPEC_"):

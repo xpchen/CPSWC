@@ -137,11 +137,38 @@ def build_package(
     file_hashes["submission_package_version.json"] = _write_json(
         pkg_dir / "submission_package_version.json", version_dict)
 
-    # workbench.html
-    registries = load_all_registries()
+    # ---- Step 3.1: Export Gate 检查 (宪法 #15) ----
     snapshot_dict = json.loads(snapshot_json)
     snapshot_dict["_original_facts"] = project_input.get("facts") or {}
     snapshot_dict["_pre_stored_derived"] = project_input.get("derived") or {}
+
+    from cpswc.export_gate import check_export_readiness  # type: ignore
+    gate_result = check_export_readiness(snapshot_dict)
+    # 将 gate 结果写入 manifest
+    gate_dict = {
+        "verdict": gate_result.verdict,
+        "blocks": [{"rule_id": f.rule_id, "message": f.message, "target_ref": f.target_ref}
+                    for f in gate_result.blocks],
+        "warnings": [{"rule_id": f.rule_id, "message": f.message, "target_ref": f.target_ref}
+                      for f in gate_result.warnings],
+    }
+    file_hashes["manifests/export_gate_result.json"] = _write_json(
+        manifests_dir / "export_gate_result.json", gate_dict)
+
+    if gate_result.verdict == "BLOCK":
+        import sys
+        print(f"WARNING: Export gate BLOCK — {len(gate_result.blocks)} issue(s):",
+              file=sys.stderr)
+        for f in gate_result.blocks[:5]:
+            print(f"  [{f.rule_id}] {f.message}", file=sys.stderr)
+        if len(gate_result.blocks) > 5:
+            print(f"  ... and {len(gate_result.blocks) - 5} more", file=sys.stderr)
+        # v0: BLOCK 不中止产包, 但在 manifest 里标记; v1 升级为中止
+        print("  (v0: 继续产包, gate 结果记录在 export_gate_result.json)",
+              file=sys.stderr)
+
+    # workbench.html
+    registries = load_all_registries()
     # ProjectFactSheet: 注入 fact_sheet dict 供 table projections 使用
     if snapshot.fact_sheet is not None:
         from dataclasses import asdict as _asdict

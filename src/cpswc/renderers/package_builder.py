@@ -216,6 +216,24 @@ def build_package(
         import traceback
         traceback.print_exc(file=sys.stderr)
 
+    # ---- Step 3.7: GeoPipeline_v0 附图 ----
+    try:
+        from cpswc.geo_pipeline import generate_figures  # type: ignore
+        figures_dir = rendered_dir / "figures"
+        geo_result = generate_figures(
+            facts=project_input.get("facts") or {},
+            output_dir=figures_dir,
+            project_name=(project_input.get("facts") or {}).get(
+                "field.fact.project.name", ""),
+        )
+        for ga in geo_result.artifacts:
+            if ga.file_path.exists():
+                rel = f"rendered/figures/{ga.file_path.name}"
+                file_hashes[rel] = hashlib.sha256(
+                    ga.file_path.read_bytes()).hexdigest()
+    except Exception:
+        pass  # matplotlib 不可用时静默跳过
+
     # ---- Step 4: Write PACKAGE_MANIFEST.json ----
     package_manifest = {
         "_schema": "cpswc_submission_package_v0",

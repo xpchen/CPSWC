@@ -82,7 +82,13 @@
     "field.fact.location.county_list": [
       "紫金县"
     ],
-    "field.fact.location.redline_geometry_ref": "fictional_redline_001",
+    "field.fact.location.redline_geometry_ref": {
+      "geo_store_id": "fictional_redline_001",
+      "crs": "CGCS2000",
+      "epsg": 4490,
+      "source": "virtual (合成样本)",
+      "approximate_center": {"longitude": 115.18, "latitude": 23.55}
+    },
     "field.fact.investment.total_investment": {
       "value": 120000,
       "unit": "万元"

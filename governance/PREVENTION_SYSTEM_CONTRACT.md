@@ -213,10 +213,10 @@ field.fact.prevention.zones:
 |---|---|---|
 | `PREVENTION_ZONE_001` | `∑ zones[].area_ha ≤ responsibility_range.total_area_ha` (允许小于, 超出视为数据错误) | ERROR |
 | `PREVENTION_ZONE_002` | 每个 `zone` 必须 `within_responsibility_range == true` | ERROR |
-| `PREVENTION_ZONE_003` | 分区之间**面积层不重叠声明**: 若 `∑ zones[].area_ha > responsibility_range.total_area_ha`, 立即 ERROR (v0.6 仅做加和层校验; 几何重叠校验留 v1 GeoPipeline) | ERROR |
+| `PREVENTION_ZONE_003` | **非超界代数约束** (面积守恒替代约束): 若 `∑ zones[].area_ha > responsibility_range.total_area_ha`, 立即 ERROR。本规则是 v0.6 阶段对"分区不重叠"的**代数替代检查**, 非重叠本身的证明 (几何层重叠校验留 v1 GeoPipeline) | ERROR |
 | `PREVENTION_ZONE_004` | 分区不得直接等同于占地类型: `zone_label` 与任一 `land.*` 分类名完全相同时 WARN, 除非 `description` 显式声明分区边界与占地边界重合的理由 | WARN |
 
-**v0.6 几何重叠校验说明**: v0.6 无 GIS 能力, 本契约仅强制"分区面积之和不超出责任范围面积"这一代数约束。分区之间的几何重叠校验属 GeoPipeline 扩展, 留 v1 落地。这条差距必须在 narrative 投影中以明示脚注声明, 不允许静默。
+**v0.6 几何重叠校验说明**: v0.6 无 GIS 能力, 本契约仅强制"分区面积之和不超出责任范围面积"这一**代数守恒替代约束** (`PREVENTION_ZONE_003`)。此约束不等价于"分区之间几何上不重叠"的证明 —— 只是在代数层堵住"加和超界"这一典型错误模式。分区之间的几何重叠校验属 GeoPipeline 扩展, 留 v1 落地。这条差距必须在 narrative 投影中以明示脚注声明, 不允许静默。
 
 ### 4.4 治理属性
 
@@ -399,7 +399,7 @@ field.fact.measures.classification:
    - `source_rule_id` (界定依据的具体条款)
 4. **lint 规则 `CLASSIFICATION_PARTIAL_001`**: 扫描所有 verdict=partially_included 的记录, 检查上述三字段完整性; 缺任一为 ERROR。
 
-**治理目标**: 防止 `partially_included` 变成审查灰区的兜底垃圾桶。v0.6 上线时需验证所有真实样本项目的 classification 中 `partially_included` 占比不超过 15%, 超出时触发架构层复核。
+**治理目标**: 防止 `partially_included` 变成审查灰区的兜底垃圾桶。v0.6 上线时需对真实样本项目的 classification 做 `partially_included` 占比**健康度观察**, 异常集中时触发架构层复核。具体观察阈值不写入正式契约条文, 放入实施期 review checklist 作为经验指标, 待数据积累后再决定是否提升为强制规则。
 
 ### 6.4 `expert_switch_basis` (决议 6 落地)
 
@@ -506,7 +506,7 @@ v0.6 阶段本契约对应的 4 张新表从 CAN_GENERATE 推进到 LIVE。F-10 
 
 | 规则 id | 约束 | 级别 |
 |---|---|---|
-| `PREVENTION_XLAYER_001` | 每条 `measures_layout[]` 中 `source_attribution=existing_main_engineering` 的记录, 必须满足 (a) `classification_ref` 非空且能解析到 `classification[]` 一条记录, 或 (b) 显式标注 `bypass_classification_reason` 说明"已有主体设计且无需界定复核"的理由 | ERROR |
+| `PREVENTION_XLAYER_001` | 每条 `measures_layout[]` 中 `source_attribution=existing_main_engineering` 的记录, 必须满足 (a) `classification_ref` 非空且能解析到 `classification[]` 一条记录; 或 (b) 显式声明 `bypass_classification_reason` 且取值在闭集豁免枚举内 (见 10.2.1) 且 `evidence_anchor_refs[]` 非空且至少一项指向官方批复/正式设计文件 | ERROR |
 | `PREVENTION_XLAYER_002` | 每条 `classification[]` 中 `verdict=included` 或 `partially_included` 的记录, 必须有至少一条 `measures_layout[]` 通过 `classification_ref` 反向关联到本条; 否则为孤立界定, WARN (允许界定先行、布设暂缓, 但需显式注明) | WARN |
 | `PREVENTION_XLAYER_003` | narrative 模板中出现的分区名称, 必须在 `zones[].zone_label` 中找到对应 (字符串归一化后比对); 措施名称同理 | ERROR |
 | `PREVENTION_XLAYER_004` | `measures_layout[].zone_refs[]` 中引用的每个 zone_id, 必须能在 `zones[]` 中解析到 | ERROR |
@@ -515,6 +515,25 @@ v0.6 阶段本契约对应的 4 张新表从 CAN_GENERATE 推进到 LIVE。F-10 
 **v0.6 不含** (留 v1):
 - narrative 文本中数字类 token 的归一化比对 (决议 7 overlay 配套规则, v1 落地)
 - 几何层面的分区重叠校验 (GeoPipeline 扩展)
+
+#### 10.2.1 `bypass_classification_reason` 闭集豁免枚举
+
+为防止掏空 Ch3.7 的界定链条, `PREVENTION_XLAYER_001` 的 (b) 分支所依据的 `bypass_classification_reason` 不是自由文本, 而是**闭集枚举**:
+
+| 豁免枚举值 | 适用场景 | 证据挂接硬要求 |
+|---|---|---|
+| `approved_prior_soil_conservation_scheme` | 本措施来源于本项目**已获批**的前一版水土保持方案, 且本次申报未修改其水保功能归属 | `evidence_anchor_refs[]` 必须含前方案的**官方批复文件** id (如 `art.attachment.AF_1_project_approval` 的对应条目) |
+| `formally_designed_and_unchanged` | 措施已在主体工程**正式设计文件**(施工图或更高阶段)中完成水保功能认定, 且本次申报不改变其水保功能归属 | `evidence_anchor_refs[]` 必须含**正式设计文件** id, 文件必须具备设计单位署名、版本号、出图时间三要素 |
+| `upstream_regulatory_conclusion` | 上位主管部门 (省级或以上) 对该类措施已作出**普适性功能认定**, 本项目直接适用 | `evidence_anchor_refs[]` 必须含上位认定文件 id, 且该文件的 `authority_class ∈ {regulation, official_approval, authoritative_guide}` (决议 8) |
+
+**硬禁令**:
+
+1. `bypass_classification_reason` 必须取上表三值之一, **不接受自由文本**, 不接受"待补充""情况说明见 description"等兜底写法。lint 规则 `PREVENTION_XLAYER_001B` 扫描 bypass 分支的取值合法性, 非闭集值为 ERROR。
+2. `evidence_anchor_refs[]` 必须**非空**, 且至少一项指向与豁免枚举值相匹配的证据类别。匹配关系按上表硬绑定 (如 `formally_designed_and_unchanged` 要求指向正式设计文件而非官方批复)。
+3. bypass 本身是**路径 A 的证据前置**, 不是**路径 A 的替代**。即使走 bypass 豁免, 该措施在项目证据链上仍归属于"主体已列 → 已有功能认定"路径, narrative 与审查 workbench 不得将其呈现为"方案新增"或"未界定"。
+4. 同一项目内 bypass 使用占比在实施期作为健康度观察指标 (与 6.3 `partially_included` 同级别), 异常集中时触发架构层复核。具体阈值不写入契约。
+
+**治理目标**: 允许界定链条在项目已有正式批复/正式设计时合理省略重复工作, 但禁止通过模糊理由绕过界定。
 
 ### 10.3 四条红线 (最终批示的独立条款)
 
@@ -576,3 +595,4 @@ v0.6 阶段本契约对应的 4 张新表从 CAN_GENERATE 推进到 LIVE。F-10 
 | 日期 | 版本 | 变更 | 责任人 |
 |---|---|---|---|
 | 2026-04-21 | v0.6 Planning Baseline | 初版: 防治体系三真源 (zones / measures_layout / classification) + 12 节骨架 + 跨层校验 + 四红线 | 架构决策 (含 6 处骨架修正 + D1-D4 批示 + 两条 measures 流入路径归一化) |
+| 2026-04-21 | v0.6 Planning Baseline (终审修订) | 三处定点修订: (1) `PREVENTION_ZONE_003` 改名并明确为"非超界代数约束 / 面积守恒替代约束", 不再以"不重叠声明"描述; (2) §六 6.3 移除 15% 经验阈值具体数值, 降级为实施期 review checklist 观察指标; (3) §十 新增 10.2.1 `bypass_classification_reason` 闭集豁免枚举 (三值) + `evidence_anchor_refs` 非空 + 证据类别硬绑定 + lint 规则 `PREVENTION_XLAYER_001B` | 终审批示 |

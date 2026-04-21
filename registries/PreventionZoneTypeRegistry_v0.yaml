@@ -1,0 +1,233 @@
+# PreventionZoneTypeRegistry v0
+#
+# 功能: 防治分区类型的权威登记表
+# 消费方:
+#   - field.fact.prevention.zones[].zone_parent_type 的合法取值来源
+#   - cross_registry_lint 规则 PREVENTION_ZONE_002_TYPE_RESOLUTION
+#   - v0.6 narrative / 投影 / 审查 workbench 的类型解析
+#
+# 约束来源:
+#   - governance/PREVENTION_SYSTEM_CONTRACT.md §3.4 (半枚举与扩展登记机制)
+#   - governance/PREVENTION_SYSTEM_CONTRACT.md §4.2 (核心五类就地闭集生效)
+#   - governance/ARCHITECTURE_DECISIONS.md 决议 8 (双锚必备)
+#
+# 新增扩展类型纪律:
+#   - 必须走 RFC (反升级条款同级)
+#   - 必须追加本文件 zone_types[] 条目, 不得在项目 facts 中临时造新 type
+#   - 必须在 PREVENTION_SYSTEM_CONTRACT.md 变更记录中登记
+# ============================================================
+
+version: v0
+generated_at: 2026-04-21
+governance_doc: governance/PREVENTION_SYSTEM_CONTRACT.md
+
+# ============================================================
+# v0.6 激活边界 (activation scope)
+# ============================================================
+# 本 registry 本身长期有效; 下列字段仅声明 v0.6 阶段激活的项目范围,
+# 不限制 registry 的存在边界。未来扩展到其他 species / industries 时,
+# 扩展类型条目随之激活, 本字段由 RFC 流程修订。
+# ============================================================
+activation_scope:
+  v0_6:
+    applicable_species: [报告书]
+    applicable_industries: [29, 30]   # 29 房地产 + 30 其他城建
+
+# ============================================================
+# zone_types (核心五类就地闭集 + 扩展占位说明)
+# ============================================================
+# 命名来源的双层表达 (按批示):
+#   - 分区原则 / 分区必要性 → 锚到 GB 50433-2018 (强制性规范)
+#   - 五类命名口径本身 → industry_convention / authoritative_guide 级别
+#   不得让 normative_basis_refs 暗示"规范逐字规定了这五个名字"。
+# ============================================================
+
+zone_types:
+
+  # ---------- 核心五类 (tier=core, v0.6 就地闭集生效) ----------
+
+  - id: main_engineering
+    label_cn: 主体工程区
+    tier: core
+    description: |
+      建筑物、构筑物及其附属设施占地范围。永久性设施为主, 多为永久占地。
+    typical_scope: |
+      单体建筑基础及上部结构范围、地下室及基坑回填区、
+      室外工程附属结构 (水池、化粪池、配电房等)。
+    normative_basis_refs:
+      - ref: GB 50433-2018
+        clause: 第 6 章 水土流失防治
+        authority_class: mandatory_standard
+        precedence_rank: 3
+        role: 分区原则与分区必要性依据
+    naming_basis:
+      class: industry_convention
+      note: |
+        "主体工程区" 为城建/工业项目的行业惯例命名口径。
+        规范本身未逐字规定该名称, 但其与六率指标、防治措施
+        布设的分区口径已在 v0.6 核心五类中对齐。
+    evidence_expectation:
+      - 总平面图
+      - 建筑单体布置图
+      - 占地图
+
+  - id: road_square
+    label_cn: 道路广场区
+    tier: core
+    description: |
+      场内道路、硬化广场、停车场、消防通道等硬化地面占地。
+    typical_scope: |
+      沥青/混凝土路面、透水砖广场、室外停车场、
+      硬化消防回车场地。
+    normative_basis_refs:
+      - ref: GB 50433-2018
+        clause: 第 6 章 水土流失防治
+        authority_class: mandatory_standard
+        precedence_rank: 3
+        role: 分区原则与分区必要性依据
+    naming_basis:
+      class: industry_convention
+      note: |
+        "道路广场区" 为城建/工业项目的行业惯例命名口径。
+    evidence_expectation:
+      - 道路硬化平面图
+      - 竖向设计图
+
+  - id: landscape_greening
+    label_cn: 景观绿化区
+    tier: core
+    description: |
+      绿地、花坛、景观带、渗透铺装等绿化工程占地。
+      该区措施以植物措施为主, 是六率"林草覆盖率"的主贡献区。
+    typical_scope: |
+      集中绿地、宅间绿地、道路绿化带、景观水系岸带。
+    normative_basis_refs:
+      - ref: GB 50433-2018
+        clause: 第 6 章 水土流失防治
+        authority_class: mandatory_standard
+        precedence_rank: 3
+        role: 分区原则与分区必要性依据
+      - ref: GB/T 50434-2018
+        clause: 表 4.0.2-5 防治目标指标
+        authority_class: recommended_standard
+        precedence_rank: 5
+        role: 林草覆盖率指标来源 (该区主贡献)
+    naming_basis:
+      class: industry_convention
+      note: |
+        "景观绿化区" 为城建/工业项目的行业惯例命名口径。
+    evidence_expectation:
+      - 景观总平面图
+      - 绿地率相关图
+      - 植物配置图
+
+  - id: construction_living
+    label_cn: 施工生产生活区
+    tier: core
+    description: |
+      施工期临时营地、临时办公、材料堆场、钢筋加工棚等
+      施工期临时占地范围, 施工结束后应恢复。
+    typical_scope: |
+      工棚宿舍、现场临时办公、钢筋/模板加工场、
+      水泥砂浆搅拌站、临时材料堆场。
+    temporality: temporary
+    normative_basis_refs:
+      - ref: GB 50433-2018
+        clause: 第 6 章 + 第 8 章 (临时措施 / 监测)
+        authority_class: mandatory_standard
+        precedence_rank: 3
+        role: 施工期防治分区与临时措施依据
+    naming_basis:
+      class: industry_convention
+      note: |
+        "施工生产生活区" 为城建/工业项目的行业惯例命名口径,
+        常与"施工生活办公区" "临时营地" 同义。
+    evidence_expectation:
+      - 施工总平面布置图
+      - 施工组织设计
+
+  - id: temp_soil_stockpile
+    label_cn: 临时堆土区
+    tier: core
+    description: |
+      施工期临时表土堆存、土石方中转堆场占地。
+      多为土石方平衡过程中的中间过渡区, 措施以临时拦挡/苫盖/排水为主。
+    typical_scope: |
+      表土集中堆存区、土方转运中转堆场、开挖料临时堆场。
+    temporality: temporary
+    normative_basis_refs:
+      - ref: GB 50433-2018
+        clause: 第 5 章 (表土) + 第 6 章 (临时措施)
+        authority_class: mandatory_standard
+        precedence_rank: 3
+        role: 表土堆存与临时措施依据
+      - ref: GB/T 45107-2024
+        clause: 表土剥离及再利用技术要求
+        authority_class: recommended_standard
+        precedence_rank: 5
+        role: 表土堆存规范 (厚度 / 防护 / 质量)
+    naming_basis:
+      class: industry_convention
+      note: |
+        "临时堆土区" 为城建/工业项目的行业惯例命名口径。
+    evidence_expectation:
+      - 土石方平衡图
+      - 施工组织设计
+      - 表土堆存布置图
+
+# ============================================================
+# 扩展类型 (reserved, v0.6 不视为已登记)
+# ============================================================
+# 本节仅为结构预留, 以下 id 在 v0.6 阶段**尚未登记**, 不得在项目 facts
+# 中使用。正式登记时需:
+#   1. 走 RFC (反升级条款同级)
+#   2. 追加到上方 zone_types[] 中 tier=extended 并补齐 normative_basis_refs
+#   3. 在 PREVENTION_SYSTEM_CONTRACT.md 变更记录中登记
+# ============================================================
+extension_placeholders:
+  - id_candidate: spoil_disposal
+    label_cn: 弃渣场区
+    rationale_sketch: 弃渣堆置与防护, 常由 cal.disposal_site.level_assessment 驱动
+  - id_candidate: borrow_pit
+    label_cn: 取土场区
+    rationale_sketch: v0 硬范围 7 个样本均无取土场, 优先级低
+  - id_candidate: linear_transmission
+    label_cn: 输变电塔基区
+    rationale_sketch: 线性工程扩展, v1 以后
+  - id_candidate: linear_pipeline
+    label_cn: 管线带状工作区
+    rationale_sketch: 线性工程扩展, v1 以后
+  - id_candidate: pv_array
+    label_cn: 光伏阵列区
+    rationale_sketch: 新能源项目扩展, v1 以后
+
+# ============================================================
+# lint 集成点
+# ============================================================
+lint_integration:
+  rule_id: PREVENTION_ZONE_002_TYPE_RESOLUTION
+  description: |
+    field.fact.prevention.zones[].zone_parent_type 的取值必须能在
+    本文件 zone_types[].id 中解析到, 且解析到的 tier 必须是 "core"
+    或已激活的 "extended" 类型。
+    未解析 / 解析到 extension_placeholders (未正式登记) → ERROR。
+  v0_6_behavior: 仅核心五类 (tier=core) 合法
+  extension_activation_policy: |
+    RFC + 本文件 zone_types[] 追加条目 (tier=extended) +
+    PREVENTION_SYSTEM_CONTRACT.md 变更记录
+
+# ============================================================
+# 变更记录
+# ============================================================
+changelog:
+  - date: 2026-04-21
+    version: v0
+    summary: |
+      初版创建 (Step 50).
+      核心五类就地闭集登记: main_engineering / road_square /
+      landscape_greening / construction_living / temp_soil_stockpile.
+      命名来源采用双层表达 (naming_basis + normative_basis_refs),
+      不让规范依据字段暗示"规范逐字规定了这五个命名".
+      扩展类型以 extension_placeholders 结构预留, 不视为已登记.
+    by: cpswc_architect
+    step: Step 50

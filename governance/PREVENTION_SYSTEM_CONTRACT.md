@@ -146,7 +146,7 @@ v0.6 阶段的本契约先定义规范真相。现有代码中的 `investment.me
 **扩展类型登记机制** (半枚举落地):
 
 - 非上述五类的分区 (如弃渣场区、取土场区、输变电塔基区、光伏阵列区、管线带状区等) 属于**合法扩展类型**。
-- 扩展类型必须在 `specs/PreventionZoneTypeRegistry.yaml` 中预登记, 携带 `normative_basis_refs` (决议 8 双锚)。
+- 扩展类型必须在 `registries/PreventionZoneTypeRegistry_v0.yaml` 中预登记, 携带 `normative_basis_refs` (决议 8 双锚)。
 - v0.6 阶段仅要求核心五类的完整登记; 扩展类型登记可随行业扩展逐步补齐, 但**未登记的扩展类型不得在项目 facts 中使用**。
 - 自定义 label 与扩展类型分离: `zone_parent_type` 指向登记表, `zone_label` 为项目内显示名可自由命名。
 
@@ -203,7 +203,7 @@ field.fact.prevention.zones:
 
 ### 4.2 `zone_parent_type` 核心枚举闭集
 
-见 3.4 节表格。v0.6 阶段核心五类在本契约内就地闭集生效; 扩展类型登记在 `specs/PreventionZoneTypeRegistry.yaml` 同步补齐, 未登记扩展类型一律 lint ERROR。
+见 3.4 节表格。v0.6 阶段核心五类在本契约内就地闭集生效; 扩展类型登记在 `registries/PreventionZoneTypeRegistry_v0.yaml` 同步补齐, 未登记扩展类型一律 lint ERROR。
 
 ### 4.3 硬约束 (调整 3 落地)
 
@@ -563,7 +563,7 @@ v0.6 阶段本契约对应的 4 张新表从 CAN_GENERATE 推进到 LIVE。F-10 
 |---|---|
 | 本契约文档 | v0.6 Planning Baseline (本次落地) |
 | FieldIdentityRegistry 新增三组字段登记 | 待实施 (契约生效后) |
-| `specs/PreventionZoneTypeRegistry.yaml` 核心五类 + 扩展登记框架 | 待实施 |
+| `registries/PreventionZoneTypeRegistry_v0.yaml` 核心五类 + 扩展登记框架 | 待实施 |
 | 4 张新表 (8.1) 从 CAN_GENERATE → LIVE | 待实施 |
 | 4 个 narrative node (9.1) 投影实现 | 待实施 |
 | lint 规则 PREVENTION_ZONE_001~004 + PREVENTION_XLAYER_001~005 + PREVENTION_MEASURE_001 + CLASSIFICATION_PARTIAL_001 + PROV_ZONE_001 + STABLE_ID_001 | 待实施 |

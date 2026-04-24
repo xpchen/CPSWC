@@ -535,6 +535,86 @@ artifacts:
       - field.fact.investment.measures_registry
     renderer: TableProjection
 
+  # ---- Step 51-A: PreventionSystem 契约 §8.1 的 4 张新表 (CAN_GENERATE 登记) ----
+  # 本批 artifact 仅完成 ArtifactRegistry 登记 (支持 FIR projection_target_refs 解析闭合);
+  # TABLE_PROJECTIONS 投影实现 + render_data_table 接入 + section 自动嵌入 + sample 数值回填
+  # 延后至 Step 52 (CAN_GENERATE → LIVE). 真源见 governance/PREVENTION_SYSTEM_CONTRACT.md §8.1.
+
+  art.table.prevention_zones_summary:
+    kind: table
+    canonical_name: 防治分区汇总表
+    source: governance/PREVENTION_SYSTEM_CONTRACT.md §8.1
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.prevention.zones
+    content_spec: |
+      Ch7.4 防治分区划分与特征汇总. 每条分区列出:
+      zone_label / zone_parent_type / 面积 (永久/临时) / 占地依据.
+      字段结构见 governance/PREVENTION_SYSTEM_CONTRACT.md §4.1.
+    data_source_refs:
+      - field.fact.prevention.zones
+    renderer: TableProjection
+    note: |
+      Step 51-A 仅登记制品契约; 表格投影与 DOCX 渲染实现延后至 Step 52.
+      v0.6 阶段本表 v0_status=CAN_GENERATE (契约 §8.1).
+
+  art.table.measures_overall_layout:
+    kind: table
+    canonical_name: 水土保持措施总体布局表
+    source: governance/PREVENTION_SYSTEM_CONTRACT.md §8.1
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.prevention.overall_layout
+    content_spec: |
+      Ch7.5 水保措施体系总体布局. 按 measure_type (engineering/plant/temporary)
+      汇总措施, 列出 source_attribution (主体已列/方案新增) 与工程量.
+      字段结构见 governance/PREVENTION_SYSTEM_CONTRACT.md §5.1.
+    data_source_refs:
+      - field.fact.prevention.measures_layout
+    renderer: TableProjection
+    note: |
+      Step 51-A 仅登记制品契约; 表格投影与 DOCX 渲染实现延后至 Step 52.
+      v0.6 阶段本表 v0_status=CAN_GENERATE (契约 §8.1).
+
+  art.table.measures_layout_by_zone:
+    kind: table
+    canonical_name: 分区措施布设表
+    source: governance/PREVENTION_SYSTEM_CONTRACT.md §8.1
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.prevention.zone_measures
+    content_spec: |
+      Ch7.7 逐区措施布设. 按 zone_id 分组, 列出各分区内的措施项
+      (措施名/规格/工程量/单位/工程量来源). 跨区措施按 primary_zone_ref 归口.
+      字段结构见 governance/PREVENTION_SYSTEM_CONTRACT.md §5.1.
+    data_source_refs:
+      - field.fact.prevention.zones
+      - field.fact.prevention.measures_layout
+    renderer: TableProjection
+    note: |
+      Step 51-A 仅登记制品契约; 表格投影与 DOCX 渲染实现延后至 Step 52.
+      v0.6 阶段本表 v0_status=CAN_GENERATE (契约 §8.1).
+
+  art.table.measures_classification:
+    kind: table
+    canonical_name: 水保功能措施界定表
+    source: governance/PREVENTION_SYSTEM_CONTRACT.md §8.1
+    requirement: always
+    applicable_species: [报告书]
+    chapter_ref: sec.evaluation.measures_classification
+    content_spec: |
+      Ch3.7 主体工程措施的水保功能界定. 每条界定记录 verdict
+      (included/excluded/partially_included) 与专家依据 (expert_switch_basis).
+      partially_included 记录必须附 partial_scope_note.
+      字段结构见 governance/PREVENTION_SYSTEM_CONTRACT.md §6.1.
+    data_source_refs:
+      - field.fact.measures.classification
+      - field.fact.prevention.measures_layout
+    renderer: TableProjection
+    note: |
+      Step 51-A 仅登记制品契约; 表格投影与 DOCX 渲染实现延后至 Step 52.
+      v0.6 阶段本表 v0_status=CAN_GENERATE (契约 §8.1).
+
   art.table.monitoring_points:
     kind: table
     canonical_name: 水土保持监测点位布设表

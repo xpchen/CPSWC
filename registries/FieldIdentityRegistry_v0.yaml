@@ -1124,6 +1124,236 @@ fields:
       projection_target_refs:
         - sec.soil_loss_prevention.targets
 
+  # -------- 防治体系 (Ch7.4 / 7.5 / 7.7) --------
+  # 本三字段 (prevention.zones / prevention.measures_layout / measures.classification)
+  # 落地 governance/PREVENTION_SYSTEM_CONTRACT.md v0.6 Planning Baseline 的三大真源。
+  # 结构遵循契约 §4.1 / §5.1 / §6.1 canonical schema; 消费者 (tables / narrative /
+  # figures / obligation evidence) 统一归并到 lineage.projection_target_refs,
+  # FIR 不新增 feeds_* 分类键 (Step 51 裁决, 保持现有 FIR 扫描风格不裂).
+
+  field.fact.prevention.zones:
+    canonical_name: 防治分区记录
+    semantic_type: list_of_records
+    stable_id_namespace: zone.*
+    record_schema:
+      zone_id: string                   # stable_id, 必须 zone.<snake_case>
+      zone_label: string                # 项目内显示名, 可自定义 (如 "1# 临时堆土区")
+      zone_parent_type: enum            # 取值解析 registries/PreventionZoneTypeRegistry_v0.yaml
+      description: string               # 分区范围/特征的简要描述
+      area_ha: number                   # 分区面积, 单位 hm²
+      area_permanent_ha: number         # 其中永久占地面积, 可选
+      area_temporary_ha: number         # 其中临时占地面积, 可选
+      land_use_refs: [string]           # 引用 field.fact.land.* 中的占地类型 id, 依据关系不代表同构
+      within_responsibility_range: bool # 必须 true; 契约 §4.3 PREVENTION_ZONE_002 ERROR
+      evidence_anchor_refs: [string]    # 决议 8 双锚 (记录级)
+      normative_basis_refs: [string]    # 决议 8 双锚 (记录级)
+      authored_by: string
+      authored_at: string               # ISO 日期
+    protection_level: CRITICAL
+    fact_class: F1_manual               # 设计院/水保编制方手工提供; 不可 calculator 派生, 不可样稿抄录
+    origin: fact
+    source: governance/PREVENTION_SYSTEM_CONTRACT.md §4.1
+    note: |
+      Ch7.4 防治分区唯一真源 (契约 §1.3 宪法核心). 本方案任何分区名/分区面积的消费
+      必须经此字段经 projection; narrative 模板与 AST 生成器禁止硬编码分区名 (决议 4).
+
+      zone_parent_type 的合法取值由 PreventionZoneTypeRegistry_v0.yaml 的 tier=core
+      五类 + 已正式登记 tier=extended 解析得出. v0.6 阶段仅核心五类合法
+      (main_engineering / road_square / landscape_greening / construction_living /
+      temp_soil_stockpile). 未登记扩展类型 → lint ERROR (PREVENTION_ZONE_002_TYPE_RESOLUTION,
+      规则落地见 Step 51-B 之后的 lint 扩展步骤).
+
+      红线 (契约 §十):
+        - 红线 1 不得样稿抄录: evidence_anchor_refs 全部指向样稿资源 → PROV_ZONE_001 ERROR
+        - 红线 2 每条必须有 zone_id: STABLE_ID_001 ERROR
+        - 红线 4 zones 与 measures_layout 分层独立, 不得合并结构
+    normative_basis_refs:
+      - rule.gb_50433_2018.chapter_6               # GB 50433 第 6 章 水土流失防治
+    evidence_anchor_refs: []                        # fact 源头, 证据挂在每条记录内
+    authority_class: mandatory_standard             # GB 50433 不含 /T
+    precedence_rank: 3
+    lineage:
+      upstream_deps:
+        - field.fact.prevention.responsibility_range_area   # 分区面积受责任范围约束
+        - field.fact.land.total_area                         # 责任范围与占地的面积守恒 (PREVENTION_ZONE_001/003)
+      derivation: null
+      projection_target_refs:
+        - art.table.prevention_zones_summary                # Ch7.4 分区汇总表 (CAN_GENERATE, Step 52 LIVE)
+        - art.table.responsibility_range_by_admin_division  # 责任范围统计表 (面积来源之一)
+        - art.spec_sheet                                    # 特性表分区面积栏
+        - sec.prevention.zones                              # Ch7.4 分区划分叙述
+        - sec.prevention.overall_layout                     # Ch7.5 引用分区名
+        - sec.prevention.zone_measures                      # Ch7.7 引用 zone_id
+        - art.figure.F_04_responsibility_range              # 分区叠加责任范围
+        - art.figure.F_10_measures_layout                   # 措施按分区落图
+      invalidation_targets: []                              # v0.6 无 derived 被本字段直接驱动; 下游 narrative/table 重投影由 projection 层负责
+    validation:
+      rule: |
+        - 每条记录 zone_id 在本列表内唯一 (红线 2 + STABLE_ID_001)
+        - 每条 within_responsibility_range == true (契约 §4.3 PREVENTION_ZONE_002)
+        - ∑ area_ha ≤ prevention.responsibility_range_area (契约 §4.3 PREVENTION_ZONE_001 代数守恒)
+
+  field.fact.prevention.measures_layout:
+    canonical_name: 措施布设记录 (纳入水保的措施真源)
+    semantic_type: list_of_records
+    stable_id_namespace: measure.*
+    record_schema:
+      measure_id: string                # stable_id, 必须 measure.<snake_case>
+      measure_name: string              # 显示名, 如 "浆砌石挡墙"
+      measure_type: enum                # 三类闭集: engineering / plant / temporary (契约 §5.4, v0.6 不含 monitoring)
+      zone_refs: [string]               # 关联 zone_id, 至少 1 个 (红线 3)
+      primary_zone_ref: string          # 跨区措施必填, 投资归口按此单一归属
+      source_attribution: enum          # existing_main_engineering / new_in_plan (两条路径归一化)
+      classification_ref: string        # source_attribution=existing_main_engineering 必填, 指向 cls.*
+                                        # source_attribution=new_in_plan 可空
+      specification: string             # 规格/结构描述 (如 "M7.5 浆砌石, 宽 0.5m, 高 1.2m")
+      quantity: number                  # 工程量数值
+      unit: string                      # 单位 (m / m² / m³ / hm² / 株 / 处)
+      quantity_source: string           # 工程量来源 (措施设计 / 类比估算 / 设计院提供)
+      related_monitoring_refs: [string] # 监测关联, v0.6 允许全空; v0.7 监测 schema 落地后接线
+      evidence_anchor_refs: [string]    # 决议 8 双锚 (记录级)
+      normative_basis_refs: [string]    # 决议 8 双锚 (记录级)
+      authored_by: string
+      authored_at: string
+    protection_level: CRITICAL
+    fact_class: F1_manual               # 设计院提供措施名/类型/归属/工程量; 单价在 investment 侧属 F2
+    origin: fact
+    source: governance/PREVENTION_SYSTEM_CONTRACT.md §5.1
+    note: |
+      Ch7.5 / Ch7.7 措施布设唯一真源 (契约 §1.3 宪法核心).
+
+      SoT 边界 (契约 §5.2, D1 批示): 本字段是**纳入本方案水保体系的措施**的真源,
+      不是全主体工程措施宇宙真源. 主体工程中经 classification 认定为 excluded 的措施
+      **不进入**本列表, 仅在 measures.classification[] 留痕用于 Ch3.7 叙述.
+
+      两条流入路径 (契约 §5.3):
+        A (主体已列) classification[verdict∈{included,partially_included}]
+                    → source_attribution=existing_main_engineering + classification_ref 必填
+        B (方案新增) 水保方案设计
+                    → source_attribution=new_in_plan + classification_ref 可空
+      两路径进入后必须归一化为同一 canonical schema.
+
+      跨区措施 (红线 3): zone_refs[] 登记全部涉及分区; primary_zone_ref 必填,
+      工程量按主归属分区计一次, 禁止在跨区分区分别登记绕过.
+
+      与 investment.measures_registry 的关系 (契约 §2.3 兼容期):
+        - 真源归属本字段
+        - investment.measures_registry 降级为投资消费视图
+        - 兼容期截止 v0.7 Phase 1, 届时代码层完成对齐或走 RFC 延期
+
+      红线 4: 与 measures.classification[] 分层独立, 禁止合并为单一记录结构.
+    normative_basis_refs:
+      - rule.gb_50433_2018.chapter_6         # 防治措施布设
+      - rule.gb_t_51018_2014.measures_system  # 措施体系
+    evidence_anchor_refs: []
+    authority_class: mandatory_standard
+    precedence_rank: 3
+    lineage:
+      upstream_deps:
+        - field.fact.prevention.zones               # 通过 zone_refs 依赖分区真源
+        - field.fact.measures.classification        # 路径 A 通过 classification_ref 依赖界定记录
+      derivation: null
+      projection_target_refs:
+        - art.table.measures_layout_by_zone         # Ch7.7 分区措施布设表
+        - art.table.measures_overall_layout         # Ch7.5 措施体系表
+        - art.table.investment.engineering_measures # 投资估算附表 2 (视图消费)
+        - art.table.investment.plant_measures       # 投资估算附表 3 (视图消费)
+        - art.table.investment.temporary_measures   # 投资估算附表 9 (视图消费)
+        - sec.prevention.overall_layout             # Ch7.5
+        - sec.prevention.zone_measures              # Ch7.7, 逐区展开
+        - sec.evaluation.measures_classification    # Ch3.7 反向索引作为 cls 的结果视图
+        - art.figure.F_10_measures_layout
+      invalidation_targets:
+        - field.fact.investment.measures_registry   # 契约 §2.3 兼容期投资视图, 真源在此, 视图需同步; v0.7 Phase 1 降级
+    validation:
+      rule: |
+        - 每条 measure_id 在本列表内唯一 (红线 2 + STABLE_ID_001)
+        - zone_refs 至少 1 个且每项能在 prevention.zones[] 解析 (红线 3 + PREVENTION_XLAYER_004)
+        - primary_zone_ref ∈ zone_refs (PREVENTION_XLAYER_005)
+        - source_attribution=existing_main_engineering 时 classification_ref 非空且能解析 (PREVENTION_XLAYER_001)
+        - measure_type ∈ {engineering, plant, temporary} (v0.6 不含 monitoring)
+
+  # -------- 措施界定 (Ch3.7) --------
+  # 与防治分区/措施布设分层独立 (红线 4). 本字段是 Ch3.7 核心真源.
+
+  field.fact.measures.classification:
+    canonical_name: 水保功能措施界定记录
+    semantic_type: list_of_records
+    stable_id_namespace: cls.*
+    record_schema:
+      classification_id: string         # stable_id, 必须 cls.<snake_case>
+      source_item_name: string          # 主体工程项名称, 如 "项目红线内 6m 宽沥青道路"
+      source_item_type: string          # 主体工程项类型 (道路 / 绿化 / 挡墙 / 排水 / 边坡防护 ...)
+      source_item_ref: string           # 主体工程设计已结构化时指向其 id, 否则空字符串
+      verdict: enum                     # 三态闭集: included / excluded / partially_included (契约 §6.2)
+      inclusion_reason: string          # verdict=included 必填; 说明水保功能
+      exclusion_reason: string          # verdict=excluded 必填; 说明不纳入的专业判断
+      partial_scope_note: string        # verdict=partially_included 必填 (契约 §6.3 硬规则)
+      expert_switch_basis:              # 决议 6 + 契约 §6.4, 9 键完整 governance_block (record-level)
+        source_rule_id: string              # 法规/标准条款 id
+        human_decision_question: string     # 专家回答的决策问题原文
+        decision_owner_role: string         # 填写者角色, 通常 registered_wsc_engineer
+        default_value: null                 # 界定无默认值, 必须专家判断
+        evidence_expectation: string        # 期望证据描述 (如 "主体施工图 + 水保功能分析")
+        replaced_normative_semantics:       # 本记录替代/承接的规范语义
+          - rule_ref: string                # 引用条款号
+            quoted_phrase: string           # 规范原文片段
+            why_not_calculable: string      # 为何不可机械判定
+        upgrade_path:
+          strategy: enum[irreducible]       # 契约 §6.4 锁死, v0.6 及之后不接 calculator
+          irreducibility_justification: string  # 必须引规范条款说明不可计算化的理由
+        authored_by: string
+        authored_at: string
+      resulting_measure_refs: [string]  # verdict∈{included,partially_included} 时指向 measures_layout[].measure_id
+      evidence_anchor_refs: [string]    # 决议 8 双锚 (记录级)
+      normative_basis_refs: [string]    # 决议 8 双锚 (记录级)
+    protection_level: PROTECTED         # 契约 §6.1 明示 (非 CRITICAL; 单条界定错误不直接致报告失效, 由 XLAYER_001/002 兜底)
+    fact_class: F1_manual               # 专家认定, 不可派生
+    origin: fact
+    source: governance/PREVENTION_SYSTEM_CONTRACT.md §6.1
+    note: |
+      Ch3.7 水保功能措施界定唯一真源 (契约 §1.3 宪法核心).
+
+      概念 (契约 §3.3): 对主体工程设计中已有工程/设施, 判断其是否具有水土保持功能,
+      从而决定是否纳入水保措施体系.
+
+      verdict 三态 (契约 §6.2):
+        included            完全纳入 → 驱动 measures_layout 一条或多条 (source_attribution=existing_main_engineering)
+        excluded            不具备水保功能, 仅在 classification[] 留痕
+        partially_included  部分纳入 → measures_layout 记录 + partial_scope_note 必填
+                            "可拆则拆" 硬规则: 能拆成 included + excluded 两条的必须拆分,
+                            不得用 partially_included 逃避 (契约 §6.3)
+
+      expert_switch_basis 是 record-level 专家确认块 (不同于 disposal_site.failure_analysis_required
+      的字段级 governance_block). 因为每条界定的专家依据可能不同, 治理必须跟着 record 走.
+
+      upgrade_path.strategy 锁定为 irreducible (契约 §6.4):
+        措施界定本质上是对规范文字 (如 GB 50433-2018 相关条款中的"具有水土保持功能") 的专家解读,
+        无法被算法化. v0.6 及之后版本永不接 calculator.
+
+      红线 4 (契约 §十): classification 与 measures_layout 分层独立, 禁止合并为单一记录结构.
+    normative_basis_refs:
+      - rule.gb_50433_2018.chapter_6           # GB 50433 第 6 章 (水保功能措施)
+    evidence_anchor_refs: []
+    authority_class: mandatory_standard
+    precedence_rank: 3
+    lineage:
+      upstream_deps: []                         # 源自主体工程设计判断, 无 FIR 内上游
+      derivation: null
+      projection_target_refs:
+        - art.table.measures_classification     # Ch3.7 措施界定表 (CAN_GENERATE, Step 52 LIVE)
+        - sec.evaluation.measures_classification # Ch3.7 界定叙述
+      invalidation_targets: []                  # classification 改动通过 measures_layout.classification_ref 反向触发, 非直接派生
+    validation:
+      rule: |
+        - 每条 classification_id 在本列表内唯一 (红线 2 + STABLE_ID_001)
+        - verdict ∈ {included, excluded, partially_included}
+        - verdict=included → inclusion_reason 非空
+        - verdict=excluded → exclusion_reason 非空
+        - verdict=partially_included → partial_scope_note 非空 且 expert_switch_basis.source_rule_id 非空 (契约 §6.3 CLASSIFICATION_PARTIAL_001, lint 规则 Step 51-B 落地)
+        - expert_switch_basis 必须含 source_rule_id / human_decision_question / upgrade_path.strategy / replaced_normative_semantics / authored_by (Step 51-B MEASURES_CLASSIFICATION_GOVERNANCE_001)
+        - expert_switch_basis.upgrade_path.strategy == "irreducible" (契约 §6.4 锁死)
+
   # -------- 施工组织 --------
   field.fact.construction.living_area:
     canonical_name: 施工生产生活区

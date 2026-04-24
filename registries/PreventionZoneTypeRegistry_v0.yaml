@@ -175,6 +175,51 @@ zone_types:
       - 施工组织设计
       - 表土堆存布置图
 
+  # ---------- 扩展类型 (tier=extended, 正式激活) ----------
+
+  - id: spoil_disposal
+    label_cn: 弃渣场区
+    tier: extended
+    activated_in: Step 52-0   # RFC 激活 (2026-04-24), 从 extension_placeholders 正式晋升
+    description: |
+      弃渣场 / 弃土堆置场 / 建筑垃圾处置场占地范围。
+      多为永久性堆置, 措施以拦挡 (挡渣墙/拦渣堤) + 截排水 + 植被恢复为主;
+      级别由 GB 51018-2014 表 5.7.1 "就高不就低" 规则计算
+      (具体输入归 field.fact.disposal_site.level_assessment,
+      计算由 cal.disposal_site.level_assessment 执行).
+    typical_scope: |
+      永久性弃渣场、弃土堆置场、处置场占地.
+      不包含施工期临时表土堆存区 (该类归 temp_soil_stockpile, tier=core).
+    normative_basis_refs:
+      - ref: GB 51018-2014
+        clause: §5.7.1 + 表 5.7.1 弃渣场级别
+        authority_class: mandatory_standard
+        precedence_rank: 3
+        role: 弃渣场分级 / 防治分区必要性 / 主导规范依据
+      - ref: GB 50433-2018
+        clause: 第 6 章 水土流失防治
+        authority_class: mandatory_standard
+        precedence_rank: 3
+        role: 分区原则
+    naming_basis:
+      class: industry_convention
+      note: |
+        "弃渣场区" 为土石方工程/矿山/水电/交通基础设施项目的行业惯例命名口径,
+        GB 51018-2014 中 "弃渣场" 已是规范内通用术语.
+    evidence_expectation:
+      - 弃渣场位置 / 平面布置图
+      - 弃渣场堆置设计 / 剖面图
+      - 弃渣场级别评定书
+    sot_boundary_note: |
+      本 zone 类型仅作防治分区投影. 弃渣场的专业事实
+      (堆渣量 / 最大堆渣高度 / 下游危害等级 / 评定级别) 仍归
+      field.fact.disposal_site.*; prevention.zones 记录不得复制这些专业事实,
+      需要时通过引用 disposal_site 事实 ID 关联.
+    applicability_note: |
+      仅当项目存在弃渣场 / 处置场事实时使用
+      (项目层对应 field.fact.disposal_site.level_assessment 非空).
+      合成样本 disposal_highrisk_v0 是 v0.6 阶段首次使用场景.
+
 # ============================================================
 # 扩展类型 (reserved, v0.6 不视为已登记)
 # ============================================================
@@ -184,10 +229,9 @@ zone_types:
 #   2. 追加到上方 zone_types[] 中 tier=extended 并补齐 normative_basis_refs
 #   3. 在 PREVENTION_SYSTEM_CONTRACT.md 变更记录中登记
 # ============================================================
+# Step 52-0 RFC: spoil_disposal 已从本节晋升至 zone_types[] (tier=extended).
+# ============================================================
 extension_placeholders:
-  - id_candidate: spoil_disposal
-    label_cn: 弃渣场区
-    rationale_sketch: 弃渣堆置与防护, 常由 cal.disposal_site.level_assessment 驱动
   - id_candidate: borrow_pit
     label_cn: 取土场区
     rationale_sketch: v0 硬范围 7 个样本均无取土场, 优先级低
@@ -211,7 +255,10 @@ lint_integration:
     本文件 zone_types[].id 中解析到, 且解析到的 tier 必须是 "core"
     或已激活的 "extended" 类型。
     未解析 / 解析到 extension_placeholders (未正式登记) → ERROR。
-  v0_6_behavior: 仅核心五类 (tier=core) 合法
+  v0_6_behavior: |
+    合法 = 核心五类 (tier=core) + 已正式激活的扩展类型 (tier=extended).
+    已激活 extended 清单 (v0.6):
+      - spoil_disposal  (Step 52-0 RFC, 2026-04-24)
   extension_activation_policy: |
     RFC + 本文件 zone_types[] 追加条目 (tier=extended) +
     PREVENTION_SYSTEM_CONTRACT.md 变更记录
@@ -231,3 +278,21 @@ changelog:
       扩展类型以 extension_placeholders 结构预留, 不视为已登记.
     by: cpswc_architect
     step: Step 50
+
+  - date: 2026-04-24
+    version: v0
+    summary: |
+      Step 52-0 RFC 激活: spoil_disposal (弃渣场区) 从 extension_placeholders
+      正式晋升至 zone_types[] tier=extended.
+      触发原因: disposal_highrisk_v0 样本在 Step 52-A PreventionSystem facts
+      回填时需使用 zone_parent_type=spoil_disposal; 弃渣场 ≠ 临时堆土区
+      (temp_soil_stockpile), 语义错位会污染 GB 51018 级别 / 防护措施 /
+      风险义务链, 不得退化映射. 规范依据主锚为 GB 51018-2014 §5.7.1.
+      SoT 边界: 弃渣场专业事实 (体积 / 堆高 / 下游危害 / 级别) 仍归
+      field.fact.disposal_site.*; prevention.zones 内 spoil_disposal 仅作
+      防治分区投影, 不复制专业事实.
+      同步动作: governance/PREVENTION_SYSTEM_CONTRACT.md 变更记录新增本条,
+      lint_integration.v0_6_behavior 更新为 "core + 已激活 extended".
+      不动样本 / FIR / ArtifactRegistry / TABLE_PROJECTIONS.
+    by: cpswc_architect
+    step: Step 52-0

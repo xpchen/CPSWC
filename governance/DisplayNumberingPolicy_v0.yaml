@@ -90,6 +90,11 @@ chapter_tree:
         display_title: 土石方平衡评价
         render_policy: always
         placeholder_text: （挖填平衡、借弃方流向、利用率分析）
+      - stable_id: sec.evaluation.measures_classification
+        display_number: "3.7"
+        display_title: 水土保持功能措施界定
+        render_policy: always
+        placeholder_text: （主体工程已有措施是否具有水土保持功能的专家界定; 纳入/不纳入/部分纳入 verdict 与依据）
 
   - stable_id: sec.topsoil
     display_number: "4"
@@ -168,13 +173,28 @@ chapter_tree:
         display_title: 设计水平年
         render_policy: always
         placeholder_text: （设计水平年的确定依据与结论）
-      - stable_id: sec.soil_loss_prevention.benefit_analysis
+      - stable_id: sec.prevention.zones
         display_number: "7.4"
+        display_title: 水土流失防治分区
+        render_policy: always
+        placeholder_text: （防治分区划分、各分区特征面积、占地归属）
+      - stable_id: sec.prevention.overall_layout
+        display_number: "7.5"
+        display_title: 水土保持措施总体布局
+        render_policy: always
+        placeholder_text: （水保措施体系总体布局, 含工程/植物/临时措施类别汇总与主体已列/方案新增标注）
+      - stable_id: sec.soil_loss_prevention.benefit_analysis
+        display_number: "7.6"
         display_title: 效益分析
         render_policy: always
         placeholder_text: （水土保持措施的生态、社会、经济效益分析）
+      - stable_id: sec.prevention.zone_measures
+        display_number: "7.7"
+        display_title: 分区水土保持措施布设
+        render_policy: always
+        placeholder_text: （各防治分区具体措施与工程量布设, 跨区措施按主归属分区归口）
       - stable_id: sec.soil_loss_prevention.construction_schedule
-        display_number: "7.5"
+        display_number: "7.8"
         display_title: 施工组织与进度安排
         render_policy: always
         placeholder_text: （水土保持措施施工进度安排、双线横道图）

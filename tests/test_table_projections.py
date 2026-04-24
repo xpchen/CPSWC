@@ -250,6 +250,134 @@ def test_six_indicator_disposal():
     assert td.rows[0]["target"] in ("98", "—")
 
 # ============================================================
+# Step 52-B: PreventionSystem §8.1 四张 LIVE 表
+# ============================================================
+
+from cpswc.renderers.table_projections import (
+    project_prevention_zones_summary,
+    project_measures_overall_layout,
+    project_measures_layout_by_zone,
+    project_measures_classification,
+)
+
+HUINAN = _load_snapshot("huinan_zhigu_v0.json")
+SHIWEI = _load_snapshot("shiwei_logistics_v0.json")
+
+
+def test_prevention_zones_summary_huizhou():
+    td = project_prevention_zones_summary(HZ)
+    assert td.render_policy == TableRenderPolicy.RENDER_WITH_VALUES
+    assert len(td.rows) == 4
+    # 面积守恒 (契约 §4.3 PREVENTION_ZONE_001): 合计不超 responsibility_range
+    assert td.total_row is not None
+    assert td.total_row["area_ha"] <= 9.5
+    # 永久 + 临时 = 总面积 (huizhou 自洽: 8.2 + 1.3 = 9.5)
+    assert td.total_row["area_permanent_ha"] == 8.2
+    assert td.total_row["area_temporary_ha"] == 1.3
+
+
+def test_prevention_zones_summary_disposal_spoil():
+    """disposal 样本必含 spoil_disposal 分区 (Step 52-0 激活)"""
+    td = project_prevention_zones_summary(DISP)
+    assert td.render_policy == TableRenderPolicy.RENDER_WITH_VALUES
+    assert len(td.rows) >= 3
+    zone_types = [r["zone_type"] for r in td.rows]
+    assert "弃渣场区" in zone_types, f"disposal 样本必含弃渣场区, got: {zone_types}"
+
+
+def test_prevention_zones_summary_disposal_sot_boundary():
+    """SoT 边界: spoil_disposal 行不得含 disposal_site 专业字段
+    (volume / max_height / downstream_harm_class / level)"""
+    td = project_prevention_zones_summary(DISP)
+    for r in td.rows:
+        if r["zone_type"] == "弃渣场区":
+            # zones 表的列只有 area_*, 不应有专业事实字段
+            assert "volume" not in r
+            assert "max_height" not in r
+            assert "downstream_harm_class" not in r
+            assert "level" not in r
+
+
+def test_measures_overall_layout_excludes_monitoring():
+    """监测措施必须被排除 (契约 §5.4 measure_type 不含 monitoring)"""
+    td = project_measures_overall_layout(HZ)
+    assert td.render_policy == TableRenderPolicy.RENDER_WITH_VALUES
+    measure_types = {r["measure_type"] for r in td.rows if r["measure_type"]}
+    # 应只含工程/植物/临时
+    assert measure_types.issubset({"工程措施", "植物措施", "临时措施"}), (
+        f"overall_layout 不应含监测措施, got types: {measure_types}")
+
+
+def test_measures_overall_layout_source_attr_mapping():
+    td = project_measures_overall_layout(HZ)
+    source_attrs = {r["source_attr"] for r in td.rows}
+    # 英文 enum 必须映射为中文
+    assert source_attrs.issubset({"主体已列", "方案新增"})
+    # 样本 huizhou 应同时含两种来源
+    assert "主体已列" in source_attrs
+    assert "方案新增" in source_attrs
+
+
+def test_measures_layout_by_zone_cross_zone_primary():
+    """跨区措施按 primary_zone_ref 归一次, 不重复列在其他分区 (契约 §5.5)"""
+    td = project_measures_layout_by_zone(DISP)
+    assert td.render_policy == TableRenderPolicy.RENDER_WITH_VALUES
+    # disposal 样本有跨区措施 (eng_01 浆砌石排水沟 zone_refs=[d1, d2], primary=d1)
+    # 应只在 primary_zone (d1) 行列出一次
+    measure_names = [r["measure_name"] for r in td.rows]
+    assert measure_names.count("浆砌石排水沟") == 1
+
+
+def test_measures_classification_verdict_mapping():
+    td = project_measures_classification(HZ)
+    assert td.render_policy == TableRenderPolicy.RENDER_WITH_VALUES
+    assert len(td.rows) == 2  # huizhou 有 2 条 classification
+    verdicts = {r["verdict"] for r in td.rows}
+    # 必须映射为中文
+    assert verdicts.issubset({"纳入", "不纳入", "部分纳入"})
+
+
+def test_measures_classification_resulting_measure_resolution():
+    """classification.resulting_measure_refs 必须解析到 measure_name"""
+    td = project_measures_classification(HZ)
+    for r in td.rows:
+        # resulting 应是 measure_name, 不是 measure_id
+        assert r["resulting"] != "—"
+        assert not r["resulting"].startswith("measure."), (
+            f"resulting 应是 measure_name, got raw id: {r['resulting']}")
+
+
+def test_prevention_tables_all_samples_non_empty():
+    """Acceptance: 4 张表在 4 个样本上都 non-empty."""
+    for snap_name, snap in [("huizhou", HZ), ("disposal", DISP),
+                             ("huinan", HUINAN), ("shiwei", SHIWEI)]:
+        for fn, label in [
+            (project_prevention_zones_summary,    "zones"),
+            (project_measures_overall_layout,     "overall"),
+            (project_measures_layout_by_zone,     "by_zone"),
+            (project_measures_classification,     "classification"),
+        ]:
+            td = fn(snap)
+            assert td.render_policy == TableRenderPolicy.RENDER_WITH_VALUES, (
+                f"{snap_name}.{label}: got {td.render_policy}")
+            assert len(td.rows) > 0, f"{snap_name}.{label}: empty rows"
+
+
+def test_prevention_tables_section_id_bindings():
+    """Spec section_id 必须对应 DisplayNumberingPolicy 中的真实 section."""
+    from cpswc.renderers.table_projections import (
+        SPEC_PREVENTION_ZONES_SUMMARY,
+        SPEC_MEASURES_OVERALL_LAYOUT,
+        SPEC_MEASURES_LAYOUT_BY_ZONE,
+        SPEC_MEASURES_CLASSIFICATION,
+    )
+    assert SPEC_PREVENTION_ZONES_SUMMARY.section_id == "sec.prevention.zones"
+    assert SPEC_MEASURES_OVERALL_LAYOUT.section_id   == "sec.prevention.overall_layout"
+    assert SPEC_MEASURES_LAYOUT_BY_ZONE.section_id   == "sec.prevention.zone_measures"
+    assert SPEC_MEASURES_CLASSIFICATION.section_id   == "sec.evaluation.measures_classification"
+
+
+# ============================================================
 # Run all tests
 # ============================================================
 

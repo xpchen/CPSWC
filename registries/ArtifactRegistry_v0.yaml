@@ -555,8 +555,9 @@ artifacts:
       - field.fact.prevention.zones
     renderer: TableProjection
     note: |
-      Step 51-A 仅登记制品契约; 表格投影与 DOCX 渲染实现延后至 Step 52.
-      v0.6 阶段本表 v0_status=CAN_GENERATE (契约 §8.1).
+      Step 52-B LIVE: 表格投影 + DOCX 嵌入已实现.
+      v0.6 阶段本表 v0_status=LIVE (契约 §8.1).
+      实现: TABLE_PROJECTIONS + SPEC_* in src/cpswc/renderers/table_projections.py.
 
   art.table.measures_overall_layout:
     kind: table
@@ -573,8 +574,9 @@ artifacts:
       - field.fact.prevention.measures_layout
     renderer: TableProjection
     note: |
-      Step 51-A 仅登记制品契约; 表格投影与 DOCX 渲染实现延后至 Step 52.
-      v0.6 阶段本表 v0_status=CAN_GENERATE (契约 §8.1).
+      Step 52-B LIVE: 表格投影 + DOCX 嵌入已实现.
+      v0.6 阶段本表 v0_status=LIVE (契约 §8.1).
+      实现: TABLE_PROJECTIONS + SPEC_* in src/cpswc/renderers/table_projections.py.
 
   art.table.measures_layout_by_zone:
     kind: table
@@ -592,8 +594,9 @@ artifacts:
       - field.fact.prevention.measures_layout
     renderer: TableProjection
     note: |
-      Step 51-A 仅登记制品契约; 表格投影与 DOCX 渲染实现延后至 Step 52.
-      v0.6 阶段本表 v0_status=CAN_GENERATE (契约 §8.1).
+      Step 52-B LIVE: 表格投影 + DOCX 嵌入已实现.
+      v0.6 阶段本表 v0_status=LIVE (契约 §8.1).
+      实现: TABLE_PROJECTIONS + SPEC_* in src/cpswc/renderers/table_projections.py.
 
   art.table.measures_classification:
     kind: table
@@ -612,8 +615,9 @@ artifacts:
       - field.fact.prevention.measures_layout
     renderer: TableProjection
     note: |
-      Step 51-A 仅登记制品契约; 表格投影与 DOCX 渲染实现延后至 Step 52.
-      v0.6 阶段本表 v0_status=CAN_GENERATE (契约 §8.1).
+      Step 52-B LIVE: 表格投影 + DOCX 嵌入已实现.
+      v0.6 阶段本表 v0_status=LIVE (契约 §8.1).
+      实现: TABLE_PROJECTIONS + SPEC_* in src/cpswc/renderers/table_projections.py.
 
   art.table.monitoring_points:
     kind: table

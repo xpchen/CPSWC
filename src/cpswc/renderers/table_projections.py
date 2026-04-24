@@ -1964,6 +1964,325 @@ def _make_annual_spec(years: list[int]) -> TableSpec:
     )
 
 
+# ============================================================
+# Step 52-B: PreventionSystem §8.1 — 4 张表 CAN_GENERATE → LIVE
+# ============================================================
+# 上游契约: governance/PREVENTION_SYSTEM_CONTRACT.md §8.1 + §9.1
+# 真源字段 (决议 4):
+#   - field.fact.prevention.zones            → prevention_zones_summary
+#   - field.fact.prevention.measures_layout  → overall_layout + layout_by_zone
+#   - field.fact.measures.classification     → measures_classification
+#
+# 显示映射字典 (zone_parent_type / measure_type / source_attribution / verdict)
+# 的中文来自 PreventionZoneTypeRegistry_v0.yaml 的 label_cn + 契约 §5.4/§6.2.
+# 硬编码映射仅用于 DOCX 渲染表达, 不参与语义真源.
+
+_ZONE_TYPE_LABEL = {
+    "main_engineering":     "主体工程区",
+    "road_square":          "道路广场区",
+    "landscape_greening":   "景观绿化区",
+    "construction_living":  "施工生产生活区",
+    "temp_soil_stockpile":  "临时堆土区",
+    "spoil_disposal":       "弃渣场区",  # Step 52-0 RFC 激活
+}
+
+_MEASURE_TYPE_LABEL = {
+    "engineering": "工程措施",
+    "plant":       "植物措施",
+    "temporary":   "临时措施",
+}
+
+_SOURCE_ATTR_LABEL = {
+    "existing_main_engineering": "主体已列",
+    "new_in_plan":               "方案新增",
+}
+
+_VERDICT_LABEL = {
+    "included":             "纳入",
+    "excluded":             "不纳入",
+    "partially_included":   "部分纳入",
+}
+
+_MEASURE_TYPE_ORDER = ["engineering", "plant", "temporary"]
+
+
+# ---- 1. art.table.prevention_zones_summary (Ch7.4) ----
+
+SPEC_PREVENTION_ZONES_SUMMARY = TableSpec(
+    table_id="art.table.prevention_zones_summary",
+    title="防治分区汇总表",
+    columns=[
+        TableColumn(key="zone_id",    header="分区编号", unit="", align="left",   fmt="str"),
+        TableColumn(key="zone_label", header="分区名称", unit="", align="left",   fmt="str"),
+        TableColumn(key="zone_type",  header="分区类型", unit="", align="center", fmt="str"),
+        TableColumn(key="area_ha",    header="分区面积", unit="hm²", align="right", fmt="2f"),
+        TableColumn(key="area_permanent_ha", header="永久占地", unit="hm²", align="right", fmt="2f"),
+        TableColumn(key="area_temporary_ha", header="临时占地", unit="hm²", align="right", fmt="2f"),
+    ],
+    has_total_row=True,
+    footnote="数据来源: field.fact.prevention.zones | 分区类型解析 registries/PreventionZoneTypeRegistry_v0.yaml",
+    section_id="sec.prevention.zones",
+)
+
+
+def project_prevention_zones_summary(snapshot: dict) -> TableData:
+    facts = snapshot.get("_original_facts") or {}
+    zones = facts.get("field.fact.prevention.zones") or []
+    if not isinstance(zones, list) or not zones:
+        return TableData(spec=SPEC_PREVENTION_ZONES_SUMMARY, rows=[],
+                         render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+
+    rows = []
+    total_area = total_perm = total_temp = 0.0
+    for z in zones:
+        if not isinstance(z, dict):
+            continue
+        area = float(z.get("area_ha") or 0)
+        perm = float(z.get("area_permanent_ha") or 0)
+        temp = float(z.get("area_temporary_ha") or 0)
+        total_area += area
+        total_perm += perm
+        total_temp += temp
+        rows.append({
+            "zone_id":    z.get("zone_id", "—"),
+            "zone_label": z.get("zone_label", "—"),
+            "zone_type":  _ZONE_TYPE_LABEL.get(z.get("zone_parent_type"), z.get("zone_parent_type", "—")),
+            "area_ha":    area,
+            "area_permanent_ha": perm,
+            "area_temporary_ha": temp,
+        })
+
+    total_row = {
+        "zone_id":    "",
+        "zone_label": "合计",
+        "zone_type":  "",
+        "area_ha":    total_area,
+        "area_permanent_ha": total_perm,
+        "area_temporary_ha": total_temp,
+    }
+    return TableData(spec=SPEC_PREVENTION_ZONES_SUMMARY, rows=rows, total_row=total_row,
+                     render_policy=TableRenderPolicy.RENDER_WITH_VALUES)
+
+
+# ---- 2. art.table.measures_overall_layout (Ch7.5) ----
+
+SPEC_MEASURES_OVERALL_LAYOUT = TableSpec(
+    table_id="art.table.measures_overall_layout",
+    title="水土保持措施总体布局表",
+    columns=[
+        TableColumn(key="seq",            header="序号",     unit="",    align="center", fmt="str"),
+        TableColumn(key="measure_type",   header="措施类别", unit="",    align="center", fmt="str"),
+        TableColumn(key="measure_name",   header="措施名称", unit="",    align="left",   fmt="str"),
+        TableColumn(key="specification",  header="规格",     unit="",    align="left",   fmt="str"),
+        TableColumn(key="quantity",       header="工程量",   unit="",    align="right",  fmt="str"),
+        TableColumn(key="unit",           header="单位",     unit="",    align="center", fmt="str"),
+        TableColumn(key="primary_zone",   header="主归属分区", unit="",  align="left",   fmt="str"),
+        TableColumn(key="source_attr",    header="措施来源", unit="",    align="center", fmt="str"),
+    ],
+    has_total_row=False,
+    footnote="数据来源: field.fact.prevention.measures_layout | 按 measure_type 分组 (工程/植物/临时) | 不含监测措施 (契约 §5.4)",
+    section_id="sec.prevention.overall_layout",
+)
+
+
+def _get_zone_label_map(zones) -> dict:
+    """Build zone_id → zone_label lookup from prevention.zones."""
+    out = {}
+    if isinstance(zones, list):
+        for z in zones:
+            if isinstance(z, dict) and z.get("zone_id"):
+                out[z["zone_id"]] = z.get("zone_label", z["zone_id"])
+    return out
+
+
+def project_measures_overall_layout(snapshot: dict) -> TableData:
+    facts = snapshot.get("_original_facts") or {}
+    measures = facts.get("field.fact.prevention.measures_layout") or []
+    zones = facts.get("field.fact.prevention.zones") or []
+    zone_labels = _get_zone_label_map(zones)
+
+    if not isinstance(measures, list) or not measures:
+        return TableData(spec=SPEC_MEASURES_OVERALL_LAYOUT, rows=[],
+                         render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+
+    # Sort by measure_type order, then by measure_name
+    def sort_key(m):
+        mt = m.get("measure_type", "")
+        idx = _MEASURE_TYPE_ORDER.index(mt) if mt in _MEASURE_TYPE_ORDER else 99
+        return (idx, m.get("measure_name", ""))
+
+    sorted_m = sorted([m for m in measures if isinstance(m, dict)], key=sort_key)
+
+    rows = []
+    seq_by_type = {}
+    prev_type = None
+    for m in sorted_m:
+        mt = m.get("measure_type", "")
+        seq_by_type[mt] = seq_by_type.get(mt, 0) + 1
+        type_cn = _MEASURE_TYPE_LABEL.get(mt, mt or "—")
+        # Merge duplicate category cell: show only on first row of each type
+        type_cell = type_cn if mt != prev_type else ""
+        prev_type = mt
+
+        primary = m.get("primary_zone_ref") or ""
+        primary_label = zone_labels.get(primary, primary) if primary else "—"
+
+        rows.append({
+            "seq":           f"{seq_by_type[mt]}",
+            "measure_type":  type_cell,
+            "measure_name":  m.get("measure_name", "—"),
+            "specification": m.get("specification", "—"),
+            "quantity":      str(m.get("quantity", "—")),
+            "unit":          m.get("unit", "—"),
+            "primary_zone":  primary_label,
+            "source_attr":   _SOURCE_ATTR_LABEL.get(m.get("source_attribution"),
+                                                    m.get("source_attribution", "—")),
+        })
+
+    return TableData(spec=SPEC_MEASURES_OVERALL_LAYOUT, rows=rows,
+                     render_policy=TableRenderPolicy.RENDER_WITH_VALUES)
+
+
+# ---- 3. art.table.measures_layout_by_zone (Ch7.7) ----
+
+SPEC_MEASURES_LAYOUT_BY_ZONE = TableSpec(
+    table_id="art.table.measures_layout_by_zone",
+    title="分区水土保持措施布设表",
+    columns=[
+        TableColumn(key="zone",          header="防治分区", unit="", align="left",   fmt="str"),
+        TableColumn(key="measure_type",  header="措施类别", unit="", align="center", fmt="str"),
+        TableColumn(key="measure_name",  header="措施名称", unit="", align="left",   fmt="str"),
+        TableColumn(key="specification", header="规格",     unit="", align="left",   fmt="str"),
+        TableColumn(key="quantity",      header="工程量",   unit="", align="right",  fmt="str"),
+        TableColumn(key="unit",          header="单位",     unit="", align="center", fmt="str"),
+        TableColumn(key="source_attr",   header="措施来源", unit="", align="center", fmt="str"),
+    ],
+    has_total_row=False,
+    footnote="数据来源: field.fact.prevention.measures_layout + prevention.zones | 跨区措施按 primary_zone_ref 归口, 不重复列在其他分区 (契约 §5.5)",
+    section_id="sec.prevention.zone_measures",
+)
+
+
+def project_measures_layout_by_zone(snapshot: dict) -> TableData:
+    facts = snapshot.get("_original_facts") or {}
+    measures = facts.get("field.fact.prevention.measures_layout") or []
+    zones = facts.get("field.fact.prevention.zones") or []
+    zone_labels = _get_zone_label_map(zones)
+    zone_order = [z.get("zone_id") for z in zones if isinstance(z, dict)]
+
+    if not isinstance(measures, list) or not measures:
+        return TableData(spec=SPEC_MEASURES_LAYOUT_BY_ZONE, rows=[],
+                         render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+
+    # Group by primary_zone_ref (契约 §5.5: 跨区措施按主归属归口, 不重复)
+    def sort_key(m):
+        pz = m.get("primary_zone_ref") or ""
+        z_idx = zone_order.index(pz) if pz in zone_order else 99
+        mt = m.get("measure_type", "")
+        mt_idx = _MEASURE_TYPE_ORDER.index(mt) if mt in _MEASURE_TYPE_ORDER else 99
+        return (z_idx, mt_idx, m.get("measure_name", ""))
+
+    sorted_m = sorted([m for m in measures if isinstance(m, dict)], key=sort_key)
+
+    rows = []
+    prev_zone = None
+    for m in sorted_m:
+        pz = m.get("primary_zone_ref", "")
+        zone_label = zone_labels.get(pz, pz or "—")
+        # Merge duplicate zone cell: show only on first row per zone
+        zone_cell = zone_label if pz != prev_zone else ""
+        prev_zone = pz
+
+        rows.append({
+            "zone":          zone_cell,
+            "measure_type":  _MEASURE_TYPE_LABEL.get(m.get("measure_type"),
+                                                     m.get("measure_type", "—")),
+            "measure_name":  m.get("measure_name", "—"),
+            "specification": m.get("specification", "—"),
+            "quantity":      str(m.get("quantity", "—")),
+            "unit":          m.get("unit", "—"),
+            "source_attr":   _SOURCE_ATTR_LABEL.get(m.get("source_attribution"),
+                                                    m.get("source_attribution", "—")),
+        })
+
+    return TableData(spec=SPEC_MEASURES_LAYOUT_BY_ZONE, rows=rows,
+                     render_policy=TableRenderPolicy.RENDER_WITH_VALUES)
+
+
+# ---- 4. art.table.measures_classification (Ch3.7) ----
+
+SPEC_MEASURES_CLASSIFICATION = TableSpec(
+    table_id="art.table.measures_classification",
+    title="水土保持功能措施界定表",
+    columns=[
+        TableColumn(key="cls_id",       header="界定编号",   unit="", align="left",   fmt="str"),
+        TableColumn(key="source_name",  header="主体工程项", unit="", align="left",   fmt="str"),
+        TableColumn(key="source_type",  header="工程类型",   unit="", align="center", fmt="str"),
+        TableColumn(key="verdict",      header="界定结论",   unit="", align="center", fmt="str"),
+        TableColumn(key="reason",       header="界定依据",   unit="", align="left",   fmt="str"),
+        TableColumn(key="resulting",    header="对应水保措施", unit="", align="left",  fmt="str"),
+    ],
+    has_total_row=False,
+    footnote="数据来源: field.fact.measures.classification | verdict 三态 (纳入/不纳入/部分纳入, 契约 §6.2) | partially_included 使用见契约 §6.3",
+    section_id="sec.evaluation.measures_classification",
+)
+
+
+def _resolve_reason(rec: dict) -> str:
+    """verdict → reason 字段映射 (契约 §6.1)."""
+    v = rec.get("verdict")
+    if v == "included":
+        return rec.get("inclusion_reason") or "—"
+    if v == "excluded":
+        return rec.get("exclusion_reason") or "—"
+    if v == "partially_included":
+        return rec.get("partial_scope_note") or "—"
+    return "—"
+
+
+def _resolve_measure_names(rec: dict, measures_by_id: dict) -> str:
+    refs = rec.get("resulting_measure_refs") or []
+    if not refs:
+        return "—"
+    names = []
+    for ref in refs:
+        m = measures_by_id.get(ref)
+        if m:
+            names.append(m.get("measure_name", ref))
+        else:
+            names.append(ref)
+    return " / ".join(names)
+
+
+def project_measures_classification(snapshot: dict) -> TableData:
+    facts = snapshot.get("_original_facts") or {}
+    classifications = facts.get("field.fact.measures.classification") or []
+    measures = facts.get("field.fact.prevention.measures_layout") or []
+    measures_by_id = {m.get("measure_id"): m for m in measures
+                      if isinstance(m, dict) and m.get("measure_id")}
+
+    if not isinstance(classifications, list) or not classifications:
+        return TableData(spec=SPEC_MEASURES_CLASSIFICATION, rows=[],
+                         render_policy=TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
+
+    rows = []
+    for c in classifications:
+        if not isinstance(c, dict):
+            continue
+        rows.append({
+            "cls_id":      c.get("classification_id", "—"),
+            "source_name": c.get("source_item_name", "—"),
+            "source_type": c.get("source_item_type", "—"),
+            "verdict":     _VERDICT_LABEL.get(c.get("verdict"),
+                                              c.get("verdict", "—")),
+            "reason":      _resolve_reason(c),
+            "resulting":   _resolve_measure_names(c, measures_by_id),
+        })
+
+    return TableData(spec=SPEC_MEASURES_CLASSIFICATION, rows=rows,
+                     render_policy=TableRenderPolicy.RENDER_WITH_VALUES)
+
+
 TABLE_PROJECTIONS = {
     "art.table.total_land_occupation": project_total_land_occupation,
     "art.table.earthwork_balance": project_earthwork_balance,
@@ -1989,4 +2308,9 @@ TABLE_PROJECTIONS = {
     "art.table.measures_quantity_new": project_measures_quantity_new,  # Step 34
     "art.table.measures_quantity_existing": project_measures_quantity_existing,  # Step 34
     "art.table.investment.annual_breakdown": project_annual_investment,  # Step 35
+    # Step 52-B: PreventionSystem §8.1 LIVE tables
+    "art.table.prevention_zones_summary":    project_prevention_zones_summary,
+    "art.table.measures_overall_layout":     project_measures_overall_layout,
+    "art.table.measures_layout_by_zone":     project_measures_layout_by_zone,
+    "art.table.measures_classification":     project_measures_classification,
 }

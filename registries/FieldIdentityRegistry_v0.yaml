@@ -1285,7 +1285,7 @@ fields:
       source_item_name: string          # 主体工程项名称, 如 "项目红线内 6m 宽沥青道路"
       source_item_type: string          # 主体工程项类型 (道路 / 绿化 / 挡墙 / 排水 / 边坡防护 ...)
       source_item_ref: string           # 主体工程设计已结构化时指向其 id, 否则空字符串
-      verdict: enum                     # 三态闭集: included / excluded / partially_included (契约 §6.2)
+      verdict: enum[included, excluded, partially_included]  # 三态闭集 (契约 §6.2)
       inclusion_reason: string          # verdict=included 必填; 说明水保功能
       exclusion_reason: string          # verdict=excluded 必填; 说明不纳入的专业判断
       partial_scope_note: string        # verdict=partially_included 必填 (契约 §6.3 硬规则)

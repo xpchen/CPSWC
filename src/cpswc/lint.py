@@ -11,6 +11,9 @@ cross_registry_lint.py — CPSWC 跨注册表静态校验器
   ART_006             artifact.chapter_ref 必须是合法 sec.* id
   FIR_002             派生字段必须声明 upstream_deps 与 derivation
   FIR_003             每个 field 的 projection_target_refs 必须符合 id 格式
+  FIR_FACT_CLASS_001                     fact_class 出现时必须 ∈ {F1_manual,F2_external_sync,F3_derived}
+  MEASURES_CLASSIFICATION_SCHEMA_001     classification record_schema 必须含 classification_id/verdict/expert_switch_basis
+  MEASURES_CLASSIFICATION_GOVERNANCE_001 expert_switch_basis 必须含最小治理键集 (决议 6 + 契约 §6.4)
 
 依赖: PyYAML  (pip install pyyaml)
 
@@ -472,6 +475,166 @@ def lint_expert_switch_governance(registries, report: LintReport):
                                f"fields.yaml:{fid}.governance_block.upgrade_path")
 
 
+# ------------------------------------------------------------------
+# Step 51-B: PreventionSystem 契约落地后的 FIR 硬校验
+# ------------------------------------------------------------------
+# 三条规则均只校验 record_schema 结构声明, 不校验样本实例数据.
+# 样本回填/gate 消除/表格 LIVE 化 留 Step 52+.
+#
+#   FIR_FACT_CLASS_001
+#     出现 fact_class 时必须属于合法 enum; 不反向要求老字段补齐
+#   MEASURES_CLASSIFICATION_SCHEMA_001
+#     field.fact.measures.classification.record_schema 必须含
+#     classification_id / verdict / expert_switch_basis, 且 verdict enum 合法
+#   MEASURES_CLASSIFICATION_GOVERNANCE_001
+#     record_schema.expert_switch_basis 必须含最小治理键集
+#     (source_rule_id / human_decision_question / upgrade_path.strategy /
+#      replaced_normative_semantics / authored_by)
+# ------------------------------------------------------------------
+
+FACT_CLASS_ENUM = {"F1_manual", "F2_external_sync", "F3_derived"}
+
+
+def lint_fact_class(registries, report: LintReport):
+    """
+    FIR_FACT_CLASS_001:
+
+    fact_class 是 v0.6 PreventionSystem 契约引入的事实来源/生成层级分类.
+    本规则只校验"若出现则合法", 不要求老字段补齐 (反升级条款 + 渐进式引入).
+    """
+    if "fields" not in registries:
+        return
+    fields = registries["fields"].get("fields") or {}
+    for fid, fdef in fields.items():
+        if not isinstance(fdef, dict):
+            continue
+        if "fact_class" not in fdef:
+            continue
+        fc = fdef["fact_class"]
+        if fc not in FACT_CLASS_ENUM:
+            report.add("ERROR", "FIR_FACT_CLASS_001",
+                       f"fact_class '{fc}' not in enum "
+                       f"{{F1_manual, F2_external_sync, F3_derived}}: {fid}",
+                       f"fields.yaml:{fid}.fact_class")
+
+
+# Inline enum 语法解析: "enum[a, b, c]" → ["a", "b", "c"]
+_INLINE_ENUM_RE = re.compile(r"^\s*enum\s*\[\s*([^\]]*)\s*\]\s*$")
+
+
+def _parse_inline_enum(decl) -> list[str] | None:
+    """
+    解析 record_schema 字段声明里的 inline enum 语法 (如 enum[included, excluded, ...]).
+    不是 enum 形态 → None; 是 enum 但无法解析 → []; 正常解析 → 枚举值列表.
+    """
+    if not isinstance(decl, str):
+        return None
+    m = _INLINE_ENUM_RE.match(decl)
+    if not m:
+        return None
+    raw = m.group(1).strip()
+    if not raw:
+        return []
+    return [v.strip() for v in raw.split(",") if v.strip()]
+
+
+VERDICT_ENUM_EXPECTED = {"included", "excluded", "partially_included"}
+
+GOVERNANCE_MIN_KEYS = [
+    "source_rule_id",
+    "human_decision_question",
+    "upgrade_path",              # 必须为嵌套 mapping 且含 .strategy
+    "replaced_normative_semantics",
+    "authored_by",
+]
+
+
+def lint_measures_classification(registries, report: LintReport):
+    """
+    MEASURES_CLASSIFICATION_SCHEMA_001 + MEASURES_CLASSIFICATION_GOVERNANCE_001:
+
+    针对 field.fact.measures.classification 的 record_schema 结构强校验.
+    不存在该字段 → 跳过 (不强制要求契约字段必须登记, 由其他规则驱动).
+    """
+    if "fields" not in registries:
+        return
+    fields = registries["fields"].get("fields") or {}
+    fid = "field.fact.measures.classification"
+    fdef = fields.get(fid)
+    if not isinstance(fdef, dict):
+        return   # 字段未登记则本规则不适用
+
+    loc_base = f"fields.yaml:{fid}.record_schema"
+    rs = fdef.get("record_schema")
+    if not isinstance(rs, dict):
+        report.add("ERROR", "MEASURES_CLASSIFICATION_SCHEMA_001",
+                   f"record_schema missing or not a mapping: {fid}",
+                   loc_base)
+        return
+
+    # -- SCHEMA_001: 必须含 classification_id / verdict / expert_switch_basis --
+    for key in ("classification_id", "verdict", "expert_switch_basis"):
+        if key not in rs:
+            report.add("ERROR", "MEASURES_CLASSIFICATION_SCHEMA_001",
+                       f"record_schema missing required key '{key}'",
+                       f"{loc_base}.{key}")
+
+    # verdict enum 合法性 (inline enum[...] 语法)
+    if "verdict" in rs:
+        declared = _parse_inline_enum(rs["verdict"])
+        if declared is None:
+            report.add("ERROR", "MEASURES_CLASSIFICATION_SCHEMA_001",
+                       f"verdict must use inline enum syntax "
+                       f"'enum[included, excluded, partially_included]', "
+                       f"got: {rs['verdict']!r}",
+                       f"{loc_base}.verdict")
+        else:
+            declared_set = set(declared)
+            if declared_set != VERDICT_ENUM_EXPECTED:
+                extra = declared_set - VERDICT_ENUM_EXPECTED
+                missing_vals = VERDICT_ENUM_EXPECTED - declared_set
+                msg_parts = []
+                if missing_vals:
+                    msg_parts.append(f"missing {sorted(missing_vals)}")
+                if extra:
+                    msg_parts.append(f"extra {sorted(extra)}")
+                report.add("ERROR", "MEASURES_CLASSIFICATION_SCHEMA_001",
+                           f"verdict enum must be exactly "
+                           f"{{included, excluded, partially_included}}: "
+                           f"{', '.join(msg_parts)}",
+                           f"{loc_base}.verdict")
+
+    # -- GOVERNANCE_001: expert_switch_basis 最小治理键集 --
+    if "expert_switch_basis" not in rs:
+        return   # 已在 SCHEMA_001 报过, 不重复
+    esb = rs["expert_switch_basis"]
+    if not isinstance(esb, dict):
+        report.add("ERROR", "MEASURES_CLASSIFICATION_GOVERNANCE_001",
+                   f"expert_switch_basis must be a mapping (record-level "
+                   f"governance block per 契约 §6.4)",
+                   f"{loc_base}.expert_switch_basis")
+        return
+
+    for key in GOVERNANCE_MIN_KEYS:
+        if key not in esb:
+            report.add("ERROR", "MEASURES_CLASSIFICATION_GOVERNANCE_001",
+                       f"expert_switch_basis missing required key '{key}' "
+                       f"(min governance set per 契约 §6.4)",
+                       f"{loc_base}.expert_switch_basis.{key}")
+
+    # upgrade_path 嵌套校验: 必须是 mapping 且含 strategy
+    up = esb.get("upgrade_path")
+    if up is not None:
+        if not isinstance(up, dict):
+            report.add("ERROR", "MEASURES_CLASSIFICATION_GOVERNANCE_001",
+                       f"upgrade_path must be a mapping",
+                       f"{loc_base}.expert_switch_basis.upgrade_path")
+        elif "strategy" not in up:
+            report.add("ERROR", "MEASURES_CLASSIFICATION_GOVERNANCE_001",
+                       f"upgrade_path missing 'strategy' (契约 §6.4 锁定为 irreducible)",
+                       f"{loc_base}.expert_switch_basis.upgrade_path.strategy")
+
+
 def lint_calculator_structure(registries, report: LintReport):
     """
     CAL_001 (Step 11A, ERROR 级):
@@ -928,6 +1091,8 @@ def main():
     lint_field_protection_levels(registries, report)
     lint_expert_switch_governance(registries, report)  # 决议 6
     lint_source_provenance(registries, report)          # 决议 8
+    lint_fact_class(registries, report)                 # Step 51-B (FIR_FACT_CLASS_001)
+    lint_measures_classification(registries, report)    # Step 51-B (MEASURES_CLASSIFICATION_*)
     lint_calculator_structure(registries, report)       # Step 11A (CAL_001)
     lint_artifact_structure(registries, report)
     lint_obligation_structure(registries, report)

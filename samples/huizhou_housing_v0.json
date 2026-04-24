@@ -549,6 +549,321 @@
     ],
     "field.fact.disposal_site.failure_analysis_required": false,
     "field.fact.disposal_site.level_assessment": [],
+    "field.fact.prevention.zones": [
+      {
+        "zone_id": "zone.main_engineering_01",
+        "zone_label": "主体工程区",
+        "zone_parent_type": "main_engineering",
+        "description": "住宅楼体、地下室及室外硬化场地 (永久占地主体)",
+        "area_ha": 7.7,
+        "area_permanent_ha": 7.7,
+        "area_temporary_ha": 0.0,
+        "within_responsibility_range": true,
+        "evidence_anchor_refs": [
+          {"source_ref": "sample_synthetic_design_intent", "note": "合成样本 — 永久占地主体部分, 扣除绿化 0.5 hm²"}
+        ],
+        "normative_basis_refs": [
+          {"ref": "GB 50433-2018", "clause": "第 6 章 水土流失防治", "authority_class": "mandatory_standard", "precedence_rank": 3}
+        ],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "zone_id": "zone.landscape_greening_01",
+        "zone_label": "景观绿化区",
+        "zone_parent_type": "landscape_greening",
+        "description": "集中绿地 + 宅间绿化 + 道路绿化带 (乔灌木 + 草皮)",
+        "area_ha": 0.5,
+        "area_permanent_ha": 0.5,
+        "area_temporary_ha": 0.0,
+        "within_responsibility_range": true,
+        "evidence_anchor_refs": [
+          {"source_ref": "sample_synthetic_design_intent", "note": "合成样本 — 住宅小区典型绿化率 ~6% 反推永久占地内绿化 0.5 hm²"}
+        ],
+        "normative_basis_refs": [
+          {"ref": "GB 50433-2018", "clause": "第 6 章 水土流失防治", "authority_class": "mandatory_standard", "precedence_rank": 3},
+          {"ref": "GB/T 50434-2018", "clause": "表 4.0.2-5", "authority_class": "recommended_standard", "precedence_rank": 5}
+        ],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "zone_id": "zone.construction_living_01",
+        "zone_label": "施工生产生活区 (含出入口)",
+        "zone_parent_type": "construction_living",
+        "description": "施工期生产生活区 + 施工主入口道路 + 出入口洗车池及配套 (对应 facts construction.living_area + construction.road + 原 '出入口' 语义合并)",
+        "area_ha": 1.05,
+        "area_permanent_ha": 0.0,
+        "area_temporary_ha": 1.05,
+        "within_responsibility_range": true,
+        "evidence_anchor_refs": [
+          {"source_ref": "facts:field.fact.construction.living_area", "note": "合并 living_area 0.65 hm² + road 0.192 hm² + 零散临时占地 0.208 hm²"}
+        ],
+        "normative_basis_refs": [
+          {"ref": "GB 50433-2018", "clause": "第 6 章 + 第 8 章 (临时措施/监测)", "authority_class": "mandatory_standard", "precedence_rank": 3}
+        ],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "zone_id": "zone.temp_soil_stockpile_01",
+        "zone_label": "临时堆土区",
+        "zone_parent_type": "temp_soil_stockpile",
+        "description": "施工期表土堆存场 + 土方中转场 (对应 facts construction.temp_topsoil_site 2 条记录合计 0.25 hm²)",
+        "area_ha": 0.25,
+        "area_permanent_ha": 0.0,
+        "area_temporary_ha": 0.25,
+        "within_responsibility_range": true,
+        "evidence_anchor_refs": [
+          {"source_ref": "facts:field.fact.construction.temp_topsoil_site", "note": "表土堆场 0.15 hm² + 临时中转场 0.10 hm²"}
+        ],
+        "normative_basis_refs": [
+          {"ref": "GB 50433-2018", "clause": "第 5 章 (表土) + 第 6 章 (临时措施)", "authority_class": "mandatory_standard", "precedence_rank": 3}
+        ],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      }
+    ],
+    "field.fact.prevention.measures_layout": [
+      {
+        "measure_id": "measure.eng_01_drainage_ditch",
+        "measure_name": "浆砌石排水沟",
+        "measure_type": "engineering",
+        "zone_refs": ["zone.main_engineering_01"],
+        "primary_zone_ref": "zone.main_engineering_01",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "浆砌石沟, 断面 0.4×0.4 m",
+        "quantity": 120.0,
+        "unit": "m",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.eng_01"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.eng_02_masonry_wall",
+        "measure_name": "M7.5 浆砌石挡土墙",
+        "measure_type": "engineering",
+        "zone_refs": ["zone.main_engineering_01"],
+        "primary_zone_ref": "zone.main_engineering_01",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "M7.5 浆砌石, 高 1.2 m, 宽 0.5 m",
+        "quantity": 35.0,
+        "unit": "m³",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.eng_02"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.eng_03_intercept_ditch",
+        "measure_name": "土质截水沟",
+        "measure_type": "engineering",
+        "zone_refs": ["zone.main_engineering_01"],
+        "primary_zone_ref": "zone.main_engineering_01",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "土质截水沟, 断面 0.3×0.3 m",
+        "quantity": 60.0,
+        "unit": "m",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.eng_03"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.plant_01_grass_seeding",
+        "measure_name": "撒播草籽",
+        "measure_type": "plant",
+        "zone_refs": ["zone.main_engineering_01"],
+        "primary_zone_ref": "zone.main_engineering_01",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "裸露坡面植草",
+        "quantity": 0.45,
+        "unit": "hm²",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.plant_01"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.plant_02_trees_shrubs",
+        "measure_name": "种植乔灌木",
+        "measure_type": "plant",
+        "zone_refs": ["zone.landscape_greening_01"],
+        "primary_zone_ref": "zone.landscape_greening_01",
+        "source_attribution": "existing_main_engineering",
+        "classification_ref": "cls.trees_shrubs_hz",
+        "specification": "乔灌木组合种植 (主体工程已列)",
+        "quantity": 200.0,
+        "unit": "株",
+        "quantity_source": "主体工程设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.plant_02"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.plant_03_lawn",
+        "measure_name": "铺设草皮",
+        "measure_type": "plant",
+        "zone_refs": ["zone.landscape_greening_01"],
+        "primary_zone_ref": "zone.landscape_greening_01",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "马尼拉草皮铺设",
+        "quantity": 3000.0,
+        "unit": "m²",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.plant_03"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.temp_01_temp_drainage",
+        "measure_name": "临时排水沟",
+        "measure_type": "temporary",
+        "zone_refs": ["zone.main_engineering_01"],
+        "primary_zone_ref": "zone.main_engineering_01",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "土质临时排水沟, 断面 0.3×0.3 m",
+        "quantity": 80.0,
+        "unit": "m",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.temp_01"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章 (临时措施)", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.temp_02_cover_net",
+        "measure_name": "密目网苫盖",
+        "measure_type": "temporary",
+        "zone_refs": ["zone.main_engineering_01"],
+        "primary_zone_ref": "zone.main_engineering_01",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "2000 目密目网苫盖裸土",
+        "quantity": 4000.0,
+        "unit": "m²",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.temp_02"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章 (临时措施)", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.temp_03_wash_basin",
+        "measure_name": "洗车池",
+        "measure_type": "temporary",
+        "zone_refs": ["zone.construction_living_01"],
+        "primary_zone_ref": "zone.construction_living_01",
+        "source_attribution": "existing_main_engineering",
+        "classification_ref": "cls.wash_basin_hz",
+        "specification": "钢筋混凝土洗车池 (主体工程已列, 位于出入口)",
+        "quantity": 1.0,
+        "unit": "座",
+        "quantity_source": "主体工程设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.temp_03"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章 (临时措施)", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      }
+    ],
+    "field.fact.measures.classification": [
+      {
+        "classification_id": "cls.trees_shrubs_hz",
+        "source_item_name": "场区乔灌木种植 (200 株)",
+        "source_item_type": "绿化",
+        "source_item_ref": "",
+        "verdict": "included",
+        "inclusion_reason": "主体工程已列的乔灌木种植具有林草覆盖、固土保水功能, 符合 GB 50433-2018 对水保功能措施的认定; 纳入本方案水保措施体系作为植物措施",
+        "exclusion_reason": "",
+        "partial_scope_note": "",
+        "expert_switch_basis": {
+          "source_rule_id": "rule.gb_50433_2018.chapter_6",
+          "human_decision_question": "主体工程已列的 '乔灌木种植' (200 株) 是否具有水土保持功能, 应否纳入本方案水保措施体系?",
+          "decision_owner_role": "registered_wsc_engineer",
+          "default_value": null,
+          "evidence_expectation": "主体施工图 + 植物配置图",
+          "replaced_normative_semantics": [
+            {
+              "rule_ref": "GB 50433-2018 第 6 章",
+              "quoted_phrase": "具有水土保持功能的措施",
+              "why_not_calculable": "'具有水保功能' 的认定依赖对具体工程项的专业判断, 无可计算谓词"
+            }
+          ],
+          "upgrade_path": {
+            "strategy": "irreducible",
+            "irreducibility_justification": "措施界定本质是对 GB 50433-2018 相关条款中 '具有水土保持功能' 的专家解读, 无法算法化 (契约 §6.4)"
+          },
+          "authored_by": "cpswc_sample_author",
+          "authored_at": "2026-04-24"
+        },
+        "resulting_measure_refs": ["measure.plant_02_trees_shrubs"],
+        "evidence_anchor_refs": [
+          {"source_ref": "sample_synthetic_design_intent", "note": "合成样本 — 主体工程已列乔灌木设计"}
+        ],
+        "normative_basis_refs": [
+          {"ref": "GB 50433-2018", "clause": "第 6 章 水土流失防治", "authority_class": "mandatory_standard", "precedence_rank": 3}
+        ]
+      },
+      {
+        "classification_id": "cls.wash_basin_hz",
+        "source_item_name": "出入口洗车池 (1 座)",
+        "source_item_type": "临时防护设施",
+        "source_item_ref": "",
+        "verdict": "included",
+        "inclusion_reason": "主体工程已列的出入口洗车池能截留施工车辆携带的泥沙, 减少场外道路扬尘与地表径流泥沙, 符合 GB 50433-2018 水保临时防护措施定位; 纳入本方案水保措施体系作为临时措施",
+        "exclusion_reason": "",
+        "partial_scope_note": "",
+        "expert_switch_basis": {
+          "source_rule_id": "rule.gb_50433_2018.chapter_6",
+          "human_decision_question": "主体工程已列的 '出入口洗车池' (1 座) 是否具有水土保持功能, 应否纳入本方案水保措施体系作为临时措施?",
+          "decision_owner_role": "registered_wsc_engineer",
+          "default_value": null,
+          "evidence_expectation": "主体施工图 + 施工组织设计 + 出入口布置",
+          "replaced_normative_semantics": [
+            {
+              "rule_ref": "GB 50433-2018 第 6 章",
+              "quoted_phrase": "具有水土保持功能的临时防护措施",
+              "why_not_calculable": "'具有水保功能' 的认定依赖对具体临时设施布置与工程项作用的专业判断, 无可计算谓词"
+            }
+          ],
+          "upgrade_path": {
+            "strategy": "irreducible",
+            "irreducibility_justification": "措施界定本质是对 GB 50433-2018 相关条款中 '具有水土保持功能' 的专家解读, 无法算法化 (契约 §6.4)"
+          },
+          "authored_by": "cpswc_sample_author",
+          "authored_at": "2026-04-24"
+        },
+        "resulting_measure_refs": ["measure.temp_03_wash_basin"],
+        "evidence_anchor_refs": [
+          {"source_ref": "sample_synthetic_design_intent", "note": "合成样本 — 主体工程已列出入口洗车池设计"}
+        ],
+        "normative_basis_refs": [
+          {"ref": "GB 50433-2018", "clause": "第 6 章 水土流失防治", "authority_class": "mandatory_standard", "precedence_rank": 3}
+        ]
+      }
+    ],
     "field.fact.party.compile_unit": {
       "name": "惠州市绿景水土保持咨询服务有限公司 (参考单位, 非真实委托)",
       "legal_representative": "(合成)",

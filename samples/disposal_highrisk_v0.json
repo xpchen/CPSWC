@@ -221,6 +221,321 @@
       }
     ],
     "field.fact.construction.temp_topsoil_site": [],
+    "field.fact.prevention.zones": [
+      {
+        "zone_id": "zone.main_engineering_01",
+        "zone_label": "主体工程区 (矿区)",
+        "zone_parent_type": "main_engineering",
+        "description": "主矿区开采活动范围 (原样本 '矿区' 语义; 在本水保方案下作为主体工程活动区归一登记, D1 裁决: 矿区 = 当前样本主体工程空间, 不激活独立 mining_area extended type)",
+        "area_ha": 35.5,
+        "area_permanent_ha": 30.5,
+        "area_temporary_ha": 5.0,
+        "within_responsibility_range": true,
+        "evidence_anchor_refs": [
+          {"source_ref": "sample_synthetic_design_intent", "note": "合成样本高风险弃渣场 — 主矿区开采活动范围, 含外围零散临时占地"}
+        ],
+        "normative_basis_refs": [
+          {"ref": "GB 50433-2018", "clause": "第 6 章 水土流失防治", "authority_class": "mandatory_standard", "precedence_rank": 3}
+        ],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "zone_id": "zone.spoil_disposal_d1",
+        "zone_label": "主矿区西侧弃渣场 D1",
+        "zone_parent_type": "spoil_disposal",
+        "description": "D1 弃渣场占地 (堆渣量 800 万 m³, 最大堆高 140 m, 下游危害严重, GB 51018 级别 1). SoT 边界: 弃渣场专业事实 (体积/堆高/下游危害/级别) 归 field.fact.disposal_site.level_assessment[D1], 本 zone 仅作防治分区投影, 不复制专业事实.",
+        "area_ha": 6.0,
+        "area_permanent_ha": 6.0,
+        "area_temporary_ha": 0.0,
+        "within_responsibility_range": true,
+        "evidence_anchor_refs": [
+          {"source_ref": "facts:field.fact.disposal_site.level_assessment[D1]"}
+        ],
+        "normative_basis_refs": [
+          {"ref": "GB 51018-2014", "clause": "§5.7.1 + 表 5.7.1", "authority_class": "mandatory_standard", "precedence_rank": 3},
+          {"ref": "GB 50433-2018", "clause": "第 6 章", "authority_class": "mandatory_standard", "precedence_rank": 3}
+        ],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "zone_id": "zone.spoil_disposal_d2",
+        "zone_label": "主矿区东侧弃渣场 D2",
+        "zone_parent_type": "spoil_disposal",
+        "description": "D2 弃渣场占地 (堆渣量 80 万 m³, 最大堆高 50 m, 下游危害较轻, GB 51018 级别 4). SoT 边界同 D1.",
+        "area_ha": 1.5,
+        "area_permanent_ha": 1.5,
+        "area_temporary_ha": 0.0,
+        "within_responsibility_range": true,
+        "evidence_anchor_refs": [
+          {"source_ref": "facts:field.fact.disposal_site.level_assessment[D2]"}
+        ],
+        "normative_basis_refs": [
+          {"ref": "GB 51018-2014", "clause": "§5.7.1 + 表 5.7.1", "authority_class": "mandatory_standard", "precedence_rank": 3},
+          {"ref": "GB 50433-2018", "clause": "第 6 章", "authority_class": "mandatory_standard", "precedence_rank": 3}
+        ],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "zone_id": "zone.construction_living_01",
+        "zone_label": "办公生活区",
+        "zone_parent_type": "construction_living",
+        "description": "矿区办公楼 + 生活配套设施占地 (原样本 '办公生活区' 语义)",
+        "area_ha": 2.0,
+        "area_permanent_ha": 0.0,
+        "area_temporary_ha": 2.0,
+        "within_responsibility_range": true,
+        "evidence_anchor_refs": [
+          {"source_ref": "sample_synthetic_design_intent", "note": "合成样本 — 矿区办公生活配套范围"}
+        ],
+        "normative_basis_refs": [
+          {"ref": "GB 50433-2018", "clause": "第 6 章 + 第 8 章 (临时措施/监测)", "authority_class": "mandatory_standard", "precedence_rank": 3}
+        ],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      }
+    ],
+    "field.fact.prevention.measures_layout": [
+      {
+        "measure_id": "measure.eng_01_drainage_ditch",
+        "measure_name": "浆砌石排水沟",
+        "measure_type": "engineering",
+        "zone_refs": ["zone.spoil_disposal_d1", "zone.spoil_disposal_d2"],
+        "primary_zone_ref": "zone.spoil_disposal_d1",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "弃渣场周界浆砌石排水沟, 断面 0.6×0.6 m",
+        "quantity": 800.0,
+        "unit": "m",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.eng_01"}],
+        "normative_basis_refs": [{"ref": "GB 51018-2014", "clause": "§5.7.1", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.eng_02_retaining_wall",
+        "measure_name": "浆砌石挡渣墙",
+        "measure_type": "engineering",
+        "zone_refs": ["zone.spoil_disposal_d1"],
+        "primary_zone_ref": "zone.spoil_disposal_d1",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "D1 弃渣场下游浆砌石挡渣墙, M10 浆砌石, 高 6 m, 宽 2 m",
+        "quantity": 1200.0,
+        "unit": "m³",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.eng_02"}],
+        "normative_basis_refs": [{"ref": "GB 51018-2014", "clause": "§5.7.1", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.eng_03_rapid_chute",
+        "measure_name": "急流槽",
+        "measure_type": "engineering",
+        "zone_refs": ["zone.spoil_disposal_d1"],
+        "primary_zone_ref": "zone.spoil_disposal_d1",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "混凝土急流槽, 断面 1.0×0.5 m, 跌水消能设计",
+        "quantity": 150.0,
+        "unit": "m",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.eng_03"}],
+        "normative_basis_refs": [{"ref": "GB 51018-2014", "clause": "§5.7.1", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.eng_04_sediment_pond",
+        "measure_name": "沉砂池",
+        "measure_type": "engineering",
+        "zone_refs": ["zone.main_engineering_01"],
+        "primary_zone_ref": "zone.main_engineering_01",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "砖砌沉砂池, 5×3×2 m, 分布于矿区排水系统汇流节点",
+        "quantity": 5.0,
+        "unit": "座",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.eng_04"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.eng_05_dump_reshaping",
+        "measure_name": "排土场整形",
+        "measure_type": "engineering",
+        "zone_refs": ["zone.spoil_disposal_d1", "zone.spoil_disposal_d2"],
+        "primary_zone_ref": "zone.spoil_disposal_d1",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "弃渣场整形 + 坡面平整, 恢复稳定边坡",
+        "quantity": 8.0,
+        "unit": "万m³",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.eng_05"}],
+        "normative_basis_refs": [{"ref": "GB 51018-2014", "clause": "§5.7.1", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.plant_01_grass_seeding",
+        "measure_name": "撒播草籽",
+        "measure_type": "plant",
+        "zone_refs": ["zone.spoil_disposal_d1", "zone.spoil_disposal_d2"],
+        "primary_zone_ref": "zone.spoil_disposal_d1",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "弃渣场整形坡面植草, 混播狗牙根+高羊茅+紫穗槐",
+        "quantity": 6.0,
+        "unit": "hm²",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.plant_01"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.plant_02_shrubs",
+        "measure_name": "种植灌木",
+        "measure_type": "plant",
+        "zone_refs": ["zone.main_engineering_01"],
+        "primary_zone_ref": "zone.main_engineering_01",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "矿区外围防护林带, 紫穗槐+马尾松混交",
+        "quantity": 3.0,
+        "unit": "hm²",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.plant_02"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.plant_03_site_greening",
+        "measure_name": "场区绿化",
+        "measure_type": "plant",
+        "zone_refs": ["zone.construction_living_01"],
+        "primary_zone_ref": "zone.construction_living_01",
+        "source_attribution": "existing_main_engineering",
+        "classification_ref": "cls.site_greening_disposal",
+        "specification": "办公生活区场区绿化 (主体工程已列)",
+        "quantity": 2000.0,
+        "unit": "m²",
+        "quantity_source": "主体工程设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.plant_03"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.temp_01_temp_drainage",
+        "measure_name": "临时排水沟",
+        "measure_type": "temporary",
+        "zone_refs": ["zone.main_engineering_01"],
+        "primary_zone_ref": "zone.main_engineering_01",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "矿区施工期土质临时排水沟, 断面 0.4×0.4 m",
+        "quantity": 500.0,
+        "unit": "m",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.temp_01"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章 (临时措施)", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.temp_02_cover_net",
+        "measure_name": "密目网苫盖",
+        "measure_type": "temporary",
+        "zone_refs": ["zone.spoil_disposal_d1", "zone.spoil_disposal_d2"],
+        "primary_zone_ref": "zone.spoil_disposal_d1",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "弃渣场临时苫盖, 2000 目密目网防止雨季水土流失",
+        "quantity": 20000.0,
+        "unit": "m²",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.temp_02"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章 (临时措施)", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      },
+      {
+        "measure_id": "measure.temp_03_temp_sediment_pond",
+        "measure_name": "临时沉砂池",
+        "measure_type": "temporary",
+        "zone_refs": ["zone.main_engineering_01"],
+        "primary_zone_ref": "zone.main_engineering_01",
+        "source_attribution": "new_in_plan",
+        "classification_ref": null,
+        "specification": "施工期临时沉砂池, 3×2×1.5 m",
+        "quantity": 3.0,
+        "unit": "座",
+        "quantity_source": "水保方案设计",
+        "related_monitoring_refs": [],
+        "evidence_anchor_refs": [{"source_ref": "investment.measures_registry.temp_03"}],
+        "normative_basis_refs": [{"ref": "GB 50433-2018", "clause": "第 6 章 (临时措施)", "authority_class": "mandatory_standard", "precedence_rank": 3}],
+        "authored_by": "cpswc_sample_author",
+        "authored_at": "2026-04-24"
+      }
+    ],
+    "field.fact.measures.classification": [
+      {
+        "classification_id": "cls.site_greening_disposal",
+        "source_item_name": "办公生活区场区绿化 (2000 m²)",
+        "source_item_type": "绿化",
+        "source_item_ref": "",
+        "verdict": "included",
+        "inclusion_reason": "主体工程已列的办公生活区场区绿化具有林草覆盖、减少裸露、固土保水功能, 符合 GB 50433-2018 对水保功能措施的认定; 纳入本方案水保措施体系作为植物措施",
+        "exclusion_reason": "",
+        "partial_scope_note": "",
+        "expert_switch_basis": {
+          "source_rule_id": "rule.gb_50433_2018.chapter_6",
+          "human_decision_question": "主体工程已列的 '办公生活区场区绿化' (2000 m²) 是否具有水土保持功能, 应否纳入本方案水保措施体系?",
+          "decision_owner_role": "registered_wsc_engineer",
+          "default_value": null,
+          "evidence_expectation": "主体施工图 + 植物配置图",
+          "replaced_normative_semantics": [
+            {
+              "rule_ref": "GB 50433-2018 第 6 章",
+              "quoted_phrase": "具有水土保持功能的措施",
+              "why_not_calculable": "'具有水保功能' 的认定依赖对具体工程项的专业判断, 无可计算谓词"
+            }
+          ],
+          "upgrade_path": {
+            "strategy": "irreducible",
+            "irreducibility_justification": "措施界定本质是对 GB 50433-2018 相关条款中 '具有水土保持功能' 的专家解读, 无法算法化 (契约 §6.4)"
+          },
+          "authored_by": "cpswc_sample_author",
+          "authored_at": "2026-04-24"
+        },
+        "resulting_measure_refs": ["measure.plant_03_site_greening"],
+        "evidence_anchor_refs": [
+          {"source_ref": "sample_synthetic_design_intent", "note": "合成样本 — 办公生活区主体已列绿化"}
+        ],
+        "normative_basis_refs": [
+          {"ref": "GB 50433-2018", "clause": "第 6 章 水土流失防治", "authority_class": "mandatory_standard", "precedence_rank": 3}
+        ]
+      }
+    ],
     "field.fact.party.compile_unit": {
       "name": "(合成样本) 样本用编制单位",
       "legal_representative": "(合成)",

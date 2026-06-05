@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CPSWC 水土保持方案智能编制与审查平台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"Noto Sans SC"', '"PingFang SC"', '"Microsoft YaHei"', 'system-ui', 'sans-serif'],
+          serif: ['"Noto Serif SC"', 'Georgia', 'serif'],
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        },
+        colors: {
+          ink: {
+            900: '#0f1b2d', 800: '#16263d', 700: '#1f3350', 600: '#2c4366',
+          },
+          brand: {
+            50:'#eef4fb',100:'#d6e6f6',200:'#aecdee',300:'#7faede',400:'#4f88c9',
+            500:'#2f6bb3',600:'#205394',700:'#1b4178',800:'#193760',900:'#172d4d',950:'#0f1d33'
+          },
+          teal: {
+            500:'#0f9b8e',600:'#0c7f76',700:'#0b665f'
+          }
+        }
+      }
+    }
+  }
+</script>
+<style>
+  html, body, #root { height: 100%; }
+  body { margin: 0; background: #eef1f5; color: #1f2733; }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-thumb { background: #c5ccd6; border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
+  *::-webkit-scrollbar-thumb:hover { background: #aab3c0; background-clip: content-box; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  .tabular { font-variant-numeric: tabular-nums; }
+  .a4-shadow { box-shadow: 0 1px 2px rgba(16,29,51,.08), 0 8px 30px rgba(16,29,51,.10); }
+  .panel-shadow { box-shadow: 0 1px 0 rgba(16,29,51,.04), 0 1px 3px rgba(16,29,51,.06); }
+  .diff-add { background: #e7f6ec; }
+  .diff-del { background: #fdeaea; text-decoration: line-through; color: #b04141; }
+  .diff-chg { background: #fdf4e3; }
+  [contenteditable]:focus { outline: 2px solid #4f88c9; outline-offset: 2px; border-radius: 3px; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="pages/Overview.jsx"></script>
+<script type="text/babel" src="pages/Facts.jsx"></script>
+<script type="text/babel" src="pages/Rules.jsx"></script>
+<script type="text/babel" src="pages/Calculators.jsx"></script>
+<script type="text/babel" src="pages/Tables.jsx"></script>
+<script type="text/babel" src="pages/Maps.jsx"></script>
+<script type="text/babel" src="pages/Narrative.jsx"></script>
+<script type="text/babel" src="pages/Footnotes.jsx"></script>
+<script type="text/babel" src="pages/ChangeTracking.jsx"></script>
+<script type="text/babel" src="pages/Delivery.jsx"></script>
+<script type="text/babel" src="pages/History.jsx"></script>
+<script type="text/babel" src="pages/Auth.jsx"></script>
+<script type="text/babel" src="pages/Workspace.jsx"></script>
+<script type="text/babel" src="pages/Wizard.jsx"></script>
+<script type="text/babel" src="pages/IntakeWizard.jsx"></script>
+<script type="text/babel" src="App.jsx"></script>
+<script type="text/babel" src="Root.jsx"></script>
+</body>
+</html>

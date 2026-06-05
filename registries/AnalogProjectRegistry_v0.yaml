@@ -1,0 +1,70 @@
+# AnalogProjectRegistry v0
+#
+# 水土流失预测类比工程登记表 (G-11)
+#
+# 用途:
+#   narrative §7.4.3 (sec.soil_loss_analysis.prediction_result) 在采用类比法时,
+#   必须实名引用一个真实存在的、已通过水保方案审批的类比工程, 并给出
+#   与本项目的 6 维度可比性论证 (地理位置 / 气候 / 土壤 / 植被 / 地形 / 水保状况);
+#   不允许用"匿名典型经验值"代替类比工程实名.
+#
+# 字段引用方:
+#   field.fact.prediction.analog_project_ref — 项目级 binding (string id)
+#
+# 来源:
+#   v0 初始库基于惠州 4 份真实房地产/工业建设样稿 §7.4.3 中实际引用的类比工程
+#   提取; 后续随样稿 dossier 02-05 推进扩库.
+#
+# 注意:
+#   - 模数 zone_modulus 单位 t/(km²·a); 施工期 / 自然恢复期分列
+#   - 模数值取自类比工程"实测监测数据"或其方案附表, 不允许凭经验估算
+#   - 类比工程的"适用行业 / 适用地区"是软约束, 选取时须人工复核可比性
+
+registry_id: AnalogProjectRegistry_v0
+registry_version: v0
+
+analog_projects:
+
+  - id: hz_biguiyuan
+    name: 惠阳碧桂园项目
+    project_type: 房地产/城建
+    location: 广东省惠州市惠阳区
+    citation_source: 惠阳碧桂园项目水土保持监测报告 (含施工期实测数据)
+    # 6 维度可比性基线 (用于自动生成§7.4.3 对照表)
+    comparability_baseline:
+      geographic: 广东省惠州市
+      climate_zone: 南亚热带季风
+      annual_rainfall_mm: 1768.2
+      rainfall_distribution: 年内分配不均匀, 主要集中在 4~9 月份
+      soil_type: 赤红壤
+      vegetation_desc: 人工植被为主, 植被覆盖度高
+      terrain_type: 低丘平原
+      erosion_dominant_type: 水力侵蚀
+      erosion_intensity_baseline: 轻度
+      soil_conservation_status: 水土保持状况良好
+      tolerable_loss_t_per_km2_yr: 500
+    # 类比工程实测的各扰动地表分区年均土壤侵蚀强度
+    # 命名沿用样稿 §7.4.3 表 7.4-3 风格 (住宅区 / 公建区 / 道路区 / 绿化区 / 临时堆土区 / 自然恢复期)
+    zone_modulus:
+      construction:
+        住宅区:    4000
+        公建区:    3500
+        道路区:    3000
+        绿化区:    2500
+        临时堆土区: 13000
+      recovery:
+        自然恢复期: 1000
+    # 适用域 (软约束, 选取仍需人工复核)
+    applicability:
+      project_types:
+        - 房地产
+        - 城建
+        - 产业园建设
+      region:
+        - 广东省珠三角
+        - 惠州
+        - 深圳
+        - 东莞
+        - 广州
+      preferred_climate: 南亚热带季风
+    audit_status: 已用于多份惠州房地产/产业园项目水保方案审批 (含 01 惠南智谷)

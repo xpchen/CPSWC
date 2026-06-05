@@ -205,6 +205,7 @@ def load_all_registries(specs_dir: Path | None = None) -> dict:
         "assurances":  d / "AssuranceRegistry_v0.yaml",
         "calculators": d / "CalculatorRegistry_v0.yaml",
         "sensitive_area_types": d / "SensitiveAreaTypeRegistry_v0.yaml",
+        "analog_projects":      d / "AnalogProjectRegistry_v0.yaml",
     }
     loaded = {}
     for name, path in files.items():

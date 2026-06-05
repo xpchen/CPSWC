@@ -670,6 +670,23 @@ artifacts:
       - field.fact.land.county_breakdown
     renderer: TableProjection
 
+  art.table.prediction.analog_comparison:
+    kind: table
+    canonical_name: 类比工程可比性对照表
+    source: 2026_template_6_2
+    requirement: always
+    applicable_species: [报告书, 报告表]
+    chapter_ref: sec.soil_loss_analysis.prediction_result
+    data_source_refs:
+      - field.fact.prediction.analog_project_ref
+      - registry.analog_project_v0
+    renderer: TableProjection
+    note: |
+      6 行 × 2 列 (本项目 vs 类比工程, 6 维度: 地理位置 / 气候 / 土壤 /
+      植被 / 地形 / 水保现状). 对位样稿表 7.4-2.
+      v0 narrative 默认采用类比法预测, 因此本表 always; 若未绑定
+      AnalogProjectRegistry, render 时输出"待绑定"占位行而非空白.
+
   art.table.prediction.result:
     kind: table
     canonical_name: 水土流失预测成果表

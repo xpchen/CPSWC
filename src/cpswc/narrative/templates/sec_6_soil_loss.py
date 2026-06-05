@@ -94,13 +94,14 @@ def render_current_state(facts: dict, derived: dict, triggered: set[str],
 # ── sec.soil_loss_analysis.prediction_result ─────────────────
 
 SPEC_PREDICTION = NarrativeTemplateSpec(
-    template_id="nt.sec_6_2.prediction_result.v2",
+    template_id="nt.sec_6_2.prediction_result.v3",
     section_id="sec.soil_loss_analysis.prediction_result",
-    template_version="v2",
-    template_author="cpswc_v1",
+    template_version="v3",
+    template_author="cpswc_v0.6",
     normative_basis=[
         "rule.template_2026.section_6",
         "standard.gb_50433_2018.section_6",
+        "registry.analog_project_v0",
     ],
     supported_variants=["default"],
     input_fields=[
@@ -109,8 +110,26 @@ SPEC_PREDICTION = NarrativeTemplateSpec(
         "field.fact.land.total_area",
         "field.fact.schedule.start_time",
         "field.fact.schedule.end_time",
+        "field.fact.prediction.analog_project_ref",
     ],
 )
+
+
+def _load_analog_project(analog_id: str) -> dict | None:
+    """从 AnalogProjectRegistry_v0 取出指定 id 的类比工程档案; 找不到返回 None."""
+    if not analog_id:
+        return None
+    import yaml
+    from pathlib import Path
+    reg_path = Path(__file__).resolve().parents[3].parent / "registries" / "AnalogProjectRegistry_v0.yaml"
+    if not reg_path.exists():
+        return None
+    with reg_path.open(encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    for ap in data.get("analog_projects") or []:
+        if isinstance(ap, dict) and ap.get("id") == analog_id:
+            return ap
+    return None
 
 
 def render_prediction(facts: dict, derived: dict, triggered: set[str],
@@ -123,22 +142,83 @@ def render_prediction(facts: dict, derived: dict, triggered: set[str],
 
     paragraphs = []
 
-    # P1: Method and scope
+    # P1: Method and scope (含类比工程实名)
     unit_count = len(set(r.zone_id for r in result.zone_results))
+    analog_ref = facts.get("field.fact.prediction.analog_project_ref")
+    analog = _load_analog_project(analog_ref) if isinstance(analog_ref, str) else None
+
+    if analog:
+        analog_name = analog.get("name", analog_ref)
+        analog_loc = analog.get("location", "—")
+        analog_src = analog.get("citation_source", "—")
+        method_clause = (
+            f"本项目采用类比分析法进行水土流失预测，"
+            f"经筛选确定"
+            f"“{analog_name}”（{analog_loc}）"
+            f"为类比工程，数据来源：{analog_src}。"
+        )
+        method_evidence = [
+            "field.fact.natural.original_erosion_modulus",
+            "field.fact.land.total_area",
+            "field.fact.land.county_breakdown",
+            "field.fact.prediction.analog_project_ref",
+            "registry.analog_project_v0",
+        ]
+    else:
+        method_clause = (
+            f"本项目采用类比法进行水土流失预测（类比工程未实名引用，"
+            f"待审查前补全 AnalogProjectRegistry 绑定）。"
+        )
+        method_evidence = [
+            "field.fact.natural.original_erosion_modulus",
+            "field.fact.land.total_area",
+            "field.fact.land.county_breakdown",
+        ]
+
     paragraphs.append(NarrativeParagraph(
         text=(
-            f"本项目采用类比法进行水土流失预测。"
+            f"{method_clause}"
             f"预测范围为项目防治责任范围（{total_area}），"
             f"共划分{unit_count}个预测单元。"
             f"原地貌土壤侵蚀模数{bg_modulus}。"
         ),
-        evidence_refs=[
-            "field.fact.natural.original_erosion_modulus",
-            "field.fact.land.total_area",
-            "field.fact.land.county_breakdown",
-        ],
+        evidence_refs=method_evidence,
         source_rule_refs=["rule.template_2026.section_6"],
     ))
+
+    # P1b: 类比工程 6 维度可比性论证段 (仅在绑定时生成)
+    if analog:
+        b = analog.get("comparability_baseline") or {}
+        comp_parts = []
+        if b.get("geographic"):
+            comp_parts.append(f"地理位置同属{b['geographic']}")
+        if b.get("climate_zone"):
+            rain = b.get("annual_rainfall_mm")
+            rain_clause = f"多年平均降雨量约 {rain}mm" if rain else ""
+            comp_parts.append(f"气候同为{b['climate_zone']}{('，' + rain_clause) if rain_clause else ''}")
+        if b.get("soil_type"):
+            comp_parts.append(f"土壤同以{b['soil_type']}为主")
+        if b.get("vegetation_desc"):
+            comp_parts.append(f"植被均为{b['vegetation_desc']}")
+        if b.get("terrain_type"):
+            comp_parts.append(f"地形地貌相近（类比工程为{b['terrain_type']}）")
+        if b.get("soil_conservation_status"):
+            comp_parts.append(f"水土保持现状{b['soil_conservation_status']}")
+        if comp_parts:
+            paragraphs.append(NarrativeParagraph(
+                text=(
+                    "类比工程与本项目可比性分析："
+                    + "；".join(comp_parts)
+                    + "。两项目基本相同，具有较强可比性，"
+                    "其各扰动地表分区年均土壤侵蚀模数实测值可用于本项目预测取值。"
+                ),
+                evidence_refs=[
+                    "field.fact.prediction.analog_project_ref",
+                    "registry.analog_project_v0",
+                    "art.table.prediction.analog_comparison",
+                ],
+                source_rule_refs=["rule.template_2026.section_6"],
+            ))
 
     # P2: Results summary
     summary_c = result.summary_by_period.get("施工期", {})

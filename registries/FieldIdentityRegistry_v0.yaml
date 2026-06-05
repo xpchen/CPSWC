@@ -961,6 +961,20 @@ fields:
         - art.table.prediction.erosion_modulus
         - sec.soil_loss_analysis.prediction_result
 
+  field.fact.prediction.analog_project_ref:
+    canonical_name: 类比工程引用
+    semantic_type: string
+    protection_level: PROTECTED
+    source: user_input
+    note: |
+      可选但强烈推荐。指向 AnalogProjectRegistry_v0 中的类比工程 id (如 'hz_biguiyuan')。
+      narrative §7.4.3 将据此实名引用类比工程并自动生成 6 维度可比性对照表;
+      未设置时退回到 "采用类比法 (经验值)" 的弱表述, 审查会被退回要求补全.
+    lineage:
+      projection_target_refs:
+        - art.table.prediction.analog_comparison
+        - sec.soil_loss_analysis.prediction_result
+
   # -------- 防治责任范围与��标 --------
   field.fact.prevention.responsibility_range_area:
     canonical_name: 防治责任范围面积

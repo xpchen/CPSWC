@@ -102,6 +102,7 @@
     "field.fact.natural.key_prevention_treatment_areas": [],
     "field.fact.natural.other_sensitive_areas": [],
 
+    "field.fact.prediction.analog_project_ref": "hz_biguiyuan",
     "field.fact.prediction.total_loss": {"value": 285, "unit": "t", "precision": 1},
     "field.fact.prediction.new_loss": {"value": 248, "unit": "t", "precision": 1},
     "field.fact.prediction.reducible_loss": {"value": 248, "unit": "t", "precision": 1},

@@ -389,6 +389,7 @@
         "approval_status": "已通过惠阳区自然资源局不可避让论证预审, 待水保方案审批一并确认"
       }
     ],
+    "field.fact.prediction.analog_project_ref": "hz_biguiyuan",
     "field.fact.prediction.total_loss": {
       "value": 350,
       "unit": "t",

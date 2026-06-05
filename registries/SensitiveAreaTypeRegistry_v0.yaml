@@ -1,0 +1,117 @@
+# SensitiveAreaTypeRegistry v0
+#
+# 水土保持敏感区"逐项排查"清单 (G-09)
+#
+# 用途:
+#   narrative §2.x 敏感区 / §5.1 选址评价 强制按本清单逐项排查;
+#   命中清单 facts.natural.other_sensitive_areas 中的 area_type 必须出自本表;
+#   未命中的类型由 narrative 模板生成 "项目区不涉及..." 单句汇总段落.
+#
+# 来源:
+#   清单 1~10 来源于 GB 50433-2018 §2.5 + 2018 模板示范用语 (惠州 4 份房地产/工业样稿一致采用);
+#   清单 11 (生态保护红线) 为 2018+ "三区三线" 政策核心红线, 必查;
+#   清单 12 (永久基本农田) 由 2026 模板 §2.5 显式增列.
+#
+# 不在本表的类型 (基本草原 / 国家公益林 / 自然保护地 umbrella) 已并入 5-10 子类或
+# 移出 v0 canonical; 若审查口径要求, 可在后续版本扩列.
+#
+# 与 FieldIdentityRegistry.field.fact.natural.other_sensitive_areas.area_type 保持一致.
+
+registry_id: SensitiveAreaTypeRegistry_v0
+registry_version: v0
+canonical_audit_count: 12
+
+types:
+  - code: watershed_mgmt
+    display_name: 流域管理范围
+    category: water_resource
+    citation_basis:
+      - GB 50433-2018 §2.5
+      - 《中华人民共和国水法》
+    audit_authority: 流域管理机构 / 省级水行政主管部门
+
+  - code: river_lake_mgmt
+    display_name: 河湖管理范围
+    category: water_resource
+    citation_basis:
+      - 《中华人民共和国水法》
+      - 《河道管理条例》
+    audit_authority: 县级以上水行政主管部门
+
+  - code: drinking_water_protect
+    display_name: 饮用水水源保护区
+    category: water_supply
+    citation_basis:
+      - 《中华人民共和国水污染防治法》
+      - GB 5749 / GB 3838
+    audit_authority: 省级生态环境主管部门
+
+  - code: water_function_class_1
+    display_name: 水功能一级区（保护区与保留区）
+    category: water_resource
+    citation_basis:
+      - 全国水功能区划
+      - 《中华人民共和国水法》
+    audit_authority: 流域 / 省级水行政主管部门
+
+  - code: nature_reserve
+    display_name: 自然保护区
+    category: nature_protect
+    citation_basis:
+      - 《中华人民共和国自然保护区条例》
+      - 国务院 2019 关于建立以国家公园为主体的自然保护地体系的指导意见
+    audit_authority: 国务院 / 省级人民政府
+
+  - code: world_heritage
+    display_name: 世界文化和自然遗产地
+    category: cultural_natural_heritage
+    citation_basis:
+      - 《保护世界文化和自然遗产公约》
+      - 《世界文化遗产保护管理办法》
+    audit_authority: 国家文物局 / 国家林草局
+
+  - code: scenic_area
+    display_name: 风景名胜区
+    category: nature_protect
+    citation_basis:
+      - 《风景名胜区条例》
+    audit_authority: 国务院 / 省级人民政府
+
+  - code: geo_park
+    display_name: 地质公园
+    category: nature_protect
+    citation_basis:
+      - 《国家地质公园管理办法》
+    audit_authority: 自然资源部 / 省级自然资源主管部门
+
+  - code: forest_park
+    display_name: 森林公园
+    category: nature_protect
+    citation_basis:
+      - 《森林公园管理办法》
+    audit_authority: 国家林草局 / 省级林草主管部门
+
+  - code: wetland_important
+    display_name: 重要湿地
+    category: nature_protect
+    citation_basis:
+      - 《中华人民共和国湿地保护法》
+      - 《国家重要湿地确认办法》
+    audit_authority: 国家林草局 / 省级湿地主管部门
+
+  - code: eco_redline
+    display_name: 生态保护红线
+    category: ecological_redline
+    citation_basis:
+      - 中共中央办公厅 国务院办公厅 关于划定并严守生态保护红线的若干意见 (2017)
+      - 各省生态保护红线划定方案
+    audit_authority: 省级人民政府 / 自然资源主管部门
+    note: 2018+ "三区三线" 核心红线, 项目选址必查
+
+  - code: basic_farmland_permanent
+    display_name: 永久基本农田
+    category: land_resource
+    citation_basis:
+      - 《基本农田保护条例》
+      - 《中华人民共和国土地管理法》
+    audit_authority: 自然资源部 / 县级以上自然资源主管部门

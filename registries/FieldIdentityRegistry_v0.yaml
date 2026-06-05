@@ -874,8 +874,10 @@ fields:
   field.fact.natural.other_sensitive_areas:
     canonical_name: 其他敏感区命中清单
     semantic_type: list_of_records
+    # area_type 取自 SensitiveAreaTypeRegistry_v0.yaml 的 12 类 canonical 清单
+    # narrative §2.x / §5.1 按 registry 全量逐项排查, 命中项详述, 未命中项汇总成单句 "不涉及..."
     record_schema:
-      area_type: enum[饮用水水源保护区, 河湖管理范围, 永久基本农田, 基本草原, 国家公益林, 生态保护红线, 自然保护地]
+      area_type: enum[流域管理范围, 河湖管理范围, 饮用水水源保护区, 水功能一级区（保护区与保留区）, 自然保护区, 世界文化和自然遗产地, 风景名胜区, 地质公园, 森林公园, 重要湿地, 生态保护红线, 永久基本农田]
       name: string
       spatial_relation: string
       approval_status: string

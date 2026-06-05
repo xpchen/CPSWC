@@ -726,6 +726,37 @@ fields:
         - proj.report_form.earthwork_comprehensive_reuse
         - sec.evaluation.earthwork_balance
 
+  field.fact.disposal.external_receivers:
+    canonical_name: 弃方外运接收方清单
+    semantic_type: list_of_records
+    # 弃方综合利用消纳到外部项目时, 每条记录追溯一个接收项目
+    # 与样稿 §4.4.4 弃方处置 + 附件 9 (接收方水保批复书) 对位
+    record_schema:
+      receiver_project_name: string         # 接收项目实名
+      receiver_location: string             # 接收项目位置
+      distance_km: float                    # 运距 km
+      transport_route: string               # 运输路线 (路名)
+      volume_received: Volume               # {value, unit=万m³}
+      timing_window: string                 # 弃置时间窗
+      receiver_swc_status: enum[已批复, 在编, 未编]  # 接收方水保方案状态
+      receiver_swc_approval_id: string      # 水保方案批复文号 (when 已批复)
+      receiver_swc_approval_attachment: string  # 批复附件号 (如 "附件9")
+      ownership_relation_statement: string  # 双方权属关系说明 (附件挂钩)
+    protection_level: CRITICAL
+    source: 2026_template_section_4_4_4
+    note: |
+      G-06 (Step 53-A3): 样稿 §4.4.4 弃方去向是审查重点中的重点 ——
+      接收方水保方案必须已批复或在编, 必须附挂批复书或在编证明.
+      未填或填了但 status="未编" 时, 审查会被退回.
+    lineage:
+      upstream_deps:
+        - field.fact.earthwork.spoil
+        - field.fact.earthwork.comprehensive_reuse
+      projection_target_refs:
+        - sec.disposal_site.source_and_flow
+        - sec.evaluation.earthwork_balance
+        - sec.conclusion.summary
+
   # -------- 表土 (独立于土石方) --------
   field.fact.topsoil.excavation:
     canonical_name: 挖方/表土

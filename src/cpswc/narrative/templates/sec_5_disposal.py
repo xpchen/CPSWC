@@ -19,10 +19,10 @@ from cpswc.narrative.contract import (
 
 
 TEMPLATE_SPEC_5_1 = NarrativeTemplateSpec(
-    template_id="nt.sec_5_1.disposal_flow.v1",
+    template_id="nt.sec_5_1.disposal_flow.v2",
     section_id="sec.disposal_site.source_and_flow",
-    template_version="v1",
-    template_author="cpswc_v0.5",
+    template_version="v2",
+    template_author="cpswc_v0.6",
     normative_basis=[
         "rule.template_2026.section_5_1",
         "rule.gb_51018_2014.section_5_7_1",
@@ -34,6 +34,7 @@ TEMPLATE_SPEC_5_1 = NarrativeTemplateSpec(
         "field.fact.disposal_site.level_assessment",
         "field.derived.disposal_site.level_assessment",
         "field.fact.construction.temp_topsoil_site",
+        "field.fact.disposal.external_receivers",
     ],
 )
 
@@ -88,6 +89,7 @@ def _render_5_1_no_site(facts: dict, derived: dict) -> NarrativeBlock:
     reuse = _v(facts, "field.fact.earthwork.comprehensive_reuse")
     temp_sites = facts.get("field.fact.construction.temp_topsoil_site") or []
     temp_count = len(temp_sites)
+    receivers = facts.get("field.fact.disposal.external_receivers") or []
 
     paragraphs = [
         NarrativeParagraph(
@@ -102,6 +104,64 @@ def _render_5_1_no_site(facts: dict, derived: dict) -> NarrativeBlock:
             source_rule_refs=["rule.template_2026.section_5_1"],
         ),
     ]
+
+    # G-06: 弃方外运接收方逐条实名 + 接收方水保方案状态 + 附件挂钩
+    for r in receivers:
+        if not isinstance(r, dict):
+            continue
+        name = r.get("receiver_project_name", "—")
+        loc = r.get("receiver_location", "")
+        vol = r.get("volume_received") or {}
+        if isinstance(vol, dict):
+            vol_str = f"{vol.get('value', '?')} {vol.get('unit', '万m³')}".strip()
+        else:
+            vol_str = str(vol)
+        dist = r.get("distance_km")
+        dist_str = f"，运距约 {dist} km" if dist not in (None, "") else ""
+        route = r.get("transport_route") or ""
+        route_str = f"，经{route}运输" if route else ""
+        timing = r.get("timing_window") or ""
+        timing_str = f"，弃置时间窗：{timing}" if timing else ""
+
+        status = r.get("receiver_swc_status", "未编")
+        approval_id = r.get("receiver_swc_approval_id") or ""
+        attach = r.get("receiver_swc_approval_attachment") or ""
+        ownership = r.get("ownership_relation_statement") or ""
+
+        if status == "已批复":
+            parts_ok = []
+            if approval_id:
+                parts_ok.append(f"批复文号{approval_id}")
+            if attach:
+                parts_ok.append(f"详见{attach}")
+            tail = f"（{'，'.join(parts_ok)}）" if parts_ok else ""
+            status_clause = f"接收方水土保持方案已取得批复{tail}"
+        elif status == "在编":
+            status_clause = "接收方水土保持方案目前正在编制中"
+        else:
+            status_clause = "⚠️ 接收方水土保持方案尚未编制（审查将退回，须先取得批复或在编证明）"
+
+        ownership_clause = f"双方权属关系详见{ownership}" if ownership else ""
+
+        loc_clause = f"（{loc}）" if loc else ""
+        paragraphs.append(NarrativeParagraph(
+            text=(
+                f"弃方 {vol_str} 全部运至 “{name}” {loc_clause}回填利用"
+                f"{dist_str}{route_str}{timing_str}。"
+                f"{status_clause}。"
+                f"运至接收场地后，水土保持防治责任由接收方承担。"
+                f"{ownership_clause}"
+            ).strip(),
+            evidence_refs=[
+                "field.fact.disposal.external_receivers",
+                "field.fact.earthwork.spoil",
+                "field.fact.earthwork.comprehensive_reuse",
+            ],
+            source_rule_refs=[
+                "rule.template_2026.section_5_1",
+                "rule.template_2026.section_4_4_4",
+            ],
+        ))
 
     if temp_count > 0:
         site_names = "、".join(

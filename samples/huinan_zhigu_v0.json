@@ -78,9 +78,23 @@
     "field.fact.earthwork.excavation": {"value": 0.76, "unit": "万m³", "precision": 0.01},
     "field.fact.earthwork.fill": {"value": 0.36, "unit": "万m³", "precision": 0.01},
     "field.fact.earthwork.self_reuse": {"value": 0.36, "unit": "万m³", "precision": 0.01},
-    "field.fact.earthwork.comprehensive_reuse": {"value": 0.0, "unit": "万m³", "precision": 0.01},
+    "field.fact.earthwork.comprehensive_reuse": {"value": 0.40, "unit": "万m³", "precision": 0.01},
     "field.fact.earthwork.spoil": {"value": 0.40, "unit": "万m³", "precision": 0.01},
     "field.fact.earthwork.borrow": {"value": 0.0, "unit": "万m³", "precision": 0.01},
+    "field.fact.disposal.external_receivers": [
+      {
+        "receiver_project_name": "惠南高新科技产业园二期 B 片新型城镇化建设项目",
+        "receiver_location": "数码工业园北侧（项目北侧）",
+        "distance_km": 2.6,
+        "transport_route": "华泰路—广泰北路",
+        "volume_received": {"value": 0.40, "unit": "万m³"},
+        "timing_window": "2022 年 6~7 月",
+        "receiver_swc_status": "已批复",
+        "receiver_swc_approval_id": "惠南二期 B 片一期工程水保方案批复",
+        "receiver_swc_approval_attachment": "附件 9",
+        "ownership_relation_statement": "附件 8（惠州仲恺高新区恺建投资开发有限公司与惠州市惠南科技园投资开发有限公司关系说明）"
+      }
+    ],
 
     "field.fact.topsoil.stripable_area": {"value": 0.02, "unit": "hm²", "precision": 0.01},
     "field.fact.topsoil.stripable_volume": {"value": 0.01, "unit": "万m³", "precision": 0.01},

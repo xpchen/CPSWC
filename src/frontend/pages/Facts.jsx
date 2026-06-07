@@ -2,17 +2,24 @@
 // 页 2 事实填报
 // ===================================================================
 const FACT_CATS = [
-  { id:'basic',   name:'项目基本信息', icon:'FileSpreadsheet', done:12, total:13 },
-  { id:'content', name:'建设内容',     icon:'Building2', done:5, total:6 },
-  { id:'land',    name:'占地与土石方', icon:'Layers', done:7, total:7 },
-  { id:'topsoil', name:'表土剥离与回覆', icon:'Mountain', done:2, total:3 },
-  { id:'scope',   name:'防治责任范围', icon:'SquareDashed', done:3, total:3 },
-  { id:'predict', name:'水土流失预测', icon:'TrendingDown', done:4, total:4 },
-  { id:'measure', name:'防治措施体系', icon:'ShieldPlus', done:12, total:14 },
-  { id:'invest',  name:'投资估算',     icon:'Coins', done:3, total:5 },
-  { id:'monitor', name:'监测与管理',   icon:'Activity', done:4, total:4 },
-  { id:'attach',  name:'附件材料',     icon:'Paperclip', done:6, total:8 },
+  { id:'basic',     name:'项目基本信息', icon:'FileSpreadsheet', done:12, total:13 },
+  { id:'content',   name:'建设内容',     icon:'Building2', done:5, total:6 },
+  { id:'land',      name:'占地与土石方', icon:'Layers', done:7, total:7 },
+  { id:'topsoil',   name:'表土剥离与回覆', icon:'Mountain', done:2, total:3 },
+  { id:'scope',     name:'防治责任范围', icon:'SquareDashed', done:3, total:3 },
+  { id:'sensitive', name:'敏感区逐项排查', icon:'ShieldAlert', done:12, total:12 }, // G-09
+  { id:'predict',   name:'水土流失预测', icon:'TrendingDown', done:4, total:4 },
+  { id:'disposal',  name:'弃方外运接收方', icon:'Truck', done:1, total:1 }, // G-06
+  { id:'measure',   name:'防治措施体系', icon:'ShieldPlus', done:12, total:14 },
+  { id:'invest',    name:'投资估算',     icon:'Coins', done:3, total:5 },
+  { id:'monitor',   name:'监测与管理',   icon:'Activity', done:4, total:4 },
+  { id:'attach',    name:'附件材料',     icon:'Paperclip', done:6, total:8 },
 ];
+
+// Phase A 落地数据 (Step 53-A1/A2/A3 落地于 facts 层)
+const SENSITIVE_AREAS_12  = window.CPSWC.SENSITIVE_AREAS_12  || [];
+const ANALOG_PROJECTS     = window.CPSWC.ANALOG_PROJECTS     || [];
+const DISPOSAL_RECEIVERS  = window.CPSWC.DISPOSAL_RECEIVERS  || [];
 
 const FACT_FIELDS = {
   basic: [
@@ -433,11 +440,125 @@ function FactsPage() {
             </div>
           )}
 
-          <div className="space-y-2.5">
-            {fields.map(f => (
-              <FieldRow key={f.id} f={f} active={active===f.id} onClick={()=>setActive(f.id)} simulated={simulated && f.id==='land.total_area'} />
-            ))}
-          </div>
+          {/* Phase A · G-09 敏感区逐项排查 */}
+          {cat === 'sensitive' && (
+            <Panel title="敏感区 12 类逐项排查"
+              sub="源 · SensitiveAreaTypeRegistry_v0 · 命中清单回写 field.fact.natural.other_sensitive_areas"
+              right={<Chip tone="emerald" icon="ShieldCheck">命中 0 / 12</Chip>}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[12px]">
+                  <thead className="bg-slate-50 text-[10.5px] text-slate-500">
+                    <tr>
+                      <th className="text-left font-medium px-3 py-2 w-10">#</th>
+                      <th className="text-left font-medium px-3 py-2">类型</th>
+                      <th className="text-left font-medium px-3 py-2">code</th>
+                      <th className="text-left font-medium px-3 py-2">审批主体</th>
+                      <th className="text-left font-medium px-3 py-2">排查结论</th>
+                      <th className="text-left font-medium px-3 py-2 w-16">状态</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {SENSITIVE_AREAS_12.map((s, i) => (
+                      <tr key={s.code} className="border-t border-slate-100">
+                        <td className="px-3 py-2 text-slate-400 tabular">{i+1}</td>
+                        <td className="px-3 py-2 text-slate-800 font-medium">{s.name}</td>
+                        <td className="px-3 py-2 font-mono text-[10.5px] text-brand-700">{s.code}</td>
+                        <td className="px-3 py-2 text-slate-500">{s.authority}</td>
+                        <td className="px-3 py-2 text-slate-600">{s.conclusion}</td>
+                        <td className="px-3 py-2"><StatusTag status={s.hit ? '已命中' : '不适用'} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+          )}
+
+          {/* Phase A · G-06 弃方外运接收方实名 */}
+          {cat === 'disposal' && (
+            <Panel title="弃方外运接收方实名 + 批复挂钩"
+              sub="源 · field.fact.disposal.external_receivers · narrative §5.disposal v2"
+              right={<Chip tone="emerald" icon="ShieldCheck">已批复</Chip>}>
+              <div className="p-4 space-y-3">
+                {DISPOSAL_RECEIVERS.map((r, i) => (
+                  <div key={i} className="rounded-lg border border-slate-200 bg-white p-3.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-[13px] font-semibold text-slate-800">{r.receiver_project_name}</div>
+                      <StatusTag status={r.receiver_swc_status} dot />
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[11.5px]">
+                      <Field k="接收方位置" v={r.receiver_location} />
+                      <Field k="运距" v={`${r.distance_km} km`} mono />
+                      <Field k="运输路线" v={r.transport_route} />
+                      <Field k="接收量" v={`${r.volume_received.value} ${r.volume_received.unit}`} mono />
+                      <Field k="时间窗口" v={r.timing_window} />
+                      <Field k="接收方水保批复" v={r.receiver_swc_approval_id} />
+                    </div>
+                    <div className="mt-2.5 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] text-slate-500">
+                      <div className="flex items-start gap-1.5"><Icon name="Paperclip" size={12} className="mt-0.5 text-slate-400"/><span>批复证明：{r.receiver_swc_approval_attachment}</span></div>
+                      <div className="flex items-start gap-1.5"><Icon name="Network" size={12} className="mt-0.5 text-slate-400"/><span>权属关系：{r.ownership_relation_statement}</span></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          )}
+
+          {/* Phase A · 普通分类的字段行 */}
+          {cat !== 'sensitive' && cat !== 'disposal' && (
+            <div className="space-y-2.5">
+              {fields.map(f => (
+                <FieldRow key={f.id} f={f} active={active===f.id} onClick={()=>setActive(f.id)} simulated={simulated && f.id==='land.total_area'} />
+              ))}
+            </div>
+          )}
+
+          {/* Phase A · G-11 类比工程实名 (附在水土流失预测末尾) */}
+          {cat === 'predict' && ANALOG_PROJECTS.length > 0 && (
+            <div className="mt-4">
+              <Panel title="类比工程实名 + 6 维可比性"
+                sub="源 · AnalogProjectRegistry_v0 · narrative §7.4.3 表 7.4-3"
+                right={<Chip tone="brand" icon="Link2">field.fact.prediction.analog_project_ref</Chip>}>
+                <div className="p-4 space-y-3">
+                  {ANALOG_PROJECTS.map(ap => (
+                    <div key={ap.id} className="rounded-lg border border-slate-200 bg-white p-3.5">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <div className="text-[13px] font-semibold text-slate-800">{ap.name}</div>
+                          <div className="text-[11px] text-slate-400 mt-0.5">{ap.project_type} · {ap.location}</div>
+                        </div>
+                        <Chip tone="emerald" icon="ShieldCheck">{ap.audit_status.includes('已用于') ? '审批已采纳' : '可比'}</Chip>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[11.5px]">
+                          <thead className="text-[10.5px] text-slate-400">
+                            <tr><th className="text-left font-medium px-2 py-1.5 w-16">维度</th>
+                                <th className="text-left font-medium px-2 py-1.5">本项目</th>
+                                <th className="text-left font-medium px-2 py-1.5">类比工程</th>
+                                <th className="text-left font-medium px-2 py-1.5 w-20">结论</th></tr>
+                          </thead>
+                          <tbody>
+                            {ap.comparability.map(c => (
+                              <tr key={c.dim} className="border-t border-slate-100">
+                                <td className="px-2 py-1.5 text-slate-600">{c.dim}</td>
+                                <td className="px-2 py-1.5 text-slate-700">{c.self}</td>
+                                <td className="px-2 py-1.5 text-slate-700">{c.analog}</td>
+                                <td className="px-2 py-1.5"><StatusTag status={c.ok ? '一致' : '不一致'} /></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="mt-2.5 pt-2.5 border-t border-slate-100 text-[11px] text-slate-500 flex items-start gap-1.5">
+                        <Icon name="Quote" size={12} className="mt-0.5 text-slate-400"/>
+                        <span>引用：{ap.citation_source}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+            </div>
+          )}
           {simulated && !isBasic && (
             <div className="mt-4 flex items-start gap-2.5 p-3.5 rounded-lg bg-orange-50 border border-orange-200 text-[12.5px] text-orange-800">
               <Icon name="Zap" size={16} className="text-orange-500 shrink-0 mt-0.5"/>

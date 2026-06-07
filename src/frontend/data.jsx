@@ -451,9 +451,72 @@ const FIGURES = [
 
 const FIGURE_TEMPLATES = ['项目地理位置图模板','防治责任范围图模板','防治措施布局图模板','监测点位图模板','弃渣场位置图模板'];
 
+// ===================================================================
+// Phase A 落地数据 (Step 53-A1/A2/A3) — 数据源: huinan_zhigu canonical 样例
+// ===================================================================
+
+// G-09 敏感区 12 类逐项排查 (源: SensitiveAreaTypeRegistry_v0 + huinan_zhigu 排查结论)
+const SENSITIVE_AREAS_12 = [
+  { code:'watershed_mgmt',         name:'流域管理范围',                authority:'流域管理机构 / 省级水行政',     hit:false, conclusion:'项目区不涉及' },
+  { code:'river_lake_mgmt',        name:'河湖管理范围',                authority:'县级以上水行政',                hit:false, conclusion:'项目区不涉及' },
+  { code:'drinking_water_protect', name:'饮用水水源保护区',            authority:'省级生态环境',                  hit:false, conclusion:'项目区不涉及' },
+  { code:'water_function_class_1', name:'水功能一级区（保护区与保留区）', authority:'流域 / 省级水行政',           hit:false, conclusion:'项目区不涉及' },
+  { code:'nature_reserve',         name:'自然保护区',                  authority:'国务院 / 省政府',               hit:false, conclusion:'项目区不涉及' },
+  { code:'world_heritage',         name:'世界文化和自然遗产地',        authority:'国家文物局 / 国家林草局',       hit:false, conclusion:'项目区不涉及' },
+  { code:'scenic_area',            name:'风景名胜区',                  authority:'国务院 / 省政府',               hit:false, conclusion:'项目区不涉及' },
+  { code:'geo_park',               name:'地质公园',                    authority:'自然资源 / 林草',               hit:false, conclusion:'项目区不涉及' },
+  { code:'forest_park',            name:'森林公园',                    authority:'林草',                          hit:false, conclusion:'项目区不涉及' },
+  { code:'wetland_important',      name:'重要湿地',                    authority:'林草 / 自然资源',               hit:false, conclusion:'项目区不涉及' },
+  { code:'eco_redline',            name:'生态保护红线',                authority:'自然资源 / 生态环境',           hit:false, conclusion:'项目区不涉及（"三区三线"成果比对）' },
+  { code:'basic_farmland_permanent', name:'永久基本农田',              authority:'自然资源',                      hit:false, conclusion:'项目区不涉及（2026 模板 §2.5 增列）' },
+];
+
+// G-11 类比工程实名 + 6 维可比性 (源: AnalogProjectRegistry_v0 · hz_biguiyuan)
+const ANALOG_PROJECTS = [
+  {
+    id: 'hz_biguiyuan',
+    name: '惠阳碧桂园项目',
+    project_type: '房地产/城建',
+    location: '广东省惠州市惠阳区',
+    citation_source: '惠阳碧桂园项目水土保持监测报告（含施工期实测数据）',
+    audit_status: '已用于多份惠州房地产/产业园项目水保方案审批（含 01 惠南智谷）',
+    // 6 维可比性 (本项目 vs 类比工程)
+    comparability: [
+      { dim:'地理位置', self:'广东省惠州市仲恺高新区',  analog:'广东省惠州市惠阳区',     verdict:'同地市',     ok:true },
+      { dim:'气候',     self:'亚热带季风气候',          analog:'南亚热带季风（1768.2 mm/a）', verdict:'同气候带', ok:true },
+      { dim:'土壤',     self:'赤红壤（南方红壤区）',    analog:'赤红壤',                 verdict:'同土壤类型', ok:true },
+      { dim:'植被',     self:'人工植被为主',             analog:'人工植被为主，覆盖度高',  verdict:'一致',       ok:true },
+      { dim:'地形',     self:'冲积平原',                analog:'低丘平原',               verdict:'近似',       ok:true },
+      { dim:'水保状况', self:'微度（500 t/(km²·a)）',   analog:'轻度（500 t/(km²·a)）',  verdict:'同等容许值', ok:true },
+    ],
+    // 实测分区模数 (用于 §7.4.3 表 7.4-3 渲染)
+    zone_modulus: {
+      construction: { '住宅区':4000, '公建区':3500, '道路区':3000, '绿化区':2500, '临时堆土区':13000 },
+      recovery:     { '自然恢复期':1000 },
+    },
+  },
+];
+
+// G-06 弃方外运接收方实名 (源: huinan_zhigu.field.fact.disposal.external_receivers)
+const DISPOSAL_RECEIVERS = [
+  {
+    receiver_project_name: '惠南高新科技产业园二期 B 片新型城镇化建设项目',
+    receiver_location:     '数码工业园北侧（项目北侧）',
+    distance_km:           2.6,
+    transport_route:       '华泰路—广泰北路',
+    volume_received:       { value: 0.40, unit: '万m³' },
+    timing_window:         '2022 年 6~7 月',
+    receiver_swc_status:   '已批复',
+    receiver_swc_approval_id:        '惠南二期 B 片一期工程水保方案批复',
+    receiver_swc_approval_attachment:'附件 9',
+    ownership_relation_statement:    '附件 8（惠州仲恺高新区恺建投资开发有限公司与惠州市惠南科技园投资开发有限公司关系说明）',
+  },
+];
+
 window.CPSWC = { PROJECT, ROLES, NAV, SIX_RATES, KEY_FACTS, RECENT_CHANGES, TODOS,
   USER, PROJECTS, PROJECT_VERSIONS, OP_LOG, RULESET_OPTIONS, PROJECT_TYPES,
   SOURCE_REGISTRY, SOURCE_TYPE_LABELS, SOURCE_TYPE_ICONS, FOOTNOTE_TYPES,
   INTAKE_DOCS, INTAKE_CANDIDATES, INTAKE_MISSING, INTAKE_NEXT, EXCEL_SHEETS,
-  FIGURE_CATS, FIGURES, FIGURE_TEMPLATES };
+  FIGURE_CATS, FIGURES, FIGURE_TEMPLATES,
+  SENSITIVE_AREAS_12, ANALOG_PROJECTS, DISPOSAL_RECEIVERS };
 Object.assign(window, { Icon, StatusTag, Panel, MetricCard, Field, Chip });

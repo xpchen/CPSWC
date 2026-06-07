@@ -668,6 +668,42 @@ function NarrativePage() {
                 </div>
               )}
 
+              {/* Phase A · G-11 类比工程实名 (sec_6 §7.4.3 → 章 5 水土流失预测) */}
+              {chapter==='5' && (window.CPSWC.ANALOG_PROJECTS || []).length>0 && (
+                <div className="my-6 rounded-md border border-slate-300 bg-white overflow-hidden">
+                  {(window.CPSWC.ANALOG_PROJECTS || []).map(ap => (
+                    <div key={ap.id} className="p-3.5">
+                      <div className="text-[13px] font-semibold text-slate-700 font-serif">表 5.4-1　类比工程可比性论证{effFlags.footnote && <sup className="text-brand-600 font-sans ml-0.5">[5]</sup>}</div>
+                      <div className="text-[11.5px] text-slate-500 mt-1 font-serif">本项目水土流失预测采用类比工程实测资料，类比工程为「{ap.name}」（{ap.project_type}，{ap.location}），与本项目在地理位置、气候、土壤、植被、地形、水保状况六维度具备可比性，详见下表。</div>
+                      <table className="w-full text-[11.5px] mt-2 border border-slate-300 font-serif">
+                        <thead className="bg-slate-50 text-slate-600">
+                          <tr>
+                            <th className="text-left font-medium px-2 py-1.5 border-r border-slate-300 w-20">维度</th>
+                            <th className="text-left font-medium px-2 py-1.5 border-r border-slate-300">本项目</th>
+                            <th className="text-left font-medium px-2 py-1.5 border-r border-slate-300">{ap.name}</th>
+                            <th className="text-left font-medium px-2 py-1.5 w-16">可比性</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ap.comparability.map(c => (
+                            <tr key={c.dim} className="border-t border-slate-200">
+                              <td className="px-2 py-1.5 border-r border-slate-200 text-slate-600">{c.dim}</td>
+                              <td className="px-2 py-1.5 border-r border-slate-200 text-slate-700">{c.self}</td>
+                              <td className="px-2 py-1.5 border-r border-slate-200 text-slate-700">{c.analog}</td>
+                              <td className="px-2 py-1.5 text-slate-600">{c.verdict}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div className="mt-2 flex items-center gap-2 flex-wrap">
+                        <Chip tone="brand" icon="Link2">field.fact.prediction.analog_project_ref = {ap.id}</Chip>
+                        {mode!=='preview' && <Chip tone="emerald" icon="ShieldCheck">已用于审批</Chip>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {chapter==='6' && (
                 <div className="my-6 rounded-md border border-slate-300 bg-slate-50/60 overflow-hidden">
                   <div className="flex">

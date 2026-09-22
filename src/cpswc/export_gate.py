@@ -236,15 +236,21 @@ def check_export_readiness(
     policy = _load_policy()
     fir = _load_fir()
 
-    facts = snapshot.get("_original_facts") or {}
-    derived = snapshot.get("derived_fields") or {}
-    # pre-stored derived from sample (runtime Step 4 也合并这一层)
-    pre_derived = snapshot.get("_pre_stored_derived") or {}
-    # unified: facts + pre_derived + runtime derived (与 runtime Step 4 口径一致)
+    # F-0.2: **只消费 BuildContext 选定的统一视图**, 不再自己合并一次。
+    #
+    # 原实现是 `facts + _pre_stored_derived + derived_fields`。这与
+    # build_snapshot_dict() 的约束直接矛盾 —— `_pre_stored_derived` 只供对照,
+    # 不得再次参与业务合并。
+    #
+    # 实测后果: 某字段本次计算失败时, BuildContext 判 MISSING/STALE_HISTORICAL
+    # 并把它挡在统一视图外; 门禁若重新合并旧 derived, GATE_001 会认为该 CRITICAL
+    # 字段"有值"而放行 —— 历史值被当成当前值通过了门禁。
+    #
+    # `_original_facts` 与 `derived_fields` 已经是 build_snapshot_dict() 产出的
+    # 统一视图的两半 (field.fact.* / field.derived.*), 合起来即统一视图本身。
     unified: dict = {}
-    unified.update(facts)
-    unified.update(pre_derived)
-    unified.update(derived)
+    unified.update(snapshot.get("_original_facts") or {})
+    unified.update(snapshot.get("derived_fields") or {})
 
     required_assurances = snapshot.get("required_assurances") or []
     unknown_obligations = snapshot.get("unknown_obligations") or []

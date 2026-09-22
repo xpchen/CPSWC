@@ -23,6 +23,10 @@ Thumbs.db
 
 # Build / output (generated at runtime, not source)
 /outputs/
+# F-0.5: /output/ (单数) 此前未被忽略, 里面已存放其他项目的客户材料
+# (docx/pptx/bid), 且 F-1A 的 payload 会写到 output/frontend/。
+# 不忽略它就是在制造"一次 git add -A 把客户数据推进仓库"的路径。
+/output/
 /tmp/
 *.zip
 

@@ -451,6 +451,58 @@ class BuildContext:
         return {k: v for k, v in self.unified_view().items()
                 if k.startswith("field.derived.")}
 
+    # ---------- 唯一的字段状态序列化出口 (F-0.1) ----------
+
+    def project_fields(self, include_registry_fields: bool = True) -> list[dict]:
+        """
+        **前端与 payload 生成器读字段状态的唯一出口。**
+
+        为什么需要它: `unified_view()` 为了"旧值不顶上"而显式跳过 MISSING,
+        `source_map()` 只给来源层字符串 —— 两者都拿不到完整的 ResolvedValue。
+        没有这个出口, payload 生成器就得自己重新推断值状态, 等于把刚消灭的
+        多套口径复制一份到生成器里。**调用方不得重新解析值状态。**
+
+        字段全集 = FIR 登记字段 ∪ 本次实际消费字段。
+        **缺失字段必须出现在结果里** —— 否则"缺什么"在界面上根本看不见。
+
+        每项:
+          field_id / state / value(仅 PRESENT) / unit / provenance
+          / stale_value / conflicts / note / canonical_name / is_derived
+        """
+        ids: list[str] = []
+        seen: set[str] = set()
+        for field_id in self._all_field_ids():          # 本次实际消费的
+            if field_id not in seen:
+                seen.add(field_id)
+                ids.append(field_id)
+        if include_registry_fields:
+            for field_id, fdef in self.fir_fields.items():   # FIR 登记的
+                if not isinstance(fdef, dict) or fdef.get("placeholder") is True:
+                    continue
+                if field_id not in seen:
+                    seen.add(field_id)
+                    ids.append(field_id)
+
+        out: list[dict] = []
+        for field_id in sorted(ids):
+            rv = self.resolve(field_id)
+            fdef = self.fir_fields.get(field_id) or {}
+            out.append({
+                "field_id": field_id,
+                "canonical_name": fdef.get("canonical_name") or "",
+                "is_derived": field_id.startswith("field.derived."),
+                "state": rv.state.value,
+                # value 只在 PRESENT 时有意义; 其余一律 None, 不让调用方误用
+                "value": rv.value if rv.state is ValueState.PRESENT else None,
+                "unit": rv.unit or "",
+                "provenance": rv.provenance.value,
+                "stale_value": rv.stale_value,
+                "conflicts": [[layer, val] for layer, val in rv.conflicts],
+                "note": rv.note or "",
+                "is_empty_container": rv.is_empty_container,
+            })
+        return out
+
     def source_map(self) -> dict[str, str]:
         """{field_id: 来源层}, 供工作台与交付记录展示"选了哪一层"。"""
         out: dict[str, str] = {}

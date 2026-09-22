@@ -147,6 +147,21 @@
 | 冻结语义 | `FrozenSubmissionInput.lifecycle_freeze_note` 明写"只表示输入已冻结，不表示内容已经专业校审通过" |
 | 状态 | DONE |
 
+## 条目 012
+
+| 项 | 内容 |
+| --- | --- |
+| 日期 | 2026-09-22 / 23 |
+| 事项 | 前端接线计划 v1.0 经评审驳回，修订为 **v1.1**；随后实施 **F-0 契约补强** |
+| 评审结论 | 方向正确，但 v1.0 **把"后端已经有统一状态"想得过于乐观**，照它实施会把刚消灭的多套口径重新复制到 payload 和 JSX 中。指出 5 个生产级漏洞 |
+| 五条核实结果 | **全部属实**，其中两条在代码里复现：<br>①逐字段 `?? MOCK` 回落会让页面半真半演示<br>②`build_snapshot_dict()` 无完整 `ResolvedValue`，`unified_view()` 显式跳过 MISSING<br>③**ExportGate 仍二次合并 `_pre_stored_derived`（活 bug，已复现）**<br>④findings 四源重叠、`stage=INPUT` 过滤漏掉 RENDER 阶段缺失<br>⑤全局壳 50 处硬编码肯定状态（12 个文件） |
+| 执行者补充的 4 点 | ①三态需划边界：`NAV`/`STATUS_STYLES` 等 UI 配置不是 mock，保持静态<br>②自包含复制壳会产生"壳漂移"，需 `shell_digest` 比对<br>③`output/` 不在 .gitignore 且已有他项目客户材料，补 `/output/` 必须进 F-0<br>④「已建立实现映射 26」与「本次有产出」应分开测，不做减法推断 |
+| F-0 交付 | `BuildContext.project_fields()`（唯一字段状态出口，FIR ∪ 消费字段，含 MISSING）；ExportGate 只读统一视图；`src/cpswc/intake_issues.py`（分层 findings + 去重计数 + `intake_issues` 投影，影响范围取自 FIR `projection_target_refs`）；`.gitignore` 补 `/output/` |
+| F-0.2 实测 | 修复前：计算失败字段被 BuildContext 隔离，门禁重新合并旧 derived 后 **GATE_001 认为"有值"而放行**。修复后正确阻断，有回归测试 |
+| F-0.3 实测 | 惠州四层管线 **180 条原始 → 132 去重**；`disposal_highrisk` 的 24 条收资项中 **22 条来自 RENDER 阶段** —— 证实"按 stage=INPUT 过滤"会几乎全漏 |
+| 测试 | 730 → **759**（新增 `tests/test_intake_contract.py` 29 条） |
+| 状态 | F-0 **DONE**；F-1A 起尚未开始，**停在计划审批点** |
+
 ---
 
 ## 变更请求

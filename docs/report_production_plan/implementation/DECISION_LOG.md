@@ -164,6 +164,27 @@
 
 ---
 
+## 条目 013
+
+| 项 | 内容 |
+| --- | --- |
+| 日期 | 2026-09-23 |
+| 事项 | 实施 **F-1A（payload 管线）/ F-1B（全壳诚实化）/ F-2（收资清单）** |
+| F-1A 关键发现 | `file://` 下 Babel 用 XHR 取外链 `.jsx` 被 CORS 拦死 → **整页白屏**。"双击 index.html 就能跑"这个前提对多文件壳**不成立**。改为 `render_standalone_html()` 把全部 JSX + payload 内联成单文件（惠州样本 671 KB） |
+| F-1A 落盘 | `output/frontend/<project-code>/<generation-input-hash>/`，先写同级临时目录再整体换名（原子替换）；同目录另存 `payload.json` 旁证供检视 |
+| 壳漂移检查曾是摆设 | 单文件内联时 `<meta cpswc-shell-digest>` 原本**抄自 payload**，两边恒等 → 浏览器实测把 `payload.shell_digest` 改成 `000…` 仍畅通无阻。改为**现场按壳文件算**，才真正能挡住"旧壳配新数据" |
+| 喂错文件静默产出空项目 | `review_comments_huizhou_v0.json`（审查意见文档，非项目输入）能一路跑通，产出项目名/编码全空的 bundle —— 顶栏「项目快照」下挂一片空白，比报错危险。补 `_require_project_input()` + `validate_payload` 拒绝空 `project.name` |
+| F-1B 取舍 | 各页 mock 深埋在页组件自带的数据里（Facts/Narrative/Tables 各一套），属 F-3..F-7 范围。本批不假装接线，改为**让未接线页面自曝**：`UnwiredNotice` + **白名单** `WIRED_PAGES`（默认未接线，接好一个加一个；漏加只会多一条提示，黑名单漏删则会让 mock 冒充真数据） |
+| Overview 例外 | 首屏 hero 写死了**另一个项目的名字**与「无导出阻塞」「2 项专家确认」（真实门禁为 BLOCK），四状态卡写死 94/88/92%。仅加提示不够——快照模式下**整块隐藏**，代之以指向顶栏与收资抽屉的真实结论 |
+| 肯定状态整块下线 | 评审原话是"**搜索并消除**全部硬编码的肯定状态"。三处最响的假结论不只是加提示：Overview 首屏 hero（另一个项目名 + 无导出阻塞 + 2 项专家确认）整块隐藏；交付包页检查项改接 `export_gate.findings`（**不补齐成全绿表**——门禁只报问题，不出具"通过"结论）、14 个「可下载」清空为「本次快照没有产出任何交付文件」、隐藏"模拟人工改写"按钮与"数文一致性检查通过"绿条；规则审查页「无阻塞」改「未判定（本页未接线）」 |
+| F-2 交付 | 收资向导第 4 节改由后端 `intake_issues` 驱动（分类/严重度/影响范围**照搬**，不做二次判断）；`impact_known=false` 如实显示「影响范围尚未建立」。第 1–3、5–6 节标注为演示，「上传资料」「确认写入事实层」在快照模式**禁用**（它们只改浏览器本地 state） |
+| 导出件 | 「待甲方提供资料清单」HTML：斜向水印「工作草稿 · 非正式报告附件」+ 项目名/编码/生成时间/`generation_input_hash` + BLOCK/WARN/INFO 分级 + 「影响范围尚未建立不代表不影响任何章节」的说明 |
+| 惠州样本实测 | 内容要求 64 项（已建立映射 26 / 本次有产出 26 / 未实现 38 / **确认完成 0**）；收资 24 项（BLOCK 11 · WARN 13）；门禁 BLOCK(7) |
+| 测试 | 759 → **866**（新增 `tests/test_frontend_payload.py` 107 条）；浏览器级 `tests/browser/test_data_modes.py` 扩至 23 条，mock 断言改为**白名单驱动**——页面一接线自动纳入无 mock 检查，不需改测试 |
+| 状态 | F-1A / F-1B / F-2 **DONE**；F-3..F-7（Overview / Facts / Narrative / Delivery / 六率与表格）未开始 |
+
+---
+
 ## 变更请求
 
 （暂无。超出任务包范围时按 `06_CLAUDE_HANDOFF.md` 第 7 节模板登记。）

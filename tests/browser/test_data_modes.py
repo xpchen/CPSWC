@@ -1,0 +1,436 @@
+"""
+test_data_modes.py — F-1B 浏览器级验收
+
+对应 FRONTEND_WIRING_PLAN.md v1.1 § 5.1「测试要求」：Python 单测不够，
+必须有浏览器场景，否则"页面上到底显示了什么"没人验过。
+
+    无 payload            → 全局演示模式角标
+    完整 payload          → **页面上不出现任何 mock 数值**
+    部分/版本不符/壳不匹配 → 阻断错误页，**绝不回落 mock**
+    ExportGate=BLOCK      → 顶栏与 Delivery 都没有可用的交付按钮
+
+跑法（需要本机 playwright + chromium，缺依赖时整文件 skip）：
+
+    PYTHONPATH=src python3 -m pytest tests/browser -q
+
+这些用例**自己生成 bundle**，不依赖仓库里已有的 output/。
+"""
+import json
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "src"))
+
+playwright_api = pytest.importorskip(
+    "playwright.sync_api", reason="需要 playwright 才能跑浏览器级验收")
+from playwright.sync_api import sync_playwright  # noqa: E402
+
+from cpswc.frontend_payload import (  # noqa: E402
+    build_payload, render_standalone_html, write_bundle)
+from cpswc.paths import SAMPLES_DIR  # noqa: E402
+
+# mock 里的标志性数值。
+MOCK_MARKERS = [
+    "世维华南供应链",        # PROJECT.name
+    "GD-HZ-2026-SWBC-0211",  # PROJECT.code
+    "97.6%",                 # SIX_RATES 伪造的"实现值"
+    "项目完成度 91",          # 顶栏硬编码完成度
+    "无阻塞项",
+]
+
+# 快照模式下**必须**一个都不出现的 mock —— 这些是全局壳 (顶栏/侧栏/首屏)
+# 自己在说的话, 与页面接线进度无关。
+SHELL_MOCK_MARKERS = [
+    "世维华南供应链",
+    "GD-HZ-2026-SWBC-0211",
+    "项目完成度 91",
+]
+
+# 其余 mock 仍存在于尚未接线的页面里 (F-3..F-7 逐页消除)。
+# 对它们的要求不是"不存在", 而是"**必须被标记为未接线**" ——
+# 见 test_unwired_pages_are_labelled。用 WIRED_PAGES 白名单驱动:
+# 页面一旦接线就自动纳入无 mock 断言, 不需要改测试。
+
+
+def _chromium_available() -> bool:
+    try:
+        with sync_playwright() as p:
+            p.chromium.launch(headless=True).close()
+        return True
+    except Exception:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _chromium_available(), reason="本机没有可用的 chromium")
+
+
+@pytest.fixture(scope="module")
+def snapshot_bundle(tmp_path_factory) -> Path:
+    """用惠州样本生成一份真实 bundle。"""
+    out = tmp_path_factory.mktemp("bundle")
+    pi = json.loads(
+        (SAMPLES_DIR / "huizhou_housing_v0.json").read_text(encoding="utf-8"))
+    return write_bundle(build_payload(pi), out)
+
+
+@pytest.fixture(scope="module")
+def demo_bundle(tmp_path_factory) -> Path:
+    """没有 payload 的壳 —— 即演示模式。
+
+    同样走单文件内联: 直接拷壳目录在 file:// 下会被 CORS 拦成白屏,
+    那样验的就不是"演示模式"而是"加载失败"。
+    """
+    out = tmp_path_factory.mktemp("demo")
+    (out / "index.html").write_text(render_standalone_html(None),
+                                    encoding="utf-8")
+    return out
+
+
+def _page_text(bundle: Path, page_obj) -> str:
+    page_obj.goto((bundle / "index.html").as_uri())
+    page_obj.wait_for_load_state("networkidle")
+    page_obj.wait_for_timeout(700)      # Babel 在浏览器里转译需要一点时间
+    return page_obj.inner_text("body")
+
+
+@pytest.fixture
+def page():
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        # accept_downloads: 收资清单导出要真下载一次才验得了内容
+        pg = browser.new_context(accept_downloads=True).new_page()
+        errors = []
+        pg.on("pageerror", lambda e: errors.append(str(e)))
+        pg.errors = errors
+        yield pg
+        browser.close()
+
+
+# ============================================================
+# 场景 1 — 无 payload → 演示模式
+# ============================================================
+
+def _demo_workbench_text(bundle: Path, page_obj) -> str:
+    """演示模式从登录页进, 要走完登录才看得到工作台的角标。
+
+    (快照模式则直接进工作台 —— 见 Root.jsx: 登录页属于演示流程,
+    快照是一份已生成的静态结果, 没有"登录"这回事。)
+    """
+    page_obj.goto((bundle / "index.html").as_uri())
+    page_obj.wait_for_load_state("networkidle")
+    page_obj.wait_for_timeout(700)
+    page_obj.get_by_role("button", name="登录", exact=True).first.click()
+    page_obj.wait_for_timeout(600)
+    # 登录后落在项目列表, 还要打开一个项目才进工作台
+    page_obj.get_by_text("惠州", exact=False).first.click()
+    page_obj.wait_for_timeout(600)
+    return page_obj.inner_text("body")
+
+
+def test_login_page_says_it_is_a_demo(demo_bundle, page):
+    assert "演示环境" in _page_text(demo_bundle, page)
+
+
+def test_no_payload_shows_demo_banner(demo_bundle, page):
+    text = _demo_workbench_text(demo_bundle, page)
+    assert "演示数据" in text
+    assert "不来自任何真实项目" in text
+
+
+def test_demo_mode_does_not_claim_to_be_a_snapshot(demo_bundle, page):
+    text = _demo_workbench_text(demo_bundle, page)
+    assert "项目快照" not in text
+
+
+# ============================================================
+# 场景 2 — 完整 payload → 无 mock 数值
+# ============================================================
+
+def test_snapshot_shows_the_real_project(snapshot_bundle, page):
+    text = _page_text(snapshot_bundle, page)
+    assert "项目快照" in text
+    assert "静态快照，非实时数据" in text
+    assert "惠州市大亚湾" in text, "应显示 payload 里的真实项目名"
+
+
+@pytest.mark.parametrize("marker", SHELL_MOCK_MARKERS)
+def test_shell_contains_no_mock_values(snapshot_bundle, page, marker):
+    """全局壳 (顶栏/侧栏/首屏) 在快照模式下**完全禁止 mock**。"""
+    text = _page_text(snapshot_bundle, page)
+    assert marker not in text, f"全局壳在快照模式下出现了 mock 数值: {marker}"
+
+
+def test_unwired_pages_are_labelled(snapshot_bundle, page):
+    """尚未接线的页面必须自曝, 否则 mock 就在冒充真项目数据。
+
+    逐页点过去: 凡不在 WIRED_PAGES 白名单里的页面, 都要出现未接线提示。
+    """
+    page.goto((snapshot_bundle / "index.html").as_uri())
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(700)
+
+    nav = page.evaluate("() => window.CPSWC.NAV.map(n => n.id)")
+    wired = set(page.evaluate("() => window.CPSWC.WIRED_PAGES || []"))
+    assert nav, "取不到导航项, 断言没有意义"
+
+    unlabelled = []
+    for key in nav:
+        if key in wired:
+            continue
+        page.evaluate(f"() => window.__cpswcGo && window.__cpswcGo({key!r})")
+        page.wait_for_timeout(120)
+        if "本页尚未接入项目数据" not in page.inner_text("body"):
+            unlabelled.append(key)
+    assert not unlabelled, f"这些未接线页面没有标注, 会让 mock 冒充真数据: {unlabelled}"
+
+
+def test_intake_drawer_shows_real_issues(snapshot_bundle, page):
+    """收资抽屉第 4 节必须来自后端 intake_issues, 其余节自曝演示。"""
+    page.goto((snapshot_bundle / "index.html").as_uri())
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(700)
+    page.get_by_role("button", name="智能收资向导").click()
+    page.wait_for_timeout(400)
+    text = page.inner_text("body")
+
+    summary = _payload_of(snapshot_bundle)["intake_summary"]
+    assert summary["total"] > 0, "样本没有收资条目, 断言没有意义"
+    assert f'{summary["total"]} 项，来自本次生成快照' in text
+    assert f'阻断 {summary["by_severity"]["BLOCK"]}' in text
+    assert "第 1–3、5–6 节为演示数据" in text, "未接线的节必须自曝"
+    if summary["impact_unknown_count"]:
+        assert "影响范围尚未建立" in text, "影响关系建立不起来时必须如实说, 不得编造"
+
+
+def test_intake_export_button_is_available(snapshot_bundle, page):
+    """收资清单是本阶段唯一真能交付的产物, 按钮必须可用 (不同于导出交付包)。"""
+    page.goto((snapshot_bundle / "index.html").as_uri())
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(700)
+    page.get_by_role("button", name="智能收资向导").click()
+    page.wait_for_timeout(400)
+    btn = page.get_by_role("button", name="导出待甲方提供资料清单")
+    assert btn.count() == 1 and btn.first.is_enabled()
+
+
+def test_intake_export_produces_a_watermarked_list(snapshot_bundle, tmp_path, page):
+    """真下载一次, 验导出件的内容 —— 这是本阶段唯一能交到甲方手上的东西。
+
+    硬要求: 水印 + 项目名 + 生成时间 + generation_input_hash + 分级,
+    以及"影响范围尚未建立不代表不影响任何章节"的说明。
+    """
+    page.goto((snapshot_bundle / "index.html").as_uri())
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(700)
+    page.get_by_role("button", name="智能收资向导").click()
+    page.wait_for_timeout(400)
+
+    with page.expect_download() as dl:
+        page.get_by_role("button", name="导出待甲方提供资料清单").click()
+    saved = tmp_path / "intake.html"
+    dl.value.save_as(saved)
+    html = saved.read_text(encoding="utf-8")
+
+    payload = _payload_of(snapshot_bundle)
+    assert "工作草稿 · 非正式报告附件" in html
+    assert "不构成水土保持方案报告的任何正式组成部分" in html
+    assert payload["project"]["name"] in html
+    assert payload["hashes"]["generation_input_hash"] in html
+    assert payload["generated_at"] in html
+    assert "不代表它不影响任何章节" in html
+    # 每一条收资项都必须在导出件里, 不许截断 —— 少一条就是少向甲方要一样东西
+    import html as _html
+    for issue in payload["intake_issues"]:
+        assert _html.escape(issue["message"], quote=False) in html, f"导出件漏了 {issue['issue_id']}"
+    assert html.count("<tr>") == payload["intake_summary"]["total"] + 2  # 表头 + 表尾
+    for marker in MOCK_MARKERS:
+        assert marker not in html, f"导出件里混进了 mock: {marker}"
+
+
+def test_intake_fake_write_actions_are_disabled(snapshot_bundle, page):
+    """"确认写入事实层"只改浏览器本地 state, 快照模式下不得可按。"""
+    page.goto((snapshot_bundle / "index.html").as_uri())
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(700)
+    page.get_by_role("button", name="智能收资向导").click()
+    page.wait_for_timeout(400)
+    for name in ("确认写入事实层（未实现）", "上传资料（未实现）"):
+        btn = page.get_by_role("button", name=name)
+        assert btn.count() >= 1, f"找不到按钮: {name}"
+        assert btn.first.is_disabled(), f"{name} 不应可按"
+
+
+# ============================================================
+# 场景 5 — 硬编码的"肯定状态"必须消失
+#   用户原话: "搜索并消除全部硬编码的'通过、无阻塞、达标、可下载、覆盖率'
+#   等肯定状态, 而不只修改计划列出的几个组件"
+# ============================================================
+
+def _goto(page_obj, key: str) -> str:
+    page_obj.evaluate(f"() => window.__cpswcGo && window.__cpswcGo({key!r})")
+    page_obj.wait_for_timeout(250)
+    return page_obj.inner_text("body")
+
+
+def test_delivery_shows_the_real_gate_verdict(snapshot_bundle, page):
+    """交付页原本写死 11 项"通过"/14 个"可下载", 而真实门禁是 BLOCK。"""
+    page.goto((snapshot_bundle / "index.html").as_uri())
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(700)
+    text = _goto(page, "delivery")
+
+    gate = _payload_of(snapshot_bundle)["export_gate"]
+    assert gate["verdict"] == "BLOCK", "样本门禁不是 BLOCK, 断言没有意义"
+    assert f'门禁结论 {gate["verdict"]}' in text
+    assert "项通过" not in text, "门禁只报问题, 不出具通过数"
+    assert "可下载" not in text, "正式导出未实现, 不得列出可下载文件"
+    assert "没有产出任何交付文件" in text
+    assert "数文一致性检查通过" not in text
+
+
+def test_no_page_claims_a_hardcoded_positive_state(snapshot_bundle, page):
+    """全壳扫一遍: 逐页点过去, 这些写死的肯定说法一个都不许出现。"""
+    page.goto((snapshot_bundle / "index.html").as_uri())
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(700)
+    banned = ["无阻塞项", "可下载", "项通过", "数文一致性检查通过",
+              "项目完成度", "无导出阻塞"]
+    offenders = {}
+    for key in page.evaluate("() => window.CPSWC.NAV.map(n => n.id)"):
+        text = _goto(page, key)
+        hit = [b for b in banned if b in text]
+        if hit:
+            offenders[key] = hit
+    assert not offenders, f"仍有页面在说写死的肯定状态: {offenders}"
+
+
+def test_wired_pages_contain_no_mock_values(snapshot_bundle, page):
+    """已声明接线的页面必须彻底无 mock。白名单一增长, 覆盖面自动扩大。"""
+    page.goto((snapshot_bundle / "index.html").as_uri())
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(700)
+    wired = page.evaluate("() => window.CPSWC.WIRED_PAGES || []")
+    for key in wired:
+        page.evaluate(f"() => window.__cpswcGo && window.__cpswcGo({key!r})")
+        page.wait_for_timeout(200)
+        text = page.inner_text("body")
+        for marker in MOCK_MARKERS:
+            assert marker not in text, f"已接线页 {key} 仍有 mock: {marker}"
+
+
+def test_snapshot_shows_no_single_completeness_percentage(snapshot_bundle, page):
+    """覆盖率必须四行分开看; 压成一个百分比会重新制造"接近完成"的错觉。"""
+    text = _page_text(snapshot_bundle, page)
+    assert "项目完成度" not in text
+    assert "内容完成度" in text
+
+
+def test_snapshot_page_has_no_js_errors(snapshot_bundle, page):
+    _page_text(snapshot_bundle, page)
+    assert page.errors == [], f"页面报错: {page.errors}"
+
+
+# ============================================================
+# 场景 3 — payload 有问题 → 阻断, 绝不回落 mock
+# ============================================================
+
+def _payload_of(bundle: Path) -> dict:
+    """bundle 是单文件 index.html + payload.json 旁证; 取旁证读。"""
+    return json.loads((bundle / "payload.json").read_text(encoding="utf-8"))
+
+
+def _corrupt(bundle: Path, tmp_path: Path, mutate) -> Path:
+    """按 mutate 破坏 payload 后重新内联 —— 绕开 validate_payload,
+    模拟"别人手里那份 bundle 被改过/壳版本对不上"。"""
+    payload = _payload_of(bundle)
+    mutate(payload)
+    broken = tmp_path / "broken"
+    broken.mkdir(parents=True, exist_ok=True)
+    (broken / "index.html").write_text(render_standalone_html(payload),
+                                       encoding="utf-8")
+    return broken
+
+
+def test_incompatible_schema_version_blocks(snapshot_bundle, tmp_path, page):
+    broken = _corrupt(snapshot_bundle, tmp_path,
+                      lambda p: p.__setitem__("schema_version", "v0_old"))
+    text = _page_text(broken, page)
+    assert "数据包无法加载" in text
+    assert "schema_version 不匹配" in text
+
+
+def test_missing_key_blocks(snapshot_bundle, tmp_path, page):
+    broken = _corrupt(snapshot_bundle, tmp_path, lambda p: p.pop("quality"))
+    text = _page_text(broken, page)
+    assert "数据包无法加载" in text
+    assert "缺顶层键 quality" in text
+
+
+def test_shell_drift_blocks(snapshot_bundle, tmp_path, page):
+    """把新 payload 拷进旧壳 (或反之) —— shell_digest 对不上就必须拒绝。"""
+    broken = _corrupt(snapshot_bundle, tmp_path,
+                      lambda p: p.__setitem__("shell_digest", "0" * 64))
+    text = _page_text(broken, page)
+    assert "数据包无法加载" in text
+    assert "shell_digest 不一致" in text
+
+
+@pytest.mark.parametrize("mutate,label", [
+    (lambda p: p.__setitem__("schema_version", "v0_old"), "版本不符"),
+    (lambda p: p.pop("quality"), "缺键"),
+    (lambda p: p.__setitem__("shell_digest", "0" * 64), "壳漂移"),
+])
+def test_payload_error_never_falls_back_to_mock(snapshot_bundle, tmp_path,
+                                                page, mutate, label):
+    """最关键的一条: 出错时宁可什么都不显示, 也不能半真半演示。"""
+    broken = _corrupt(snapshot_bundle, tmp_path, mutate)
+    text = _page_text(broken, page)
+    for marker in MOCK_MARKERS:
+        assert marker not in text, f"{label}: 回落了 mock ({marker})"
+    # 错误页自己的说明里会出现"演示数据"四个字 (解释为什么停止加载),
+    # 所以只能拿演示模式角标的专有措辞来判定是否降级成了演示态。
+    assert "不来自任何真实项目" not in text, f"{label}: 错误态不应降级成演示态"
+    assert "数据包无法加载" in text
+
+
+# ============================================================
+# 场景 4 — ExportGate=BLOCK → 没有可用的交付按钮
+# ============================================================
+
+def test_export_button_is_disabled_in_snapshot_mode(snapshot_bundle, page):
+    page.goto((snapshot_bundle / "index.html").as_uri())
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(700)
+    buttons = page.locator("button", has_text="导出交付包")
+    assert buttons.count() >= 1
+    for i in range(buttons.count()):
+        assert buttons.nth(i).is_disabled(), "门禁未通过时导出按钮不得可用"
+
+
+def test_export_button_says_it_is_unimplemented(snapshot_bundle, page):
+    text = _page_text(snapshot_bundle, page)
+    assert "导出交付包（未实现）" in text
+
+
+def test_freeze_button_is_disabled_in_snapshot_mode(snapshot_bundle, page):
+    """原"冻结"只改浏览器本地状态, 什么也没冻。快照模式下禁用。"""
+    page.goto((snapshot_bundle / "index.html").as_uri())
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(700)
+    buttons = page.locator("button", has_text="冻结版本")
+    assert buttons.count() >= 1
+    for i in range(buttons.count()):
+        assert buttons.nth(i).is_disabled()
+
+
+def test_gate_verdict_is_block_for_this_sample(snapshot_bundle):
+    """前提确认: 这份样本的门禁确实是 BLOCK, 否则上面的断言没有意义。"""
+    payload = _payload_of(snapshot_bundle)
+    assert payload["export_gate"]["verdict"] == "BLOCK"
+    assert payload["export_gate"]["formal_export_implemented"] is False

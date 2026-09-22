@@ -3,6 +3,7 @@
 // AI 辅助层：识别资料 · 提取候选事实 · 提醒缺项 · 引导下一步
 // ===================================================================
 const { INTAKE_DOCS, INTAKE_CANDIDATES, INTAKE_MISSING, INTAKE_NEXT } = window.CPSWC;
+const IW_SNAPSHOT = window.CPSWC.IS_SNAPSHOT;
 
 function IntakeSection({ n, title, icon, sub, children, right }) {
   return (
@@ -79,9 +80,9 @@ function IntakeWizard({ open, onClose, onNavigate }) {
           {/* 上传按钮 */}
           <div className="flex items-center justify-between mb-5">
             <div className="text-[12px] text-slate-500">已收集 {docs.length} 份资料 · {cands.filter(c=>c.status==='已确认').length} 项已确认</div>
-            <button onClick={runUpload} disabled={uploading}
+            <button onClick={runUpload} disabled={uploading || IW_SNAPSHOT}
               className="inline-flex items-center gap-1.5 text-[12.5px] px-3.5 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-60">
-              <Icon name="Upload" size={15}/>上传资料
+              <Icon name="Upload" size={15}/>上传资料{IW_SNAPSHOT && '（未实现）'}
             </button>
           </div>
 
@@ -107,6 +108,16 @@ function IntakeWizard({ open, onClose, onNavigate }) {
                   <div className="mt-2 text-[11px] text-slate-400">支持 .xlsx / .xls / .csv / .docx / .pdf / .png / .jpg / .dwg / .dxf / .zip</div>
                 </div>
               )}
+            </div>
+          )}
+
+          {IW_SNAPSHOT && (
+            <div className="rounded border border-amber-300 bg-amber-50 px-3 py-2 mb-5
+              text-[11.5px] text-amber-900 flex items-start gap-2">
+              <Icon name="TriangleAlert" size={14} className="mt-0.5 shrink-0"/>
+              <span><b>第 1–3、5–6 节为演示数据。</b>资料上传与识别尚未接入后端，
+                这些内容与顶栏所示项目无关。<b>只有第 4 节「当前缺失资料 / 待甲方提供」
+                来自本次生成快照</b>，可作为向甲方收资的依据。</span>
             </div>
           )}
 
@@ -175,7 +186,7 @@ function IntakeWizard({ open, onClose, onNavigate }) {
 
           {/* 3. 候选事实待确认 */}
           <IntakeSection n="3" title="候选事实待确认" icon="ListChecks" sub={`${cands.filter(c=>c.status!=='已确认'&&c.status!=='外部对照').length} 项待确认`}
-            right={<button onClick={confirmAll} className="text-[11.5px] px-2.5 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700 inline-flex items-center gap-1 whitespace-nowrap"><Icon name="CheckCheck" size={13}/>确认写入事实层</button>}>
+            right={<button onClick={confirmAll} disabled={IW_SNAPSHOT} className="disabled:opacity-40 disabled:cursor-not-allowed text-[11.5px] px-2.5 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700 inline-flex items-center gap-1 whitespace-nowrap"><Icon name="CheckCheck" size={13}/>确认写入事实层{IW_SNAPSHOT && '（未实现）'}</button>}>
             {confirmedCount>0 && (
               <div className="mb-2.5 flex items-start gap-2 p-2.5 rounded-md bg-emerald-50 border border-emerald-200 text-[12px] text-emerald-800">
                 <Icon name="CircleCheck" size={15} className="text-emerald-600 shrink-0 mt-0.5"/>
@@ -208,8 +219,13 @@ function IntakeWizard({ open, onClose, onNavigate }) {
             </div>
           </IntakeSection>
 
-          {/* 4. 当前缺失资料 */}
-          <IntakeSection n="4" title="当前缺失资料" icon="PackageSearch" sub="非阻塞，建议补齐">
+          {/* 4. 当前缺失资料 —— F-2: 快照模式用后端 intake_issues */}
+          <IntakeSection n="4" title="当前缺失资料 / 待甲方提供"
+            icon="PackageSearch"
+            sub={IW_SNAPSHOT
+              ? `${(window.CPSWC.INTAKE_SUMMARY || {}).total || 0} 项，来自本次生成快照`
+              : '演示数据'}>
+            {IW_SNAPSHOT ? <IntakeIssueList/> : (
             <div className="space-y-3">
               <div>
                 <div className="text-[11.5px] font-semibold text-slate-500 mb-1.5">缺失事实</div>
@@ -231,7 +247,7 @@ function IntakeWizard({ open, onClose, onNavigate }) {
                   </div>
                 ))}</div>
               </div>
-            </div>
+            </div>)}
           </IntakeSection>
 
           {/* 5. 下一步建议 */}
@@ -255,8 +271,8 @@ function IntakeWizard({ open, onClose, onNavigate }) {
           {/* 6. 快捷操作 */}
           <IntakeSection n="6" title="快捷操作" icon="Zap">
             <div className="grid grid-cols-2 gap-2">
-              {[['继续上传资料','Upload',runUpload],['打开 Excel 导入','FileSpreadsheet',()=>go('facts')],['打开附图与地图中心','Map',()=>go('maps')],['确认候选事实','CheckCheck',confirmAll],['查看导出前检查','PackageCheck',()=>go('delivery')],['打开正文编辑','FileText',()=>go('narrative')],['查看改动追踪','GitCompareArrows',()=>go('changes')]].map(([label,icon,fn]) => (
-                <button key={label} onClick={fn} className="flex items-center gap-2 px-3 py-2 rounded-md border border-slate-200 bg-white text-[12px] text-slate-600 hover:bg-slate-50 hover:border-brand-300 transition-colors">
+              {[['继续上传资料','Upload',IW_SNAPSHOT?null:runUpload],['打开 Excel 导入','FileSpreadsheet',()=>go('facts')],['打开附图与地图中心','Map',()=>go('maps')],['确认候选事实','CheckCheck',IW_SNAPSHOT?null:confirmAll],['查看导出前检查','PackageCheck',()=>go('delivery')],['打开正文编辑','FileText',()=>go('narrative')],['查看改动追踪','GitCompareArrows',()=>go('changes')]].map(([label,icon,fn]) => (
+                <button key={label} onClick={fn} disabled={!fn} className="disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 px-3 py-2 rounded-md border border-slate-200 bg-white text-[12px] text-slate-600 hover:bg-slate-50 hover:border-brand-300 transition-colors">
                   <Icon name={icon} size={14} className="text-brand-500"/>{label}
                 </button>
               ))}

@@ -31,7 +31,7 @@ function RulesPage() {
   return (
     <div>
       <PageHeader title="规则审查" sub="规则可追踪 · 义务可审查 — 每条结论可追溯到事实、规则与标准依据" icon="Gavel">
-        <Chip tone="brand" icon="ShieldCheck">无阻塞</Chip>
+        {!window.CPSWC.IS_SNAPSHOT && <Chip tone="brand" icon="ShieldCheck">无阻塞</Chip>}
         <Chip tone="amber" icon="UserCheck">专家确认 2 项</Chip>
       </PageHeader>
 
@@ -42,7 +42,9 @@ function RulesPage() {
             { k:'当前规则集', v:'GB 50433-2018 等 4 项', icon:'BookOpen' },
             { k:'适用区域', v:'广东省惠州市', icon:'MapPin' },
             { k:'规则锁定', v:'候选规则集 · 冻结后锁定', icon:'LockOpen' },
-            { k:'审查状态', v:'无阻塞', icon:'CircleCheck', ok:true },
+            { k:'审查状态', v: window.CPSWC.IS_SNAPSHOT ? '未判定（本页未接线）' : '无阻塞',
+              icon: window.CPSWC.IS_SNAPSHOT ? 'CircleHelp' : 'CircleCheck',
+              ok: !window.CPSWC.IS_SNAPSHOT },
             { k:'专家确认', v:'2 项待处理', icon:'UserCheck', warn:true },
           ].map(c => (
             <div key={c.k} className="bg-white p-3.5">

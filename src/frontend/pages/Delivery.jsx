@@ -31,13 +31,28 @@ const FILES = [
   { name:'monitoring_points_map.png', type:'监测点位图', s:'可下载', time:'09:43', src:'FIG-004', manual:false },
 ];
 
+const { IS_SNAPSHOT: DLV_SNAPSHOT, GATE: DLV_GATE } = window.CPSWC;
+
+// 快照模式下的检查项 = 真实 ExportGate 结论, 不是写死的"通过"。
+// 门禁只报问题, 不报"哪些项通过" —— 所以这里**不补齐成一张全绿的表**,
+// 只列门禁实际报出来的条目。没有条目也只说"门禁未报出问题", 不说"通过"。
+function gateChecks() {
+  const findings = (DLV_GATE && DLV_GATE.findings) || [];
+  return findings.map((f, n) => ({
+    k: f.rule_id || f.code || `检查 ${n + 1}`,
+    s: (f.action || f.severity) === 'BLOCK' ? '风险' : '待确认',
+    d: f.message || '',
+  }));
+}
+
 function DeliveryPage({ frozen, setFrozen }) {
   const [generated, setGenerated] = useState(false);
   const [manualRisk, setManualRisk] = useState(false); // 演示：正文金额被人工改写
   const [activeFile, setActiveFile] = useState('narrative_skeleton_v0.docx');
-  const checks = CHECKS.map(c => (manualRisk && c.k==='人工编辑风险')
+  const checks = DLV_SNAPSHOT ? gateChecks() : CHECKS.map(c => (manualRisk && c.k==='人工编辑风险')
     ? { ...c, s:'风险', d:'存在 1 处需复核（9.2 补偿费金额 4.5 万元与计算器 4.248 万元不一致）' } : c);
-  const files = FILES.map(f => (manualRisk && f.name==='narrative_skeleton_v0.docx') ? { ...f, manual:true } : f);
+  // 正式导出未实现 —— 快照模式下一个交付文件也不产出, 不许列 14 个"可下载"
+  const files = DLV_SNAPSHOT ? [] : FILES.map(f => (manualRisk && f.name==='narrative_skeleton_v0.docx') ? { ...f, manual:true } : f);
   const cur = files.find(f=>f.name===activeFile);
   const passN = checks.filter(c=>c.s==='通过').length;
   const warnN = checks.filter(c=>c.s==='待确认').length;
@@ -79,21 +94,29 @@ function DeliveryPage({ frozen, setFrozen }) {
           </div>
 
           {/* 导出前检查 */}
-          <Panel title="导出前检查" sub={`${passN} / ${checks.length} 项通过`} right={
+          <Panel title="导出前检查" sub={DLV_SNAPSHOT
+            ? `门禁结论 ${(DLV_GATE && DLV_GATE.verdict) || '未知'}，报出 ${checks.length} 条；门禁只报问题，不出具"通过"结论`
+            : `${passN} / ${checks.length} 项通过`} right={
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 text-[11px]">
-                <span className="text-emerald-600">通过 {passN}</span>
-                <span className="text-orange-600">待确认 {warnN}</span>
-                {riskN>0 && <span className="text-red-600">风险 {riskN}</span>}
+                {!DLV_SNAPSHOT && <span className="text-emerald-600">通过 {passN}</span>}
+                <span className="text-orange-600">{DLV_SNAPSHOT ? '提醒' : '待确认'} {warnN}</span>
+                {riskN>0 && <span className="text-red-600">{DLV_SNAPSHOT ? '阻断' : '风险'} {riskN}</span>}
               </div>
-              <button onClick={()=>setManualRisk(r=>!r)} className={`inline-flex items-center gap-1.5 text-[11.5px] px-2.5 py-1 rounded-md border whitespace-nowrap transition-colors ${manualRisk?'bg-orange-500 border-orange-500 text-white':'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
+              {!DLV_SNAPSHOT && <button onClick={()=>setManualRisk(r=>!r)} className={`inline-flex items-center gap-1.5 text-[11.5px] px-2.5 py-1 rounded-md border whitespace-nowrap transition-colors ${manualRisk?'bg-orange-500 border-orange-500 text-white':'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
                 <Icon name="Wand2" size={13}/>{manualRisk?'恢复默认':'模拟正文金额被人工改写'}
-              </button>
+              </button>}
             </div>
           }>
             <div className="divide-y divide-slate-50">
-              {checks.map(c => (
-                <div key={c.k} className="flex items-center gap-3 px-4 py-2.5">
+              {DLV_SNAPSHOT && checks.length === 0 && (
+                <div className="px-4 py-3 text-[12px] text-slate-500">
+                  门禁未报出问题。注意：这只说明<b>已登记的门禁规则</b>没有拦下什么，
+                  不等于方案已具备报批条件。
+                </div>
+              )}
+              {checks.map((c, ci) => (
+                <div key={`${c.k}#${ci}`} className="flex items-center gap-3 px-4 py-2.5">
                   <Icon name={c.s==='通过'?'CircleCheck':c.s==='风险'?'CircleAlert':'Clock'} size={16}
                     className={c.s==='通过'?'text-emerald-500':c.s==='风险'?'text-red-500':'text-orange-500'}/>
                   <span className="text-[13px] text-slate-700 w-32 shrink-0">{c.k}</span>
@@ -105,7 +128,7 @@ function DeliveryPage({ frozen, setFrozen }) {
           </Panel>
 
           {/* 人工编辑风险提示（仅演示后） */}
-          {manualRisk ? (
+          {DLV_SNAPSHOT ? null : manualRisk ? (
             <div className="flex items-start gap-2.5 px-4 py-3 rounded-lg bg-orange-50 border border-orange-200 text-[12.5px] text-orange-800">
               <Icon name="TriangleAlert" size={16} className="text-orange-500 shrink-0 mt-0.5"/>
               <span>导出前提示：第 <b>9.2 补偿费</b> 段落存在人工编辑（金额 4.5 万元）与计算器结果（4.248 万元）不一致，建议复核后再冻结导出。</span>
@@ -118,7 +141,15 @@ function DeliveryPage({ frozen, setFrozen }) {
           )}
 
           {/* 文件清单 */}
-          <Panel title="文件清单" sub="14 个交付文件（含图件）">
+          <Panel title="文件清单" sub={DLV_SNAPSHOT
+            ? '正式导出未实现，本次不产出任何交付文件'
+            : '14 个交付文件（含图件）'}>
+            {DLV_SNAPSHOT && (
+              <div className="px-4 py-4 text-[12px] text-slate-500">
+                正式导出能力尚未实现，本次快照<b>没有产出任何交付文件</b>。
+                当前唯一可交付的产物是「智能收资向导」里的待甲方提供资料清单。
+              </div>
+            )}
             <table className="w-full text-[12.5px]">
               <thead>
                 <tr className="text-[11px] text-slate-400 border-b border-slate-100">
@@ -171,6 +202,14 @@ function DeliveryPage({ frozen, setFrozen }) {
             </div>
           )}
 
+          {/* 快照模式下没有任何交付文件 —— 详情面板无内容可显示, 也不许显示"下载文件" */}
+          {!cur ? (
+            <Panel title="文件详情" sub="无文件">
+              <div className="p-4 text-[12px] text-slate-500">
+                本次快照没有产出交付文件，无可查看的文件详情。
+              </div>
+            </Panel>
+          ) : (
           <Panel title="文件详情" sub={cur.name}>
             <div className="p-4 space-y-1.5">
               <Field k="文件类型" v={cur.type} />
@@ -191,6 +230,7 @@ function DeliveryPage({ frozen, setFrozen }) {
               )}
             </div>
           </Panel>
+          )}
         </div>
       </div>
     </div>

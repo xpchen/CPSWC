@@ -20,3 +20,8 @@ OUTPUTS_DIR = PROJECT_ROOT / "outputs"
 
 # P0-06: narrative 模板目录 —— 模板源码摘要进生成输入 hash
 NARRATIVE_TEMPLATES_DIR = Path(__file__).resolve().parent / "narrative" / "templates"
+
+# F-1A: 前端壳源码目录 (payload bundle 从这里复制)
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+# F-1A: payload bundle 输出根目录 (/output/ 已在 .gitignore)
+OUTPUT_DIR = PROJECT_ROOT / "output"

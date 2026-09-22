@@ -54,6 +54,8 @@ function RateBar({ r }) {
   );
 }
 
+const { IS_SNAPSHOT } = window.CPSWC;
+
 function OverviewPage({ role, setPage }) {
   const cards = [
     { label:'事实完整度', value:'94', unit:'%', status:'通过', accent:'emerald', note:'关键事实已满足生成要求' },
@@ -69,7 +71,20 @@ function OverviewPage({ role, setPage }) {
       </PageHeader>
 
       <div className="p-6 space-y-5 max-w-[1400px]">
-        {/* 当前项目生产状态总览（演示冲击区） */}
+        {/* 当前项目生产状态总览（演示冲击区）
+            快照模式下整块隐藏: 这里写死了另一个项目的名字, 以及"无导出阻塞"
+            "2 项专家确认"等肯定结论 —— 与真实门禁 (BLOCK) 相反。
+            在 Overview 正式接线 (F-3) 之前, 宁可不显示, 也不显示假的。 */}
+        {IS_SNAPSHOT ? (
+          <div className="rounded-xl border border-slate-200 bg-white px-5 py-4">
+            <div className="text-[14px] font-semibold text-slate-700">当前项目生产状态总览</div>
+            <div className="text-[12px] text-slate-500 mt-1">
+              本模块尚未接入项目数据，已隐藏其原有演示内容 —— 那里写着另一个项目的名字，
+              以及与本项目真实门禁结论相反的几条肯定判断。本项目当前的真实状态见顶栏的
+              内容完成度与门禁结论，以及「智能收资向导」第 4 节的待甲方提供资料清单。
+            </div>
+          </div>
+        ) : (
         <div className="rounded-xl overflow-hidden border border-brand-800 bg-brand-900 text-white relative">
           <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage:'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize:'34px 34px' }}></div>
           <div className="relative px-6 py-5">
@@ -113,13 +128,16 @@ function OverviewPage({ role, setPage }) {
             </div>
           </div>
         </div>
+        )}
 
         <RoleBanner role={role} />
 
-        {/* 四状态卡 */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {cards.map(c => <MetricCard key={c.label} {...c} />)}
-        </div>
+        {/* 四状态卡 —— 快照模式下隐藏: 94%/88%/92%/"可生成" 全是写死的 */}
+        {!IS_SNAPSHOT && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {cards.map(c => <MetricCard key={c.label} {...c} />)}
+          </div>
+        )}
 
         {/* 资料收集状态 */}
         <Panel title="资料收集状态" sub="智能收资向导汇总" right={<button onClick={()=>setPage('facts')} className="text-[11.5px] text-brand-600 hover:underline inline-flex items-center gap-1">事实填报<Icon name="ArrowRight" size={12}/></button>}>

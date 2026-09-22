@@ -1,6 +1,76 @@
 // ===================================================================
 // CPSWC — 共享原语 + Mock 数据
 // ===================================================================
+
+// ===================================================================
+// CPSWC — 数据模式三态 (F-1B)
+// ===================================================================
+// **禁止逐字段回落 mock。** payload 已加载但某字段缺失时若悄悄用 mock 顶上,
+// 用户看到的就是一半真实一半演示的数据 —— 这是最危险的情况。
+// 因此判定在加载时**一次完成**, 之后不再逐字段判断。
+//
+//   PROJECT_SNAPSHOT  payload 存在且全量校验通过 → 完全禁止 mock
+//   DEMO              根本没有 payload           → 全部 mock + 全局角标
+//   PAYLOAD_ERROR     payload 不完整/版本不符/壳不匹配 → 阻断, 绝不回落
+//
+// 注意边界: NAV / ROLES / STATUS_STYLES / 图标映射是**界面配置**, 不是项目
+// 数据, 不受三态约束, 也不进 payload。三态只管业务数据。
+
+const PAYLOAD_SCHEMA_VERSION = 'cpswc_frontend_payload_v1';
+
+const PAYLOAD_REQUIRED_KEYS = [
+  'schema_version','data_mode','generated_at','shell_digest',
+  'project','hashes','facts','obligations','quality',
+  'findings','intake_issues','intake_summary',
+  'narrative','requirements','six_rates','export_gate',
+];
+
+function validatePayload(pl) {
+  const problems = [];
+  if (!pl || typeof pl !== 'object') return ['payload 不是对象'];
+  if (pl.schema_version !== PAYLOAD_SCHEMA_VERSION)
+    problems.push(`schema_version 不匹配: 期望 ${PAYLOAD_SCHEMA_VERSION}, 实为 ${pl.schema_version}`);
+  if (pl.data_mode !== 'PROJECT_SNAPSHOT')
+    problems.push(`data_mode 应为 PROJECT_SNAPSHOT, 实为 ${pl.data_mode}`);
+  PAYLOAD_REQUIRED_KEYS.forEach(k => { if (!(k in pl)) problems.push(`缺顶层键 ${k}`); });
+  const h = pl.hashes || {};
+  ['hash_schema_version','fact_snapshot_hash','generation_input_hash']
+    .forEach(k => { if (!h[k]) problems.push(`hashes.${k} 为空`); });
+  if (!Array.isArray(pl.facts) || !pl.facts.length) problems.push('facts 为空');
+  const fd = pl.findings || {};
+  ['build','narrative','quality','gate'].forEach(k => {
+    if (!(k in fd)) problems.push(`findings 缺分层 ${k}`);
+  });
+  if (pl.quality && !('is_submittable' in pl.quality))
+    problems.push('quality.is_submittable 缺失');
+  // 壳漂移: index.html 上盖的摘要与 payload 里记的必须一致,
+  // 否则就是"旧壳 + 新 payload"(或反之), 显示出来的东西不可信。
+  const meta = document.querySelector('meta[name="cpswc-shell-digest"]');
+  const stamped = meta && meta.getAttribute('content');
+  if (stamped && pl.shell_digest && stamped !== pl.shell_digest)
+    problems.push('前端壳与 payload 不匹配 (shell_digest 不一致), 可能是旧壳配新数据');
+  return problems;
+}
+
+const _RAW_PAYLOAD = (typeof window !== 'undefined') ? window.CPSWC_PAYLOAD : null;
+const PAYLOAD_PROBLEMS = _RAW_PAYLOAD ? validatePayload(_RAW_PAYLOAD) : [];
+const DATA_MODE = !_RAW_PAYLOAD ? 'DEMO'
+  : (PAYLOAD_PROBLEMS.length ? 'PAYLOAD_ERROR' : 'PROJECT_SNAPSHOT');
+const PAYLOAD = (DATA_MODE === 'PROJECT_SNAPSHOT') ? _RAW_PAYLOAD : null;
+const IS_SNAPSHOT = DATA_MODE === 'PROJECT_SNAPSHOT';
+
+// 业务数据取值口。PROJECT_SNAPSHOT 下**只认 payload**;
+// 取不到就是 payload 契约出了问题, 应该在 validatePayload 里就被拦住,
+// 这里抛错而不是悄悄用 mock。
+function LIVE(path, mockValue) {
+  if (!IS_SNAPSHOT) return mockValue;
+  const v = path.split('.').reduce((o, k) => (o == null ? o : o[k]), PAYLOAD);
+  if (v === undefined || v === null) {
+    throw new Error(`payload 缺 ${path} —— PROJECT_SNAPSHOT 模式下禁止回落 mock`);
+  }
+  return v;
+}
+
 const { useState, useEffect, useRef, useMemo, createElement } = React;
 
 // ---------- Icon (lucide UMD) ----------
@@ -513,10 +583,84 @@ const DISPOSAL_RECEIVERS = [
   },
 ];
 
-window.CPSWC = { PROJECT, ROLES, NAV, SIX_RATES, KEY_FACTS, RECENT_CHANGES, TODOS,
-  USER, PROJECTS, PROJECT_VERSIONS, OP_LOG, RULESET_OPTIONS, PROJECT_TYPES,
-  SOURCE_REGISTRY, SOURCE_TYPE_LABELS, SOURCE_TYPE_ICONS, FOOTNOTE_TYPES,
+// ===================================================================
+// 三态装配 (F-1B)
+// ===================================================================
+// PROJECT_SNAPSHOT 下, 业务数据一律来自 payload; mock 常量不参与。
+
+// 项目抬头: 快照模式取 payload, 演示模式用 mock
+const LIVE_PROJECT = IS_SNAPSHOT ? (() => {
+  const p = PAYLOAD.project, q = PAYLOAD.quality;
+  return {
+    ...PROJECT,                       // 保留界面用的静态装饰字段
+    name: p.name || '(项目名称未填)',
+    org: '', code: p.code || '', location: '', type: p.industry || '',
+    rulesetVersion: p.ruleset || '',
+    phase: p.lifecycle || '',
+    frozen: false,
+    // **不给 completeness 数字** —— 覆盖率要四行分开显示, 不能压成一个百分比
+    completeness: null,
+    coverageDisplay: q.coverage_display || '',
+    status: '',
+  };
+})() : PROJECT;
+
+// 六率: 快照模式直接用 payload 的三列文案(含"候选·待确认"), 不再有 ok 布尔
+const LIVE_SIX_RATES = IS_SNAPSHOT
+  ? PAYLOAD.six_rates.map(r => ({
+      name: r.indicator, target: r.target, actual: r.actual,
+      result: r.result, ok: null, ref: r.formula }))
+  : SIX_RATES;
+
+// 关键事实: 快照模式取 project_fields() 的完整状态
+const LIVE_KEY_FACTS = IS_SNAPSHOT
+  ? PAYLOAD.facts.filter(f => !f.is_derived).slice(0, 12).map(f => ({
+      id: f.field_id.replace(/^field\.fact\./, ''),
+      name: f.canonical_name || f.field_id,
+      v: f.state === 'PRESENT' ? String(f.value) : null,
+      u: f.unit || '', state: f.state, provenance: f.provenance,
+      note: f.note || '', src: f.provenance }))
+  : KEY_FACTS.map(k => ({ ...k, state: 'PRESENT', provenance: 'DEMO' }));
+
+// 待办: 快照模式取去重后的诊断, 不再有硬编码的"当前无导出阻塞项"
+const LIVE_TODOS = IS_SNAPSHOT
+  ? (PAYLOAD.findings.build || [])
+      .concat(PAYLOAD.findings.narrative || [])
+      .filter(f => f.severity === 'BLOCK')
+      .slice(0, 8)
+      .map(f => ({ tone: 'rose', text: f.message, tag: f.code }))
+  : TODOS;
+
+// F-2 收资清单: 快照模式用后端 intake_issues; 演示模式下明确给空,
+// 由界面显示"演示模式不产出收资清单" —— 不拿 mock 冒充。
+const LIVE_GATE = IS_SNAPSHOT ? (PAYLOAD.export_gate || null) : null;
+const LIVE_INTAKE_ISSUES  = IS_SNAPSHOT ? (PAYLOAD.intake_issues || []) : [];
+const LIVE_INTAKE_SUMMARY = IS_SNAPSHOT ? (PAYLOAD.intake_summary || null) : null;
+
+window.CPSWC = {
+  // ---- 三态 ----
+  DATA_MODE, PAYLOAD, PAYLOAD_PROBLEMS, IS_SNAPSHOT, LIVE,
+
+  // ---- 业务数据 (三态已在上面装配好) ----
+  PROJECT: LIVE_PROJECT, SIX_RATES: LIVE_SIX_RATES,
+  KEY_FACTS: LIVE_KEY_FACTS, TODOS: LIVE_TODOS,
+  INTAKE_ISSUES: LIVE_INTAKE_ISSUES, INTAKE_SUMMARY: LIVE_INTAKE_SUMMARY,
+  GATE: LIVE_GATE,
+  RECENT_CHANGES,
+
+  // ---- 界面配置 (不是项目数据, 不受三态约束) ----
+  ROLES, NAV, USER, SOURCE_TYPE_LABELS, SOURCE_TYPE_ICONS, FOOTNOTE_TYPES,
+  PROJECT_TYPES, RULESET_OPTIONS, FIGURE_CATS, FIGURE_TEMPLATES,
+  SENSITIVE_AREAS_12,
+
+  // ---- 尚未接线的页面仍用 mock; 快照模式下由页面自行标注"本页未接线" ----
+  PROJECTS, PROJECT_VERSIONS, OP_LOG, SOURCE_REGISTRY,
   INTAKE_DOCS, INTAKE_CANDIDATES, INTAKE_MISSING, INTAKE_NEXT, EXCEL_SHEETS,
-  FIGURE_CATS, FIGURES, FIGURE_TEMPLATES,
-  SENSITIVE_AREAS_12, ANALOG_PROJECTS, DISPOSAL_RECEIVERS };
+  FIGURES, ANALOG_PROJECTS, DISPOSAL_RECEIVERS,
+};
 Object.assign(window, { Icon, StatusTag, Panel, MetricCard, Field, Chip });
+
+// 已接线到 payload 的 **NAV 页面**白名单 (收资抽屉不是 NAV 页, 单独接的)。
+// 刻意用白名单而不是黑名单: 默认未接线, 接好一个加一个。漏加只会多显示一条
+// "本页未接线"的提示 (保守), 而黑名单漏删会让 mock 冒充真数据 (危险)。
+window.CPSWC.WIRED_PAGES = [];

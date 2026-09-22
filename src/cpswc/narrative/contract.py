@@ -20,15 +20,43 @@ from dataclasses import dataclass, field as dc_field
 from enum import Enum
 from typing import Any
 
+from cpswc.report_quality import Applicability, QualityFinding
+
 
 # ============================================================
 # Enums
 # ============================================================
 
 class RenderStatus(str, Enum):
+    """**渲染状态, 不是专业完成度。**
+
+    P0-01 后语义收紧: FULL 只表示"这块有连续可读文字", 它不表示内容完整、
+    证据齐全或已经专业复核。专业完成度由 cpswc.report_quality 的
+    ContentState / EvidenceState / ReviewState 单独承载, 默认 UNASSESSED。
+    任何消费方都不得把 FULL 映射成 ReviewState.CONFIRMED。
+    """
     FULL = "full"                    # 有连续可读正文
     SKELETON = "skeleton"            # 占位符, 待扩展
     NOT_APPLICABLE = "not_applicable"  # 本项目不涉及
+
+
+class ContentRole(str, Enum):
+    """这一块在内容规范里算不算一份成果。"""
+    LEAF_CONTENT = "LEAF_CONTENT"   # 叶子内容, 进覆盖率分母
+    PARENT_INTRO = "PARENT_INTRO"   # 父标题引言, **不计完成成果** (验收 Q01)
+    PLACEHOLDER = "PLACEHOLDER"     # 占位
+
+
+class AssertionClass(str, Enum):
+    """段落的断言类型。决定它需要什么级别的支持 (04 文档第 5 节)。"""
+    FACT_RESTATEMENT = "FACT_RESTATEMENT"          # 复述当前有效值
+    ARITHMETIC = "ARITHMETIC"                      # 可复算的算术结果
+    NORMATIVE_REQUIREMENT = "NORMATIVE_REQUIREMENT"  # 复述规范要求本身
+    TARGET_VALUE = "TARGET_VALUE"                  # 目标值 (不得当效果用)
+    DESIGN_EFFECT = "DESIGN_EFFECT"                # 设计效果 (需独立计算)
+    MONITORED_ACTUAL = "MONITORED_ACTUAL"          # 实测值 (需时点与来源)
+    PROJECT_JUDGMENT = "PROJECT_JUDGMENT"          # 本项目合理/可行/符合 — 需当前复核记录
+    GAP_STATEMENT = "GAP_STATEMENT"                # 如实说明缺口
 
 
 # ============================================================
@@ -56,6 +84,15 @@ class NarrativeParagraph:
 
     warnings: list[str] = dc_field(default_factory=list)
     """生成本段时产生的告警"""
+
+    paragraph_id: str | None = None
+    """稳定段落标识, narr.* 命名空间 (CORE_CONTRACTS id_namespaces.narrative_node)"""
+
+    assertion_class: AssertionClass = AssertionClass.FACT_RESTATEMENT
+    """本段断言类型。PROJECT_JUDGMENT 必须附 review_refs, 见 validate_paragraph"""
+
+    review_refs: list[str] = dc_field(default_factory=list)
+    """支持本段专业判断的复核记录 id。只有 PROJECT_JUDGMENT 需要"""
 
 
 # ============================================================
@@ -106,6 +143,18 @@ class NarrativeBlock:
     block_warnings: list[str] = dc_field(default_factory=list)
     """block 级告警 (如 variant 选择告警、数据不足告警)"""
 
+    content_role: ContentRole = ContentRole.LEAF_CONTENT
+    """父标题引言标 PARENT_INTRO, 不计入内容完成成果 (验收 Q01)"""
+
+    applicability: Applicability | None = None
+    """
+    本节是否适用。None = 由消费方按渲染状态保守推断。
+    UNKNOWN 必须显式表达, **不得**退化成 NOT_APPLICABLE (验收 U07 / R03)。
+    """
+
+    quality_findings: list[QualityFinding] = dc_field(default_factory=list)
+    """本块产生的质量诊断。只存引用与状态, 不复制项目数值"""
+
 
 # ============================================================
 # Validation
@@ -122,6 +171,14 @@ def validate_paragraph(p: NarrativeParagraph) -> list[str]:
     if not p.evidence_refs and not p.source_rule_refs:
         errors.append(
             f"paragraph 无追溯: evidence_refs 和 source_rule_refs 都为空. "
+            f"text 前 40 字: '{p.text[:40]}...'"
+        )
+    # P0-03: 本项目"合理/可行/符合"类判断必须绑定当前有效的复核记录。
+    # 仅引用规范、仅有一张表、义务已触发都不构成充分支持 (04 文档第 5 节)。
+    if p.assertion_class is AssertionClass.PROJECT_JUDGMENT and not p.review_refs:
+        errors.append(
+            f"paragraph 标为 PROJECT_JUDGMENT 但无 review_refs: "
+            f"无当前复核记录不得作本项目合规/合理性判断. "
             f"text 前 40 字: '{p.text[:40]}...'"
         )
     return errors
@@ -230,12 +287,21 @@ class NarrativeProjectionResult:
     """所有章节的 narrative blocks (按 section tree 顺序)"""
 
     full_count: int = 0
-    """render_status=full 的 block 数量"""
+    """render_status=full 的 block 数量。
+
+    **只表示"文字已渲染的块数"**, 不是完成度分子。内容完成度见
+    cpswc.report_quality.ReportQualitySummary.content_coverage。"""
 
     skeleton_count: int = 0
     """render_status=skeleton 的 block 数量"""
 
     not_applicable_count: int = 0
+
+    unknown_applicability_count: int = 0
+    """适用性无法确定的块数。**不计入 not_applicable_count** (验收 U07)"""
+
+    quality_findings: list[QualityFinding] = dc_field(default_factory=list)
+    """投影层产生的全局质量诊断"""
 
     validation_errors: list[str] = dc_field(default_factory=list)
     """全部 block 的 validate_block 错误汇总"""

@@ -14,8 +14,11 @@ sec_7_8_construction_schedule — 7.8 施工组织与进度安排
 """
 from __future__ import annotations
 from cpswc.narrative.contract import (
-    NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec, RenderStatus,
+    AssertionClass, NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec,
+    RenderStatus,
 )
+from cpswc.narrative.evidence import SectionEvidence
+from cpswc.report_quality import Severity
 from cpswc.narrative.templates.schedule_phases import derive_phases, format_phases_text
 
 
@@ -37,29 +40,31 @@ SPEC = NarrativeTemplateSpec(
 )
 
 
-def _v(facts: dict, key: str, default: str = "—") -> str:
-    v = facts.get(key)
-    if v is None:
-        return default
-    if isinstance(v, dict) and "value" in v:
-        return f"{v['value']} {v.get('unit', '')}".strip()
-    return str(v)
-
-
 def render(facts: dict, derived: dict, triggered: set[str],
-           **kwargs) -> NarrativeBlock:
-    start = _v(facts, "field.fact.schedule.start_time")
-    end = _v(facts, "field.fact.schedule.end_time")
+           ledger=None, context=None, **kwargs) -> NarrativeBlock:
+    ev = SectionEvidence("sec.soil_loss_prevention.construction_schedule",
+                         facts, derived, ledger=ledger, context=context)
+    start = ev.text("field.fact.schedule.start_time")
+    end = ev.text("field.fact.schedule.end_time")
     phases = derive_phases(facts)
 
     # Phase overview
-    if phases:
+    if not ev.all_present(start, end):
+        phase_intro = ("项目建设工期信息不完整（缺 "
+                       + "、".join(ev.missing_refs(start, end))
+                       + "），本节尚无法给出施工时序安排。")
+    elif phases:
         phase_text = format_phases_text(phases)
-        phase_intro = f"项目建设总工期自{start}至{end}，分为{phase_text}三个阶段。"
+        phase_intro = (f"项目建设总工期自{start.display()}至{end.display()}，"
+                       f"分为{phase_text}三个阶段。")
     else:
-        phase_intro = f"项目建设总工期自{start}至{end}。"
+        phase_intro = f"项目建设总工期自{start.display()}至{end.display()}。"
 
     p1 = NarrativeParagraph(
+        assertion_class=(AssertionClass.FACT_RESTATEMENT
+                         if ev.all_present(start, end)
+                         else AssertionClass.GAP_STATEMENT),
+        paragraph_id="narr.soil_loss_prevention.construction_schedule.phases",
         text=phase_intro,
         evidence_refs=[
             "field.fact.schedule.start_time",
@@ -148,4 +153,5 @@ def render(facts: dict, derived: dict, triggered: set[str],
         template_id=SPEC.template_id,
         template_version=SPEC.template_version,
         normative_basis=SPEC.normative_basis,
+        quality_findings=ev.findings,
     )

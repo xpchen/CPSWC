@@ -6,8 +6,10 @@ sec_1_1_basic_info — 1.1 项目基本情况 narrative template
 """
 from __future__ import annotations
 from cpswc.narrative.contract import (
-    NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec, RenderStatus,
+    AssertionClass, NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec,
+    RenderStatus,
 )
+from cpswc.narrative.evidence import SectionEvidence
 
 
 TEMPLATE_SPEC = NarrativeTemplateSpec(
@@ -37,44 +39,40 @@ TEMPLATE_SPEC = NarrativeTemplateSpec(
 )
 
 
-def _v(facts: dict, key: str, default: str = "—") -> str:
-    """从 facts 取值, 处理 Quantity 和 list 类型"""
-    v = facts.get(key)
-    if v is None:
-        return default
-    if isinstance(v, dict) and "value" in v:
-        unit = v.get("unit", "")
-        return f"{v['value']} {unit}".strip()
-    if isinstance(v, list):
-        return "、".join(str(x) for x in v)
-    return str(v)
-
-
 def render(facts: dict, derived: dict, triggered: set[str],
-           **kwargs) -> NarrativeBlock:
+           ledger=None, context=None, **kwargs) -> NarrativeBlock:
     """渲染 1.1 项目基本情况"""
-    name = _v(facts, "field.fact.project.name")
-    code = _v(facts, "field.fact.project.code")
-    industry = _v(facts, "field.fact.project.industry_category")
-    nature = _v(facts, "field.fact.project.nature")
-    total_inv = _v(facts, "field.fact.investment.total_investment")
-    civil_inv = _v(facts, "field.fact.investment.civil_investment")
-    start = _v(facts, "field.fact.schedule.start_time")
-    end = _v(facts, "field.fact.schedule.end_time")
-    total_area = _v(facts, "field.fact.land.total_area")
-    perm_area = _v(facts, "field.fact.land.permanent_area")
-    temp_area = _v(facts, "field.fact.land.temporary_area")
-    province = _v(facts, "field.fact.location.province_list")
-    prefecture = _v(facts, "field.fact.location.prefecture_list")
+    SEC = "sec.overview.project_basic"
+    ev = SectionEvidence(SEC, facts, derived, ledger=ledger, context=context)
 
-    p1 = NarrativeParagraph(
-        text=(
-            f"{name}"
-            f"{'（项目代码：' + code + '）' if code and code != '—' else ''}"
-            f"为{nature}项目，"
-            f"属{industry}类行业，位于{province}{prefecture}。"
-            f"项目总投资{total_inv}，其中土建投资{civil_inv}。"
-        ),
+    name = ev.text("field.fact.project.name")
+    code = ev.text("field.fact.project.code")
+    industry = ev.text("field.fact.project.industry_category")
+    nature = ev.text("field.fact.project.nature")
+    total_inv = ev.quantity("field.fact.investment.total_investment")
+    civil_inv = ev.quantity("field.fact.investment.civil_investment")
+    start = ev.text("field.fact.schedule.start_time")
+    end = ev.text("field.fact.schedule.end_time")
+    total_area = ev.quantity("field.fact.land.total_area")
+    perm_area = ev.quantity("field.fact.land.permanent_area")
+    temp_area = ev.quantity("field.fact.land.temporary_area")
+    province = ev.text("field.fact.location.province_list")
+    prefecture = ev.text("field.fact.location.prefecture_list")
+
+    g1 = [name, nature, industry, province, prefecture, total_inv, civil_inv]
+    if ev.all_present(*g1):
+        p1 = NarrativeParagraph(
+            text=(
+                f"{name.display()}"
+                f"{'（项目代码：' + code.display() + '）' if code.is_present else ''}"
+                f"为{nature.display()}项目，"
+                f"属{industry.display()}类行业，"
+                f"位于{province.display()}{prefecture.display()}。"
+                f"项目总投资{total_inv.display()}，"
+                f"其中土建投资{civil_inv.display()}。"
+            ),
+            assertion_class=AssertionClass.FACT_RESTATEMENT,
+            paragraph_id="narr.overview.project_basic.identity",
         evidence_refs=[
             "field.fact.project.name",
             "field.fact.project.code",
@@ -86,14 +84,24 @@ def render(facts: dict, derived: dict, triggered: set[str],
             "field.fact.location.prefecture_list",
         ],
         source_rule_refs=["rule.template_2026.section_1_1"],
-    )
+        )
+    else:
+        p1 = ev.gap_paragraph(
+            *g1, lead="项目基本信息不完整",
+            source_rule_refs=["rule.template_2026.section_1_1"],
+            paragraph_id="narr.overview.project_basic.identity")
 
-    p2 = NarrativeParagraph(
-        text=(
-            f"施工期为{start}至{end}。"
-            f"项目总占地面积{total_area}，"
-            f"其中永久占地{perm_area}，临时占地{temp_area}。"
-        ),
+    g2 = [start, end, total_area, perm_area, temp_area]
+    if ev.all_present(*g2):
+        p2 = NarrativeParagraph(
+            text=(
+                f"施工期为{start.display()}至{end.display()}。"
+                f"项目总占地面积{total_area.display()}，"
+                f"其中永久占地{perm_area.display()}，"
+                f"临时占地{temp_area.display()}。"
+            ),
+            assertion_class=AssertionClass.FACT_RESTATEMENT,
+            paragraph_id="narr.overview.project_basic.schedule_and_land",
         evidence_refs=[
             "field.fact.schedule.start_time",
             "field.fact.schedule.end_time",
@@ -102,7 +110,12 @@ def render(facts: dict, derived: dict, triggered: set[str],
             "field.fact.land.temporary_area",
         ],
         source_rule_refs=["rule.template_2026.section_1_1"],
-    )
+        )
+    else:
+        p2 = ev.gap_paragraph(
+            *g2, lead="施工期与占地数据不完整",
+            source_rule_refs=["rule.template_2026.section_1_1"],
+            paragraph_id="narr.overview.project_basic.schedule_and_land")
 
     return NarrativeBlock(
         section_id="sec.overview.project_basic",

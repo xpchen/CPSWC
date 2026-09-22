@@ -1,0 +1,726 @@
+# ReportContentRequirements_v1 — 报告书内容规范清单
+#
+# 任务来源: docs/report_production_plan/03_P0_TASKS.md P0-05
+# 批准记录: implementation/DECISION_LOG.md 条目 008 (B 批) / 条目 010 (本文件)
+#
+# 本文件把"2026 模板要求什么"变成机器可读的叶子要求清单, 供:
+#   1. 质量层计算内容完成度 (分母 = 适用叶子要求, 验收 Q01/Q02/R02)
+#   2. 章节显示位置绑定 (stable ID → display_number)
+#   3. "正式模板要求—stable ID—显示位置—实现状态"差异表
+#
+# ============================================================
+# 硬约束
+# ============================================================
+# 1. **stable ID 不改名。** 显示位置变了就改 display_number, 不动 stable_id ——
+#    改名会让历史审查意见的定位全部失联 (04 文档第 6 节)。
+#    典型: sec.conclusion 显示位置从"第 11 章"迁到"1.9", ID 保持不变;
+#         sec.soil_loss_prevention.benefit_analysis 跨章迁到 9.2, ID 保持不变。
+# 2. **未实现不等于不要求。** implemented: false 的要求**仍进覆盖率分母**,
+#    不得因为模板没写就不计分 (验收 R02)。
+# 3. 本文件只描述"模板要求什么", **不描述任何项目的事实**。
+
+schema_version: report_content_requirements_v1
+generated_at: 2026-09-21
+species: 报告书            # 报告表 (附件 3) 是另一套结构, 不在本文件范围
+
+# ============================================================
+# 来源与核验状态 (决议 8 双锚)
+# ============================================================
+source:
+  verification_status: VERIFIED
+  authority_class: 部委规范性文件
+  issuing_authority: 中华人民共和国水利部办公厅
+  document_number: 办水保函〔2026〕232号
+  document_title: 水利部办公厅关于印发生产建设项目水土保持方案编制模板的通知
+  attachment: 附件1 生产建设项目水土保持方案报告书编制内容
+  issued_at: '2026-04-03'
+  effective_from: '2026-04-03'         # 自印发之日起实施
+  mandatory_from: '2026-06-01'         # 此后不再接收不符合模板要求的方案
+
+  primary_evidence:
+    kind: local_scan
+    path: docs/水利部办公厅关于印发生产建设项目水土保持方案编制模板的通知.pdf
+    content_sha256: 57a682a12bc43b13a1a4f0ed64a641f52b1465d324dc49178233a19770a2ab00
+    total_pages: 28
+    attachment_1_pages: '3-22'
+    note: |
+      纯图像 PDF (Canon iR-ADV C5870 扫描, 3303x4671 400dpi)。
+      本清单的章节结构逐页取自该原件的可视页面。
+
+  cross_check:
+    kind: public_html
+    url: https://slj.changdu.gov.cn/cdsslj/zcjd/202604/d9a22fa0f86b4ebeb39f59836c9ed3f2.shtml
+    publisher: 昌都市水利局
+    checked_at: '2026-09-21'
+    structure_match: identical      # 第 1—10 章及各级小节与原件逐条一致
+    discrepancy: |
+      该页面标注的文号为"办水保函〔2026〕23号", 与原件"办水保函〔2026〕232号"
+      不一致 (少一位)。**以原件为准。**
+      这证实了 04_CONTRACTS_AND_ACCEPTANCE.md 第 6 节所记"页面标题文号有误"。
+
+  ocr_policy: |
+    OCR 仅用于定位页码, 不作为规范原文。本清单文字以原件可视页面为准。
+
+# ============================================================
+# stable ID 迁移说明 (04 文档第 6 节)
+# ============================================================
+# 只登记"显示位置发生变化"的条目。ID 一律不动。
+stable_id_migrations:
+  - stable_id: sec.conclusion
+    old_display: '11'
+    old_source: governance/DisplayNumberingPolicy_v0.yaml (display_numbering_policy_v0.1)
+    new_display: '1.9'
+    reason: |
+      2026 模板的主体章止于第 10 章"水土保持管理", 没有第 11 章。
+      结论是综合说明的末节 1.9。原 DisplayNumberingPolicy_v0 把它编为第 11 章。
+    review_reference_note: |
+      历史审查意见若按"第 11 章"定位结论, 仍指向 sec.conclusion;
+      引用时应注明其为 v0.1 编号语境。
+
+  - stable_id: sec.soil_loss_prevention.benefit_analysis
+    old_display: '7.5'
+    old_source: governance/DisplayNumberingPolicy_v0.yaml
+    new_display: '9.2'
+    cross_chapter: true
+    reason: |
+      2026 模板把效益分析放在第 9 章"水土保持投资及效益分析"之下 (9.2),
+      不在第 7 章。这是一次跨章迁移。
+    review_reference_note: |
+      stable ID 保留。按"7.5"定位效益分析的历史意见仍可解析到本节。
+
+  - stable_id: sec.soil_loss_prevention.design_horizon
+    old_display: '7.3'
+    new_display: '7.2'
+    reason: 2026 模板中 7.2 为设计水平年, 7.3 为防治目标; 原编号把二者对调了。
+
+  - stable_id: sec.soil_loss_prevention.targets
+    old_display: '7.2'
+    new_display: '7.3'
+    reason: 同上, 与 design_horizon 互换。
+
+  - stable_id: sec.investment_estimation.compensation_fee
+    old_display: '9.2'
+    new_display: '9.1.2'
+    reason: |
+      2026 模板的 9.2 是效益分析。补偿费属于 9.1 投资估算的估算成果内容
+      (9.1.2 明列"水土保持补偿费计算表"), 不单独占用 9.2。
+
+# ============================================================
+# 被吸收 / 悬空的既有 stable ID
+# ============================================================
+# 这些 ID 在 v0.1 里是独立显示节, 但在 2026 模板里没有对应的独立编号 ——
+# 它们的内容被并进了别的节。**不得静默丢弃**: 否则按旧编号定位的审查意见
+# 会失联 (03 文档 P0-05 第 8 条)。
+absorbed_stable_ids:
+  - stable_id: sec.investment_estimation.compensation_fee
+    absorbed_into: req.t2026.9.1.2
+    display_hint: 9.1.2（估算成果之一）
+    reason: |
+      2026 模板 9.1.2"编制说明与估算成果"明列"水土保持补偿费计算表"为估算成果
+      之一, 补偿费不单独占用一个编号 (9.2 是效益分析)。
+    status: ACTIVE_CONTENT      # 内容仍产出, 只是不再独立编号
+
+  - stable_id: sec.project_overview.water_soil_zoning
+    absorbed_into: req.t2026.1.1.2
+    also_referenced_by: [req.t2026.table_1]
+    display_hint: 1.1.2（自然简况）/ 表1（涉及水土保持区划）
+    reason: |
+      2026 模板 2.7 自然概况的七个子项 (地质/地貌/气候气象/水文/土壤/植被/
+      敏感区) 中**没有**独立的"水土保持区划"节。区划出现在 1.1.2 自然简况
+      的表述要求里, 以及表 1 特性表的"涉及水土保持区划"栏。
+    status: ACTIVE_CONTENT
+    note: |
+      该节当前由 sec_2_3_climate_zoning.render_zoning 产出, 显示位置需在
+      renderer 层迁移。本轮只登记映射, 不改 renderer 的章节树 (见差异表)。
+
+  - stable_id: sec.soil_loss_prevention.responsibility_range_by_county
+    absorbed_into: req.t2026.7.1
+    also_referenced_by: [attachments.tables.防治责任范围统计表]
+    display_hint: 7.1（按县级行政区分别列明）+ 附表
+    reason: |
+      2026 模板 7.1 要求"按县级行政区和水土流失防治分区分别列明涉及的水土
+      流失防治责任范围及面积", 并在附表中要求"防治责任范围统计表(涉及两个
+      及以上行政区)"。分县内容属 7.1 的组成部分, 不是独立编号节。
+    status: ACTIVE_CONTENT
+
+# ============================================================
+# 内容要求
+# ============================================================
+# is_leaf: true  → 进覆盖率分母
+# implemented    → 当前是否有 narrative 模板产出该内容
+# stable_id      → 已有 sec.* 绑定; null = 尚未分配 (未实现)
+# applicability  → always | conditional (conditional 须说明条件)
+
+requirements:
+
+  # ---------- 1 综合说明 ----------
+  - id: req.t2026.1
+    display_number: '1'
+    title: 综合说明
+    stable_id: sec.overview
+    is_leaf: false
+    applicability: always
+  - id: req.t2026.1.1.1
+    display_number: 1.1.1
+    title: 项目基本情况
+    stable_id: sec.overview.project_basic
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.1.1.2
+    display_number: 1.1.2
+    title: 自然简况
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.1.2
+    display_number: '1.2'
+    title: 项目水土保持评价结论
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.1.3
+    display_number: '1.3'
+    title: 表土资源保护与利用
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.1.4
+    display_number: '1.4'
+    title: 弃渣场选址与堆置
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.1.5
+    display_number: '1.5'
+    title: 水土流失预测结果
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.1.6.1
+    display_number: 1.6.1
+    title: 水土流失防治责任范围及目标
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.1.6.2
+    display_number: 1.6.2
+    title: 水土流失防治分区及措施
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.1.7
+    display_number: '1.7'
+    title: 水土保持监测方案
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.1.8
+    display_number: '1.8'
+    title: 水土保持投资及效益分析成果
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.1.9
+    display_number: '1.9'
+    title: 结论
+    stable_id: sec.conclusion
+    is_leaf: true
+    applicability: always
+    implemented: true
+    note: 显示位置由 v0.1 的"第 11 章"迁入, 见 stable_id_migrations
+  - id: req.t2026.table_1
+    display_number: 表1
+    title: 水土保持方案特性表
+    stable_id: sec.overview.spec_sheet_end
+    is_leaf: true
+    applicability: always
+    implemented: true
+    note: 综合说明后应附
+
+  # ---------- 2 项目概况 ----------
+  - id: req.t2026.2
+    display_number: '2'
+    title: 项目概况
+    stable_id: sec.project_overview
+    is_leaf: false
+    applicability: always
+  - id: req.t2026.2.1
+    display_number: '2.1'
+    title: 项目组成及工程布置
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.2.2
+    display_number: '2.2'
+    title: 施工组织
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+    note: 含 2.2.1—2.2.8 八个子项; 2.2.4—2.2.7 为"不涉及的不列"
+  - id: req.t2026.2.3
+    display_number: '2.3'
+    title: 工程占地
+    stable_id: sec.project_overview.land_occupation
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.2.4
+    display_number: '2.4'
+    title: 土石方平衡
+    stable_id: sec.project_overview.earthwork_balance
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.2.5
+    display_number: '2.5'
+    title: 拆迁（移民）安置与专项设施改（迁）建
+    stable_id: null
+    is_leaf: true
+    applicability: conditional
+    condition_note: 原文标注"不涉及的不列"
+    implemented: false
+  - id: req.t2026.2.6
+    display_number: '2.6'
+    title: 工程进度
+    stable_id: sec.project_overview.progress
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.2.7.1
+    display_number: 2.7.1
+    title: 地质
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.2.7.2
+    display_number: 2.7.2
+    title: 地貌
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.2.7.3
+    display_number: 2.7.3
+    title: 气候气象
+    stable_id: sec.project_overview.climate
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.2.7.4
+    display_number: 2.7.4
+    title: 水文
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.2.7.5
+    display_number: 2.7.5
+    title: 土壤
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.2.7.6
+    display_number: 2.7.6
+    title: 植被
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.2.7.7
+    display_number: 2.7.7
+    title: 水土保持敏感区及其他敏感区
+    stable_id: sec.project_overview.sensitive_areas
+    is_leaf: true
+    applicability: always
+    implemented: true
+
+  # ---------- 3 项目水土保持评价 ----------
+  - id: req.t2026.3
+    display_number: '3'
+    title: 项目水土保持评价
+    stable_id: sec.evaluation
+    is_leaf: false
+    applicability: always
+  - id: req.t2026.3.1
+    display_number: '3.1'
+    title: 主体工程选址（线）水土保持评价
+    stable_id: sec.evaluation.site_selection
+    is_leaf: true
+    applicability: always
+    implemented: true
+    note: |
+      **常规评价内容, 每个项目都要做。**
+      不可避让论证是本节内的专题 (由 ob.unavoidability.redline_conflict 驱动),
+      不是整节的适用性开关 —— 见 narrative/projection.py 的 _SECTION_SPECIAL_TOPICS。
+  - id: req.t2026.3.2
+    display_number: '3.2'
+    title: 建设方案与布局水土保持评价
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.3.3
+    display_number: '3.3'
+    title: 工程占地评价
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.3.4
+    display_number: '3.4'
+    title: 土石方平衡评价
+    stable_id: sec.evaluation.earthwork_balance
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.3.5
+    display_number: '3.5'
+    title: 取土场设置评价
+    stable_id: null
+    is_leaf: true
+    applicability: conditional
+    condition_note: 原文标注"不设取土场的不列"
+    implemented: false
+  - id: req.t2026.3.6
+    display_number: '3.6'
+    title: 施工方法与工艺评价
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.3.7
+    display_number: '3.7'
+    title: 主体工程设计中具有水土保持功能工程的分析评价
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+
+  # ---------- 4 表土资源保护与利用 ----------
+  - id: req.t2026.4
+    display_number: '4'
+    title: 表土资源保护与利用
+    stable_id: sec.topsoil
+    is_leaf: false
+    applicability: always
+  - id: req.t2026.4.1.1
+    display_number: 4.1.1
+    title: 表土资源调查
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.4.1.2
+    display_number: 4.1.2
+    title: 表土资源评价
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.4.2.1
+    display_number: 4.2.1
+    title: 表土剥离保护
+    stable_id: sec.topsoil.stripping
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.4.2.2
+    display_number: 4.2.2
+    title: 表土就地保护
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.4.3.1
+    display_number: 4.3.1
+    title: 表土堆存
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.4.3.2
+    display_number: 4.3.2
+    title: 表土养护
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.4.4.1
+    display_number: 4.4.1
+    title: 表土需求分析
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.4.4.2
+    display_number: 4.4.2
+    title: 表土回覆
+    stable_id: sec.topsoil.balance
+    is_leaf: true
+    applicability: always
+    implemented: true
+    note: 原 stable ID 名为 balance (表土平衡); 表土平衡表在 4.4.3 末尾要求列出
+  - id: req.t2026.4.4.3
+    display_number: 4.4.3
+    title: 表土再利用
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+
+  # ---------- 5 弃渣场选址与堆置 ----------
+  - id: req.t2026.5
+    display_number: '5'
+    title: 弃渣场选址与堆置
+    stable_id: sec.disposal_site
+    is_leaf: false
+    applicability: conditional
+    condition_note: 原文标注"不设弃渣场、临时堆土场的不列"
+  - id: req.t2026.5.1
+    display_number: '5.1'
+    title: 渣土来源及流向
+    stable_id: sec.disposal_site.source_and_flow
+    is_leaf: true
+    applicability: conditional
+    condition_note: 同上
+    implemented: true
+  - id: req.t2026.5.2
+    display_number: '5.2'
+    title: 弃渣场选址、堆置方案与级别
+    stable_id: sec.disposal_site.site_selection
+    is_leaf: true
+    applicability: conditional
+    condition_note: 同上
+    implemented: true
+
+  # ---------- 6 水土流失分析与预测 ----------
+  - id: req.t2026.6
+    display_number: '6'
+    title: 水土流失分析与预测
+    stable_id: sec.soil_loss_analysis
+    is_leaf: false
+    applicability: always
+  - id: req.t2026.6.1
+    display_number: '6.1'
+    title: 水土流失现状
+    stable_id: sec.soil_loss_analysis.current_state
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.6.2
+    display_number: '6.2'
+    title: 水土流失影响因素分析
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.6.3
+    display_number: '6.3'
+    title: 土壤流失量预测
+    stable_id: sec.soil_loss_analysis.prediction_result
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.6.4
+    display_number: '6.4'
+    title: 水土流失危害分析
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+
+  # ---------- 7 水土流失防治 ----------
+  - id: req.t2026.7
+    display_number: '7'
+    title: 水土流失防治
+    stable_id: sec.soil_loss_prevention
+    is_leaf: false
+    applicability: always
+  - id: req.t2026.7.1
+    display_number: '7.1'
+    title: 水土流失防治责任范围
+    stable_id: sec.soil_loss_prevention.responsibility_range
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.7.2
+    display_number: '7.2'
+    title: 设计水平年
+    stable_id: sec.soil_loss_prevention.design_horizon
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.7.3.1
+    display_number: 7.3.1
+    title: 执行标准等级
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.7.3.2
+    display_number: 7.3.2
+    title: 防治目标
+    stable_id: sec.soil_loss_prevention.targets
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.7.4
+    display_number: '7.4'
+    title: 防治区划分
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.7.5
+    display_number: '7.5'
+    title: 措施总体布局
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.7.6
+    display_number: '7.6'
+    title: 工程级别与设计标准
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.7.7
+    display_number: '7.7'
+    title: 分区措施布设
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.7.8
+    display_number: '7.8'
+    title: 施工组织
+    stable_id: sec.soil_loss_prevention.construction_schedule
+    is_leaf: true
+    applicability: always
+    implemented: true
+
+  # ---------- 8 水土保持监测 ----------
+  - id: req.t2026.8
+    display_number: '8'
+    title: 水土保持监测
+    stable_id: sec.monitoring
+    is_leaf: false
+    applicability: always
+  - id: req.t2026.8.1
+    display_number: '8.1'
+    title: 范围和时段
+    stable_id: sec.monitoring.scope_and_period
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.8.2
+    display_number: '8.2'
+    title: 内容、方法与频次
+    stable_id: sec.monitoring.contents_methods_frequency
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.8.3
+    display_number: '8.3'
+    title: 点位布设与监测设施
+    stable_id: sec.monitoring.point_layout
+    is_leaf: true
+    applicability: always
+    implemented: true
+  - id: req.t2026.8.4
+    display_number: '8.4'
+    title: 实施条件和成果
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+
+  # ---------- 9 水土保持投资及效益分析 ----------
+  - id: req.t2026.9
+    display_number: '9'
+    title: 水土保持投资及效益分析
+    stable_id: sec.investment
+    is_leaf: false
+    applicability: always
+  - id: req.t2026.9.1.1
+    display_number: 9.1.1
+    title: 编制原则及依据
+    stable_id: null
+    is_leaf: true
+    applicability: always
+    implemented: false
+  - id: req.t2026.9.1.2
+    display_number: 9.1.2
+    title: 编制说明与估算成果
+    stable_id: sec.investment.summary
+    is_leaf: true
+    applicability: always
+    implemented: true
+    note: |
+      估算成果含补偿费计算表; sec.investment_estimation.compensation_fee
+      的显示位置迁入本节 (见 stable_id_migrations)。
+  - id: req.t2026.9.2
+    display_number: '9.2'
+    title: 效益分析
+    stable_id: sec.soil_loss_prevention.benefit_analysis
+    is_leaf: true
+    applicability: always
+    implemented: true
+    note: 跨章迁移; stable ID 保留原名, 不改名
+
+  # ---------- 10 水土保持管理 ----------
+  - id: req.t2026.10
+    display_number: '10'
+    title: 水土保持管理
+    stable_id: sec.management
+    is_leaf: true
+    applicability: always
+    implemented: true
+    note: 2026 模板的**最后一个主体章**; 其后不再有第 11 章
+
+# ============================================================
+# 附表 / 附件 / 附图 (原件第 21—22 页)
+# ============================================================
+# 本节只登记清单, 制品台账与校验属 P0-07 (C 批), 此处不计入内容覆盖率。
+attachments:
+  tables:
+    - 防治责任范围统计表（涉及两个及以上行政区）
+    - 水土流失防治指标计算表（涉及两个及以上防治标准）
+    - 投资附件
+  documents:
+    - 项目立项或相关支撑性文件
+    - 不可避让论证情况及结论（开展不可避让专题论证的）
+    - 取土场、弃渣场及永久占地范围外临时堆土场的管理部门及土地权属单位确认意见
+    - 外购土石方的意向协议及土源支撑性材料
+    - 4 级及以上弃渣场地质勘察报告结论
+    - 弃渣综合利用或表土再利用的支撑性材料
+    - 其他支撑材料（失事影响专题分析报告等专题报告单册另附）
+  figures:
+    - 地理位置图
+    - 项目区水系图
+    - 项目区土壤侵蚀图
+    - 水土流失防治责任范围图（需提供完整的防治责任范围 shapefile 格式矢量数据）
+    - 工程总体平面布置图
+    - 竖向布置图
+    - 监测点布置图
+    - 防治责任范围内林草植被分布图
+    - 表土资源调查点位布设图
+    - 项目区表土分布与剥离范围图
+    - 分区防治措施总体布局图
+    - 典型设计图
+    - 取土场和弃渣场（含临时堆土场）位置图（含地形和影像图）

@@ -25,7 +25,11 @@ from typing import Any
 # Ensure specs/ is on path
 
 from cpswc.narrative.contract import (
-    NarrativeBlock, NarrativeParagraph, NarrativeProjectionResult, RenderStatus,
+    AssertionClass, ContentRole, NarrativeBlock, NarrativeParagraph,
+    NarrativeProjectionResult, RenderStatus,
+)
+from cpswc.report_quality import (
+    Applicability, QualityFinding, Severity, Stage,
 )
 from cpswc.narrative.templates.sec_1_1_basic_info import render as render_sec_1_1
 from cpswc.narrative.templates.sec_5_disposal import render_5_1, render_5_2
@@ -144,11 +148,16 @@ _SECTION_CONDITIONALS: dict[str, str | None] = {
     "sec.project_overview.land_occupation": None,
     "sec.project_overview.earthwork_balance": None,
     "sec.project_overview.progress": None,
-    "sec.project_overview.sensitive_areas": "ob.unavoidability.redline_conflict",
+    # P0-02 D04: 敏感区说明是**常规内容**, 每个项目都要逐项排查并如实记录结果。
+    # 过去挂在 ob.unavoidability.redline_conflict 上, 等于"没有红线冲突就当没这一节",
+    # 把"未触发专题论证"误读成"不必说明敏感区"。专题论证仍由该义务驱动, 见
+    # _SECTION_SPECIAL_TOPICS。
+    "sec.project_overview.sensitive_areas": None,
     "sec.project_overview.climate": None,
     "sec.project_overview.water_soil_zoning": None,
     "sec.evaluation": None,
-    "sec.evaluation.site_selection": "ob.unavoidability.redline_conflict",
+    # 同上: 选址选线水土保持评价是常规评价内容, 不是不可避让专题。
+    "sec.evaluation.site_selection": None,
     "sec.evaluation.earthwork_balance": None,
     "sec.topsoil": None,
     "sec.topsoil.stripping": None,
@@ -177,6 +186,14 @@ _SECTION_CONDITIONALS: dict[str, str | None] = {
     "sec.management": None,
     "sec.conclusion": None,
 }
+
+# 专题内容与义务的对应关系。这些**不是**整节的适用性开关, 而是节内需要
+# 额外展开的专题。P0-02 只做解耦与登记; 专题本身的投影属后续阶段。
+_SECTION_SPECIAL_TOPICS: dict[str, str] = {
+    "sec.project_overview.sensitive_areas": "ob.unavoidability.redline_conflict",
+    "sec.evaluation.site_selection": "ob.unavoidability.redline_conflict",
+}
+
 
 # Section titles (for skeleton blocks)
 _SECTION_TITLES: dict[str, str] = {
@@ -229,35 +246,98 @@ def project_narrative(snapshot: dict) -> NarrativeProjectionResult:
     """
     把 RuntimeSnapshot 投影成 list[NarrativeBlock]。
 
-    pilot sections (1.1 / 5.1 / 5.2) → template → full blocks
-    conditional but not triggered → not_applicable blocks
-    其余 → skeleton blocks
+    适用性三分 (P0-02):
+      条件义务已触发 / 无条件      → 调模板
+      条件义务**可确定地**未触发   → not_applicable
+      条件义务未知                 → **skeleton + UNKNOWN**, 绝不写成"本项目不涉及"
+
+    最后一条是本函数存在的主要理由。过去 `conditional_ob not in triggered` 把
+    "未触发"和"不知道"合成一件事, 于是资料没给的章节会以"不涉及"的面貌消失。
     """
     facts = snapshot.get("_original_facts") or {}
     derived = snapshot.get("derived_fields") or {}
     triggered = set(snapshot.get("triggered_obligations") or [])
+    unknown_obs = set(snapshot.get("unknown_obligations") or [])
+
+    from cpswc.narrative.evidence import make_ledger
+    ledger = make_ledger(snapshot)
+
+    # P0-04: 若调用方给了 BuildContext 就直接用; 否则由统一视图重建一个,
+    # 保证模板读到的和表格、门禁读到的是同一份 (验收 I01)。
+    context = snapshot.get("_build_context")
+    if context is None:
+        from cpswc.snapshot_adapter import BuildContext
+        context = BuildContext({"facts": facts, "derived": derived})
 
     blocks: list[NarrativeBlock] = []
     full_count = 0
     skeleton_count = 0
     na_count = 0
+    unknown_count = 0
     warnings: list[str] = []
+    findings: list[QualityFinding] = []
 
     for sec_id in _SECTION_CONDITIONALS:
         title = _SECTION_TITLES.get(sec_id, sec_id)
         conditional_ob = _SECTION_CONDITIONALS[sec_id]
 
-        # Determine if section is applicable
-        is_applicable = True
-        if conditional_ob and conditional_ob not in triggered:
-            is_applicable = False
+        # 三分适用性
+        if not conditional_ob:
+            applicability = Applicability.APPLICABLE
+        elif conditional_ob in triggered:
+            applicability = Applicability.APPLICABLE
+        elif conditional_ob in unknown_obs:
+            applicability = Applicability.UNKNOWN
+        else:
+            applicability = Applicability.NOT_APPLICABLE
 
-        # Check if we have a pilot template
-        if sec_id in _PILOT_TEMPLATES and is_applicable:
+        if applicability is Applicability.UNKNOWN:
+            f = QualityFinding(
+                code="CONDITION_UNKNOWN",
+                severity=Severity.BLOCK,
+                message=(f"{sec_id}: 适用性取决于 {conditional_ob}, 该义务无法确定; "
+                         f"本节既不能按适用渲染, 也不得写成不涉及"),
+                target_ref=sec_id,
+                remediation=f"补齐 {conditional_ob} 触发条件依赖的输入后重跑",
+                stage=Stage.EVALUATION,
+            )
+            findings.append(f)
+            blocks.append(NarrativeBlock(
+                section_id=sec_id,
+                title=title,
+                render_status=RenderStatus.SKELETON,
+                applicability=Applicability.UNKNOWN,
+                block_warnings=[f"适用性未知: 依赖义务 {conditional_ob} 无法确定"],
+                quality_findings=[f],
+            ))
+            skeleton_count += 1
+            unknown_count += 1
+            continue
+
+        # 专题内容登记 (不控制整节适用性)
+        topic_ob = _SECTION_SPECIAL_TOPICS.get(sec_id)
+        topic_findings: list[QualityFinding] = []
+        if topic_ob and topic_ob in unknown_obs:
+            topic_findings.append(QualityFinding(
+                code="CONDITION_UNKNOWN",
+                severity=Severity.WARN,
+                message=(f"{sec_id}: 是否需要 {topic_ob} 专题论证无法确定; "
+                         f"本节常规内容照常编制, 专题部分待定"),
+                target_ref=sec_id,
+                remediation=f"补齐 {topic_ob} 触发条件依赖的输入",
+                stage=Stage.EVALUATION,
+            ))
+
+        if sec_id in _PILOT_TEMPLATES and applicability is Applicability.APPLICABLE:
             try:
                 block = _PILOT_TEMPLATES[sec_id](
                     facts=facts, derived=derived, triggered=triggered,
-                    snapshot=snapshot)
+                    snapshot=snapshot, ledger=ledger, unknown=unknown_obs,
+                    context=context)
+                if block.applicability is None:
+                    block.applicability = applicability
+                block.quality_findings = list(block.quality_findings) + topic_findings
+                findings.extend(block.quality_findings)
                 blocks.append(block)
                 if block.render_status == RenderStatus.FULL:
                     full_count += 1
@@ -267,23 +347,39 @@ def project_narrative(snapshot: dict) -> NarrativeProjectionResult:
                     na_count += 1
             except Exception as e:
                 warnings.append(f"Template error for {sec_id}: {e}")
+                f = QualityFinding(
+                    code="RENDER_FAILED",
+                    severity=Severity.BLOCK,
+                    message=f"{sec_id}: 模板渲染失败 — {e}",
+                    target_ref=sec_id,
+                    remediation="修复模板或补齐其依赖输入",
+                    stage=Stage.RENDER,
+                )
+                findings.append(f)
                 blocks.append(NarrativeBlock(
                     section_id=sec_id,
                     title=title,
                     render_status=RenderStatus.SKELETON,
+                    applicability=applicability,
                     block_warnings=[f"Template error: {e}"],
+                    quality_findings=[f],
                 ))
                 skeleton_count += 1
-        elif not is_applicable:
+        elif applicability is Applicability.NOT_APPLICABLE:
+            # 可确定地不适用。注意: 这只表示触发条件不成立, **不表示**已经
+            # 专业核查确认"本项目完全不涉及" —— 证据状态由质量层另行判定。
             blocks.append(NarrativeBlock(
                 section_id=sec_id,
                 title=title,
                 render_status=RenderStatus.NOT_APPLICABLE,
+                applicability=Applicability.NOT_APPLICABLE,
+                block_warnings=[
+                    f"依据 {conditional_ob} 未触发判定不适用; 该判定未经专业核查确认"],
             ))
             na_count += 1
         elif sec_id in _PARENT_INTROS:
-            # Parent chapter headers: 1-sentence intro, no separate template
-            # evidence_refs 指向子节 section_id 以满足追溯约束
+            # 父章节标题引言: 一句话导语, 不是一份成果。
+            # content_role=PARENT_INTRO 让质量层把它排除在内容完成度之外 (验收 Q01)。
             child_refs = [
                 sid for sid in _SECTION_CONDITIONALS
                 if sid.startswith(sec_id + ".") and sid != sec_id
@@ -292,23 +388,32 @@ def project_narrative(snapshot: dict) -> NarrativeProjectionResult:
                 section_id=sec_id,
                 title=title,
                 render_status=RenderStatus.FULL,
+                content_role=ContentRole.PARENT_INTRO,
+                applicability=applicability,
                 paragraphs=[NarrativeParagraph(
                     text=_PARENT_INTROS[sec_id],
                     evidence_refs=child_refs or [sec_id],
                     source_rule_refs=["rule.template_2026"],
+                    assertion_class=AssertionClass.NORMATIVE_REQUIREMENT,
+                    paragraph_id=f"narr.{sec_id.removeprefix('sec.')}.intro",
                 )],
                 variant_id="default",
                 template_id="nt.parent_intro.v1",
                 template_version="v1",
                 normative_basis=["rule.template_2026"],
+                quality_findings=topic_findings,
             ))
+            findings.extend(topic_findings)
             full_count += 1
         else:
             blocks.append(NarrativeBlock(
                 section_id=sec_id,
                 title=title,
                 render_status=RenderStatus.SKELETON,
+                applicability=applicability,
+                quality_findings=topic_findings,
             ))
+            findings.extend(topic_findings)
             skeleton_count += 1
 
     result = NarrativeProjectionResult(
@@ -316,6 +421,8 @@ def project_narrative(snapshot: dict) -> NarrativeProjectionResult:
         full_count=full_count,
         skeleton_count=skeleton_count,
         not_applicable_count=na_count,
+        unknown_applicability_count=unknown_count,
+        quality_findings=findings,
         projection_warnings=warnings,
     )
     result.validate_all()
@@ -335,13 +442,12 @@ if __name__ == "__main__":
     )
 
     # We need to run the runtime first to get a snapshot with _original_facts
-    from cpswc.runtime import run_project, _serialize_snapshot  # type: ignore
+    from cpswc.runtime import run_project, build_snapshot_dict  # type: ignore
     with sample_path.open() as f:
         project_input = json.load(f)
 
     snapshot = run_project(project_input)
-    snapshot_dict = json.loads(_serialize_snapshot(snapshot))
-    snapshot_dict["_original_facts"] = project_input.get("facts") or {}
+    snapshot_dict = build_snapshot_dict(snapshot, project_input)
 
     result = project_narrative(snapshot_dict)
 

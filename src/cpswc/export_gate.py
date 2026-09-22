@@ -11,7 +11,9 @@ export_gate.py — CPSWC v0 Export Gate
   2. 检查 CRITICAL fields 是否有值
   3. 检查 required assurances 状态
   4. 检查 SubmissionLifecycle.freeze_state
-  5. 返回 PASS / BLOCK / WARN + 原因列表
+  5. 检查适用性未知的义务 (P0-02)
+  6. 检查统一读取上下文的诊断 (P0-04)
+  7. 返回 PASS / BLOCK / WARN + 原因列表
 
 完成判定:
   - 有独立 policy config ✓ (governance/ProtectedBoundaryPolicy_v0.yaml)
@@ -138,6 +140,58 @@ def _check_assurances(
         ))
 
 
+def _check_unknown_obligations(
+    unknown_obligations: list[str],
+    obligation_details: list[dict],
+    findings: list[GateFinding],
+) -> None:
+    """GATE_005: 适用性无法确定的义务 (P0-02)。
+
+    这些义务既没触发也没被排除 —— 它们代表"资料不足以判断要不要做这件事"。
+    过去它们和"确定不触发"混在 not_triggered 里, 导出时完全看不见。
+
+    A 批先以 WARN 暴露。**正式发布模式下适用性未知必须阻断**, 该行为随
+    export_mode 一起在 P0-08 实现; 本轮 gate 还没有模式概念, 不提前改判。
+    """
+    if not unknown_obligations:
+        return
+    reasons = {}
+    for d in (obligation_details or []):
+        if isinstance(d, dict) and d.get("obligation_id") in set(unknown_obligations):
+            reasons[d["obligation_id"]] = (
+                d.get("diagnostic_message") or d.get("evaluation_status") or "")
+    for ob_id in sorted(unknown_obligations):
+        findings.append(GateFinding(
+            rule_id="GATE_005",
+            action="WARN",
+            message=(f"义务 {ob_id} 适用性无法确定: {reasons.get(ob_id, '依赖输入不足')}"
+                     f" (不得按不涉及处理; 正式发布将阻断)"),
+            target_ref=ob_id,
+        ))
+
+
+def _check_build_findings(
+    build_findings: list[dict],
+    findings: list[GateFinding],
+) -> None:
+    """GATE_006: 统一读取上下文产出的诊断 (P0-04)。
+
+    冲突、失效派生量、未核验来源、演示假设 —— 这些过去只存在于各个 renderer
+    内部 (或者根本没人算), 门禁完全看不见。现在 BuildContext 统一产出, 门禁
+    按原severity 照搬, 不自行升降级。
+    """
+    for f in (build_findings or []):
+        if not isinstance(f, dict):
+            continue
+        action = {"BLOCK": "BLOCK", "WARN": "WARN"}.get(f.get("severity"), "INFO")
+        findings.append(GateFinding(
+            rule_id="GATE_006",
+            action=action,
+            message=f"[{f.get('code')}] {f.get('message', '')}",
+            target_ref=f.get("target_ref", ""),
+        ))
+
+
 def _check_lifecycle(
     lifecycle: dict | None,
     findings: list[GateFinding],
@@ -193,6 +247,9 @@ def check_export_readiness(
     unified.update(derived)
 
     required_assurances = snapshot.get("required_assurances") or []
+    unknown_obligations = snapshot.get("unknown_obligations") or []
+    obligation_details = snapshot.get("obligation_details") or []
+    build_findings = snapshot.get("_build_findings") or []
     lifecycle = snapshot.get("submission_lifecycle")
     assurance_state = assurance_state or {}
 
@@ -203,6 +260,12 @@ def check_export_readiness(
 
     # GATE_003: Assurances
     _check_assurances(required_assurances, assurance_state, policy, findings)
+
+    # GATE_005: 适用性未知的义务 (P0-02)
+    _check_unknown_obligations(unknown_obligations, obligation_details, findings)
+
+    # GATE_006: 统一读取上下文的诊断 (P0-04)
+    _check_build_findings(build_findings, findings)
 
     # GATE_004: Lifecycle
     _check_lifecycle(lifecycle, findings)

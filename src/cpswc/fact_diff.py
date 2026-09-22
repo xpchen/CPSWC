@@ -44,7 +44,12 @@ class ObligationChange:
     obligation_id: str
     before_triggered: bool | None
     after_triggered: bool | None
-    change_type: str  # "newly_triggered" | "no_longer_triggered" | "unchanged"
+    change_type: str
+    """newly_triggered | no_longer_triggered | became_unknown | resolved_from_unknown | unchanged
+
+    P0-02: before/after 为 None 表示适用性未知。True→None 必须报
+    became_unknown 而不是 no_longer_triggered —— 后者会被读成"这条义务不用做了"。
+    """
 
 
 @dataclass
@@ -91,11 +96,12 @@ class FactDiffReport:
 
 def _run_pipeline(project_input: dict) -> tuple[Any, dict, list]:
     """Run full pipeline, return (RuntimeSnapshot, snapshot_dict, narrative_blocks)."""
-    from cpswc.runtime import run_project, _serialize_snapshot
+    from cpswc.runtime import run_project, build_snapshot_dict
 
     snapshot = run_project(project_input)
-    snapshot_dict = json.loads(_serialize_snapshot(snapshot))
-    snapshot_dict["_original_facts"] = project_input.get("facts") or {}
+    # P0-04: 统一经 build_snapshot_dict, 不再自己拼 _original_facts ——
+    # 否则 diff 看到的 derived 与正文/表格不是同一套 (DECISION_LOG 条目 007)。
+    snapshot_dict = build_snapshot_dict(snapshot, project_input)
 
     from cpswc.narrative.projection import project_narrative
     narrative_result = project_narrative(snapshot_dict)
@@ -145,23 +151,41 @@ def _diff_facts(before_facts: dict, after_facts: dict) -> list[FieldChange]:
     return changes
 
 
+def _state_of(snap, ob_id: str) -> bool | None:
+    """三态读取: True / False / None(未知)。"""
+    if ob_id in set(snap.triggered_obligations):
+        return True
+    if ob_id in set(getattr(snap, "unknown_obligations", []) or []):
+        return None
+    if ob_id in set(snap.not_triggered_obligations):
+        return False
+    return None
+
+
 def _diff_obligations(before_snap, after_snap) -> list[ObligationChange]:
-    """Compare obligation trigger states."""
-    before_triggered = set(before_snap.triggered_obligations)
-    after_triggered = set(after_snap.triggered_obligations)
-    all_obs = sorted(before_triggered | after_triggered |
-                     set(before_snap.not_triggered_obligations) |
-                     set(after_snap.not_triggered_obligations))
+    """Compare obligation trigger states (三态)。"""
+    def _all(snap):
+        return (set(snap.triggered_obligations)
+                | set(snap.not_triggered_obligations)
+                | set(getattr(snap, "unknown_obligations", []) or []))
+
+    all_obs = sorted(_all(before_snap) | _all(after_snap))
 
     changes = []
     for ob_id in all_obs:
-        bt = ob_id in before_triggered
-        at = ob_id in after_triggered
-        if bt and not at:
-            changes.append(ObligationChange(ob_id, True, False, "no_longer_triggered"))
-        elif not bt and at:
-            changes.append(ObligationChange(ob_id, False, True, "newly_triggered"))
-        # Only report changes
+        bt = _state_of(before_snap, ob_id)
+        at = _state_of(after_snap, ob_id)
+        if bt == at:
+            continue
+        if at is None:
+            kind = "became_unknown"
+        elif bt is None:
+            kind = "resolved_from_unknown"
+        elif at:
+            kind = "newly_triggered"
+        else:
+            kind = "no_longer_triggered"
+        changes.append(ObligationChange(ob_id, bt, at, kind))
     return changes
 
 

@@ -5,8 +5,10 @@ sec_2_4_progress — 2.x 施工进度 narrative template
 """
 from __future__ import annotations
 from cpswc.narrative.contract import (
-    NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec, RenderStatus,
+    AssertionClass, NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec,
+    RenderStatus,
 )
+from cpswc.narrative.evidence import SectionEvidence
 
 
 SPEC = NarrativeTemplateSpec(
@@ -24,27 +26,28 @@ SPEC = NarrativeTemplateSpec(
 )
 
 
-def _v(facts: dict, key: str, default: str = "—") -> str:
-    v = facts.get(key)
-    if v is None:
-        return default
-    if isinstance(v, dict) and "value" in v:
-        unit = v.get("unit", "")
-        return f"{v['value']} {unit}".strip()
-    return str(v)
-
-
 def render(facts: dict, derived: dict, triggered: set[str],
-           **kwargs) -> NarrativeBlock:
-    start = _v(facts, "field.fact.schedule.start_time")
-    end = _v(facts, "field.fact.schedule.end_time")
-    horizon = _v(facts, "field.fact.schedule.design_horizon_year")
+           ledger=None, context=None, **kwargs) -> NarrativeBlock:
+    SEC = "sec.project_overview.progress"
+    ev = SectionEvidence(SEC, facts, derived, ledger=ledger, context=context)
+    start = ev.text("field.fact.schedule.start_time")
+    end = ev.text("field.fact.schedule.end_time")
+    horizon = ev.text("field.fact.schedule.design_horizon_year")
 
-    p1 = NarrativeParagraph(
+    if not ev.all_present(start, end, horizon):
+        p1 = ev.gap_paragraph(
+            start, end, horizon,
+            lead="施工进度信息不完整",
+            source_rule_refs=["rule.template_2026.section_2"],
+            paragraph_id="narr.project_overview.progress.schedule")
+    else:
+        p1 = NarrativeParagraph(
         text=(
-            f"本项目计划于{start}开工，{end}竣工。"
-            f"水土保持方案设计水平年为{horizon}年。"
+            f"本项目计划于{start.display()}开工，{end.display()}竣工。"
+            f"水土保持方案设计水平年为{horizon.display()}年。"
         ),
+        assertion_class=AssertionClass.FACT_RESTATEMENT,
+        paragraph_id="narr.project_overview.progress.schedule",
         evidence_refs=[
             "field.fact.schedule.start_time",
             "field.fact.schedule.end_time",
@@ -62,4 +65,5 @@ def render(facts: dict, derived: dict, triggered: set[str],
         template_id=SPEC.template_id,
         template_version=SPEC.template_version,
         normative_basis=SPEC.normative_basis,
+        quality_findings=ev.findings,
     )

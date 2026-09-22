@@ -222,6 +222,40 @@ details>.detail-body{padding:.5rem .8rem;background:#fafbff;border-left:3px soli
       <div style="padding:2px 0"><span class="badge badge-muted">&ndash;</span> <code>{{ ob }}</code></div>
       {% endfor %}
     </div>
+    <div class="card flex-col">
+      <h2>适用性未知 ({{ unknown_obligations | length }})</h2>
+      <div class="muted" style="font-size:11px">
+        资料不足, 无法判断是否适用。<b>不等于不涉及</b>, 不得按不涉及处理。
+      </div>
+      {% for ob in unknown_obligations %}
+      <div style="padding:2px 0">
+        <span class="badge badge-warn">?</span> <code>{{ ob.id }}</code>
+        <div class="muted" style="font-size:11px;padding-left:18px">{{ ob.reason }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card">
+    <h2>读取来源与诊断 (P0-04)</h2>
+    <div class="muted" style="font-size:11px">
+      每个字段实际选用了哪一层, 以及读取过程中的问题。
+      <b>PRE_STORED_DERIVED</b> 是输入里预存的外部结果, 不是本次计算所得。
+    </div>
+    <div style="padding:4px 0">
+      {% for layer, n in source_layers %}
+      <span class="badge badge-muted">{{ layer }} × {{ n }}</span>
+      {% endfor %}
+    </div>
+    <div class="scroll-y">
+    {% for f in build_findings %}
+      <div style="padding:2px 0">
+        <span class="badge {{ 'badge-err' if f.severity == 'BLOCK' else 'badge-warn' }}">{{ f.severity }}</span>
+        <code>{{ f.code }}</code> {{ f.message }}
+      </div>
+    {% else %}
+      <div class="muted">无读取诊断</div>
+    {% endfor %}
+    </div>
   </div>
   <div class="card">
     <h2>Required Artifacts ({{ artifacts | length }})</h2>
@@ -477,6 +511,7 @@ def _build_context(
         "derived_count": len(derived_fields),
         "calc_count": len(calc_results),
         "triggered_count": len(snapshot.get("triggered_obligations") or []),
+        "unknown_count": len(snapshot.get("unknown_obligations") or []),
         "artifacts_count": len(snapshot.get("required_artifacts") or []),
         "assurances_count": len(snapshot.get("required_assurances") or []),
         # Facts / Derived
@@ -487,6 +522,9 @@ def _build_context(
         # Obligations
         "triggered": snapshot.get("triggered_obligations") or [],
         "not_triggered": snapshot.get("not_triggered_obligations") or [],
+        "unknown_obligations": _unknown_obligation_rows(snapshot),
+        "source_layers": _source_layer_counts(snapshot),
+        "build_findings": snapshot.get("_build_findings") or [],
         "obligation_details": obligation_details,
         # Artifacts / Assurances
         "artifacts": snapshot.get("required_artifacts") or [],
@@ -502,6 +540,35 @@ def _build_context(
 # ============================================================
 # Public API
 # ============================================================
+
+def _source_layer_counts(snapshot: dict) -> list[tuple[str, int]]:
+    """统计各字段实际选用的来源层 (P0-04)。"""
+    import collections
+    counts = collections.Counter((snapshot.get("_source_map") or {}).values())
+    return sorted(counts.items())
+
+
+def _unknown_obligation_rows(snapshot: dict) -> list[dict]:
+    """把适用性未知的义务连同原因一起交给模板 (P0-02)。
+
+    只给 id 而不给原因, 使用者会以为是系统出错; 给了原因才能定位到具体缺哪个字段。
+    """
+    unknown = list(snapshot.get("unknown_obligations") or [])
+    if not unknown:
+        return []
+    reasons: dict[str, str] = {}
+    for d in (snapshot.get("obligation_details") or []):
+        if not isinstance(d, dict):
+            continue
+        ob_id = d.get("obligation_id")
+        if ob_id in set(unknown):
+            missing = d.get("missing_field_refs") or []
+            reasons[ob_id] = (d.get("diagnostic_message")
+                              or ("缺: " + "、".join(missing) if missing else "")
+                              or str(d.get("evaluation_status") or "依赖输入不足"))
+    return [{"id": ob_id, "reason": reasons.get(ob_id, "依赖输入不足")}
+            for ob_id in sorted(unknown)]
+
 
 def render_workbench(
     snapshot: dict,

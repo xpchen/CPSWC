@@ -15,8 +15,11 @@ sec_8_2_monitoring_content — 8.2 监测内容、方法与频次 + 8.4 实施�
 """
 from __future__ import annotations
 from cpswc.narrative.contract import (
-    NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec, RenderStatus,
+    AssertionClass, NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec,
+    RenderStatus,
 )
+from cpswc.narrative.evidence import SectionEvidence
+from cpswc.report_quality import Severity
 
 
 SPEC = NarrativeTemplateSpec(
@@ -66,19 +69,17 @@ def _match_zone(zone_type: str) -> tuple[str, str, str, str]:
     return _DEFAULT_MONITORING
 
 
-def _v(facts: dict, key: str) -> float:
-    v = facts.get(key)
-    if isinstance(v, dict) and "value" in v:
-        return v["value"]
-    if isinstance(v, (int, float)):
-        return v
-    return 0
-
-
 def render(facts: dict, derived: dict, triggered: set[str],
-           **kwargs) -> NarrativeBlock:
-    breakdown = facts.get("field.fact.land.county_breakdown") or []
-    spoil = _v(facts, "field.fact.earthwork.spoil")
+           ledger=None, context=None, **kwargs) -> NarrativeBlock:
+    ev = SectionEvidence("sec.monitoring.contents_methods_frequency", facts,
+                         derived, ledger=ledger, context=context)
+    bd_rv = ev.items("field.fact.land.county_breakdown", severity=Severity.WARN)
+    breakdown = bd_rv.value if (bd_rv.is_present
+                                and isinstance(bd_rv.value, list)) else []
+    # 原实现 `_v(..., default 0)`: 弃渣量没填当 0, 于是"有无弃渣"的判断
+    # 建立在缺资料之上。现在缺失与明确 0 分开。
+    spoil_rv = ev.quantity("field.fact.earthwork.spoil", severity=Severity.WARN)
+    spoil = spoil_rv.value if spoil_rv.is_present else 0
     has_stability_monitoring = "ob.disposal_site.stability_monitoring" in triggered
     has_video_surveillance = "ob.disposal_site.video_surveillance" in triggered
 
@@ -105,17 +106,33 @@ def render(facts: dict, derived: dict, triggered: set[str],
             "".join(zone_lines)
         )
     else:
+        if not bd_rv.is_present:
+            ev.add_finding(
+                "VALUE_MISSING",
+                "sec.monitoring.contents_methods_frequency: 未提供防治分区, "
+                "分区监测内容/方法/频次无法逐区给出",
+                severity=Severity.BLOCK,
+                target_ref="field.fact.land.county_breakdown",
+                missing_input_refs=["field.fact.land.county_breakdown"],
+                remediation="补充防治分区后逐区确定监测内容、方法与频次")
+            lead = "尚未提供防治分区，以下为通用监测要求，未按分区细化："
+        else:
+            lead = "防治分区清单为空，以下为通用监测要求："
         content_text = (
-            "本项目监测内容主要包括：扰动面积、水土流失状况、"
-            "防治措施实施效果及植被恢复情况。"
-            "监测方法以现场量测和定点照相为主，"
-            "施工期监测频次为每月1次，恢复期为每季度1次。"
+            lead
+            + "监测内容主要包括扰动面积、水土流失状况、"
+              "防治措施实施效果及植被恢复情况；"
+              "监测方法以现场量测和定点照相为主，"
+              "施工期监测频次为每月1次，恢复期为每季度1次。"
         )
 
     paragraphs.append(NarrativeParagraph(
         text=content_text,
         evidence_refs=["field.fact.land.county_breakdown"],
         source_rule_refs=["rule.template_2026.section_8"],
+        assertion_class=(AssertionClass.FACT_RESTATEMENT if breakdown
+                         else AssertionClass.NORMATIVE_REQUIREMENT),
+        paragraph_id="narr.monitoring.contents_methods_frequency.contents",
     ))
 
     # ---- Conditional: stability monitoring for ≥3级 disposal sites ----
@@ -177,4 +194,5 @@ def render(facts: dict, derived: dict, triggered: set[str],
         template_id=SPEC.template_id,
         template_version=SPEC.template_version,
         normative_basis=SPEC.normative_basis,
+        quality_findings=ev.findings,
     )

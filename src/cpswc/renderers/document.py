@@ -140,6 +140,9 @@ def _render_summary(doc: Document, snapshot: dict, frozen: dict | None):
         ("Live Calculators", str(len(snapshot.get("calculator_results") or []))),
         ("触发义务数", str(len(snapshot.get("triggered_obligations") or []))),
         ("未触发义务数", str(len(snapshot.get("not_triggered_obligations") or []))),
+        # P0-02: 未知不是未触发。少了这一行, 读者会把"资料不足判断不了"
+        # 当成"已确认不涉及"。
+        ("适用性未知义务数", str(len(snapshot.get("unknown_obligations") or []))),
         ("所需制品数", str(len(snapshot.get("required_artifacts") or []))),
         ("所需保障数", str(len(snapshot.get("required_assurances") or []))),
     ])

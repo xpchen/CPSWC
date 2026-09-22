@@ -9,8 +9,10 @@ sec_10_management — 第 10 章 水土保持管理
 """
 from __future__ import annotations
 from cpswc.narrative.contract import (
-    NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec, RenderStatus,
+    AssertionClass, NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec,
+    RenderStatus,
 )
+from cpswc.narrative.evidence import SectionEvidence
 
 
 SPEC = NarrativeTemplateSpec(
@@ -31,11 +33,20 @@ SPEC = NarrativeTemplateSpec(
 
 
 def render(facts: dict, derived: dict, triggered: set[str],
-           **kwargs) -> NarrativeBlock:
-    name = facts.get("field.fact.project.name", "本项目")
-    builder = facts.get("field.fact.project.builder", "建设单位")
+           ledger=None, context=None, **kwargs) -> NarrativeBlock:
+    ev = SectionEvidence("sec.management", facts, derived,
+                         ledger=ledger, context=context)
+    # `facts.get(key, "建设单位")` 会把"没填建设单位"写成一个看起来正常的通称。
+    # 责任主体是管理章的核心, 缺了必须看得见。
+    name_rv = ev.text("field.fact.project.name")
+    builder_rv = ev.text("field.fact.project.builder")
+    name = name_rv.display() if name_rv.is_present else "本项目"
+    builder = (builder_rv.display() if builder_rv.is_present
+               else "建设单位（名称未填）")
 
     p1 = NarrativeParagraph(
+        assertion_class=AssertionClass.NORMATIVE_REQUIREMENT,
+        paragraph_id="narr.management.responsibility",
         text=(
             f"为确保{name}水土保持方案的有效实施，"
             f"{builder}应建立健全水土保持管理体系，"
@@ -73,6 +84,8 @@ def render(facts: dict, derived: dict, triggered: set[str],
             "rule.template_2026.section_10",
             "standard.gb_50433_2018",
         ],
+        assertion_class=AssertionClass.NORMATIVE_REQUIREMENT,
+        paragraph_id="narr.management.contents",
     )
 
     p3 = NarrativeParagraph(
@@ -94,4 +107,5 @@ def render(facts: dict, derived: dict, triggered: set[str],
         template_id=SPEC.template_id,
         template_version=SPEC.template_version,
         normative_basis=SPEC.normative_basis,
+        quality_findings=ev.findings,
     )

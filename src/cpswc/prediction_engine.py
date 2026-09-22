@@ -18,6 +18,8 @@ Contract:
 """
 from __future__ import annotations
 
+import math
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -207,12 +209,20 @@ class PredictionResult:
 
 
 def _get_val(facts: dict, key: str) -> float:
+    """取数值输入。
+
+    P0-04: 非有限数 (NaN / inf) 一律当作"没有值"处理 ——
+    04 文档第 1 节: 非法数字禁止参与有效计算。原实现直接 `float(v["value"])`,
+    NaN 会一路算到总量, 最终在正文里印成 "nan t", 读者会当成一个数。
+    """
     v = facts.get(key)
     if isinstance(v, dict) and "value" in v:
-        return float(v["value"])
-    if isinstance(v, (int, float)):
-        return float(v)
-    return 0.0
+        v = v["value"]
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return 0.0
+    if not math.isfinite(v):
+        return 0.0
+    return float(v)
 
 
 def compute_prediction(facts: dict) -> PredictionResult:

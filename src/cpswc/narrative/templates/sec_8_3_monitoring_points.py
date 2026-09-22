@@ -11,8 +11,11 @@ sec_8_3_monitoring_points — 8.3 点位布设与监测设施
 """
 from __future__ import annotations
 from cpswc.narrative.contract import (
-    NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec, RenderStatus,
+    AssertionClass, NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec,
+    RenderStatus,
 )
+from cpswc.narrative.evidence import SectionEvidence
+from cpswc.report_quality import Severity
 
 
 SPEC = NarrativeTemplateSpec(
@@ -32,19 +35,14 @@ SPEC = NarrativeTemplateSpec(
 )
 
 
-def _v(facts: dict, key: str, default: str = "—") -> str:
-    v = facts.get(key)
-    if v is None:
-        return default
-    if isinstance(v, dict) and "value" in v:
-        return f"{v['value']} {v.get('unit', '')}".strip()
-    return str(v)
-
-
 def render(facts: dict, derived: dict, triggered: set[str],
-           **kwargs) -> NarrativeBlock:
-    total_area = _v(facts, "field.fact.land.total_area")
-    breakdown = facts.get("field.fact.land.county_breakdown") or []
+           ledger=None, context=None, **kwargs) -> NarrativeBlock:
+    ev = SectionEvidence("sec.monitoring.point_layout", facts, derived,
+                         ledger=ledger, context=context)
+    area_rv = ev.quantity("field.fact.land.total_area")
+    bd_rv = ev.items("field.fact.land.county_breakdown", severity=Severity.WARN)
+    breakdown = bd_rv.value if (bd_rv.is_present
+                                and isinstance(bd_rv.value, list)) else []
 
     # Derive point count from zones
     zone_count = len(breakdown) if breakdown else 1
@@ -62,11 +60,25 @@ def render(facts: dict, derived: dict, triggered: set[str],
             f"根据项目防治分区和水土流失特点，"
             f"本项目共布设水土保持监测点{point_count}个，其中{zone_text}。"
         )
-    else:
+    elif area_rv.is_present:
         layout_text = (
-            f"根据项目防治责任范围（{total_area}）和水土流失特点，"
+            f"根据项目防治责任范围（{area_rv.display()}）和水土流失特点，"
             f"本项目共布设水土保持监测点{point_count}个，"
             f"分布于项目主要扰动区域。"
+        )
+    else:
+        # 既无防治分区也无责任范围面积 —— 点位数不是算出来的, 是兜底常数。
+        ev.add_finding(
+            "VALUE_MISSING",
+            "sec.monitoring.point_layout: 既无防治分区也无责任范围面积, "
+            "监测点数量无依据",
+            severity=Severity.BLOCK,
+            target_ref="sec.monitoring.point_layout",
+            missing_input_refs=["field.fact.land.county_breakdown",
+                                "field.fact.land.total_area"],
+            remediation="补充防治分区或责任范围面积后确定监测点布设")
+        layout_text = (
+            "防治分区与责任范围面积均未提供，本节尚无法确定监测点数量与布设位置。"
         )
 
     p1 = NarrativeParagraph(
@@ -113,4 +125,5 @@ def render(facts: dict, derived: dict, triggered: set[str],
         template_id=SPEC.template_id,
         template_version=SPEC.template_version,
         normative_basis=SPEC.normative_basis,
+        quality_findings=ev.findings,
     )

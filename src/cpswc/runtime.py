@@ -38,6 +38,7 @@ Step 12A: 把 5 个脚本 (lint / validator / calculator_engine / registries / s
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import sys
@@ -56,7 +57,15 @@ except ImportError:
 from cpswc.paths import REGISTRIES_DIR, SAMPLES_DIR, GOVERNANCE_DIR, PROJECT_ROOT  # noqa
 from cpswc.condition_engine import (  # noqa: F401 — re-export for backward compat
     ObligationResult,
+    EvaluationStatus,
     evaluate_all as _evaluate_all_obligations,
+)
+from cpswc.report_quality import compute_quality_input_hash
+from cpswc.input_hashing import (
+    HASH_SCHEMA_VERSION,
+    collect_input_digests,
+    fact_snapshot_hash as _fact_snapshot_hash,
+    generation_input_hash as _generation_input_hash,
 )
 from cpswc.project_fact_sheet import (  # noqa: F401
     ProjectFactSheet,
@@ -127,6 +136,8 @@ class RuntimeManifest:
     assurances_required: int
     ruleset: str
     lifecycle: str
+    obligations_unknown: int = 0
+    """适用性无法确定的义务数。**不属于 not_triggered** (P0-02)"""
 
 
 @dataclass
@@ -165,19 +176,53 @@ class RuntimeSnapshot:
     submission_profile: SubmissionProfile | None = None
     submission_lifecycle: SubmissionLifecycle | None = None
 
+    # P0-02: 适用性无法确定的义务。下游不得把它们当作"本项目不涉及"。
+    unknown_obligations: list[str] = dc_field(default_factory=list)
+    obligation_applicability: dict[str, str] = dc_field(default_factory=dict)
+
+    # P0-01/03: 本次消费输入的指纹, 供复核记录绑定 (DECISION_LOG 条目 004)。
+    # 不是 fact_snapshot_hash, 也不是 generation_input_hash。
+    quality_input_hash: str = ""
+
+    # P0-04: 运行时 enrich 产出的消费视图。**不写回 facts** (验收 F02)。
+    enriched_views: dict = dc_field(default_factory=dict)
+    runtime_diagnostics: list[str] = dc_field(default_factory=list)
+
+    # P0-06: 两个分工明确的语义哈希 (04 文档第 7 节)。
+    #   fact_snapshot_hash    规范化事实集合本身
+    #   generation_input_hash 事实 + 来源 + 规则/registry/模板/计算版本
+    # 都**不含**运行时间与 run ID, 因此同语义输入重复执行结果相同。
+    hash_schema_version: str = ""
+    fact_snapshot_hash: str = ""
+    generation_input_hash: str = ""
+    input_digests: dict = dc_field(default_factory=dict)
+
 
 @dataclass
 class FrozenSubmissionInput:
-    """可冻结的提交输入快照 + content-addressed SHA256"""
+    """
+    可冻结的提交输入快照。
+
+    **冻结 = 生命周期冻结, 不等于专业校审通过。** 构造这个 dataclass 不代表
+    任何人确认过内容 (03 文档 P0-06 第 5 条)。
+    """
     snapshot_json: str          # RuntimeSnapshot 的 JSON 序列化
-    content_hash: str           # SHA256(snapshot_json)
-    frozen_at: str              # ISO 时间
-    fact_snapshot_hash: str     # SHA256(仅 facts 部分), 用于检测 facts 变更
+    content_hash: str           # SHA256(snapshot_json) —— 文件完整性, 非语义
+    frozen_at: str              # ISO 时间 (审计元数据, 不进语义 hash)
+    fact_snapshot_hash: str     # P0-06: 规范化**事实集合**的 hash (原来错散列了 derived)
 
     artifact_manifest: list[str]    # 本次要求的 artifact id 列表
     assurance_manifest: list[str]   # 本次要求的 assurance id 列表
     calculator_manifest: list[str]  # 本次执行的 calculator id 列表
     obligation_manifest: list[str]  # 本次触发的 obligation id 列表
+
+    # P0-06 新增
+    hash_schema_version: str = ""
+    generation_input_hash: str = ""
+    """审核有效性、重生成与变更判定看它, 不看 fact_snapshot_hash"""
+    input_digests: dict = dc_field(default_factory=dict)
+    lifecycle_freeze_note: str = (
+        "本记录只表示输入已冻结, **不表示**内容已经专业校审通过。")
 
 
 @dataclass
@@ -290,26 +335,35 @@ def run_project(
             ))
 
     # Step 3.5: F2 Price Layer enrich (仅白名单措施)
+    #
+    # P0-04 (验收 F02): 原实现把 enrich 结果**写回 project_input["facts"]**,
+    # 于是调用一次 run_project 就改了调用者的输入 —— 重跑会基于被改过的数据。
+    # 现在 enrich 只产出一份独立的**消费视图**, 原始 facts 一个字节都不动。
+    enriched_views: dict[str, Any] = {}
+    enrich_diagnostics: list[str] = []
     measures_registry = facts.get("field.fact.investment.measures_registry")
     if isinstance(measures_registry, list) and measures_registry:
         try:
             from cpswc.quota_connector import (  # type: ignore
                 enrich_measures, PS_QUOTA_CALIBRATED,
             )
-            enriched = enrich_measures(measures_registry)
-            # 只把白名单结果写回, 非白名单保留原始 CSV 价格
+            enriched = enrich_measures(copy.deepcopy(measures_registry))
+            # 只标注白名单结果, 非白名单保留原始 CSV 价格
             for m in enriched:
                 if m.get("price_source") == PS_QUOTA_CALIBRATED:
                     m["quota_enriched"] = True
-            facts["field.fact.investment.measures_registry"] = enriched
-        except Exception:
-            pass  # DB 不存在或其他问题, 静默跳过
+            enriched_views["field.fact.investment.measures_registry"] = enriched
+        except Exception as e:
+            # 不再静默: 依赖缺失也要留痕 (04 文档第 3 节第 8 条)
+            enrich_diagnostics.append(f"价格 enrich 未执行: {type(e).__name__}: {e}")
 
     # Step 4: 合并 facts + derived → unified lookup
-    # 优先级: runtime computed derived > sample pre-stored derived > facts
+    # 优先级与 BuildContext 一致:
+    #   计算 derived > enrich 消费视图 > 预存 derived > 项目事实
     unified: dict[str, Any] = {}
     unified.update(facts)
     unified.update(existing_derived)  # sample 里的 pre-stored derived
+    unified.update(enriched_views)    # 运行时 enrich 的消费视图
     unified.update(derived_fields)    # runtime 计算的 derived 覆盖 pre-stored
 
     # Step 5: 评估 obligations (委托 ConditionEngine_v0)
@@ -317,6 +371,7 @@ def run_project(
     obligation_details = engine_result.obligation_details
     triggered = engine_result.triggered
     not_triggered = engine_result.not_triggered
+    unknown_obligations = engine_result.unknown
 
     # Step 6: 收集 required artifacts / assurances
     required_artifacts: set[str] = set()
@@ -371,6 +426,7 @@ def run_project(
         calculators_executed=calculator_results,
         obligations_evaluated=len(obligation_details),
         obligations_triggered=len(triggered),
+        obligations_unknown=len(unknown_obligations),
         artifacts_required=len(required_artifacts),
         assurances_required=len(required_assurances),
         ruleset=ruleset,
@@ -379,6 +435,49 @@ def run_project(
 
     now = datetime.now(timezone.utc).isoformat()
     snapshot_id = f"snap_{hashlib.sha256(now.encode()).hexdigest()[:12]}"
+
+    # ---- P0-06: 语义哈希 ----
+    from cpswc.paths import NARRATIVE_TEMPLATES_DIR
+
+    input_digests = collect_input_digests(
+        registries_dir=(specs_dir or SPECS_DIR),
+        governance_dir=GOVERNANCE_DIR,
+        templates_dir=NARRATIVE_TEMPLATES_DIR,
+    )
+    calculator_versions = {
+        cid: str((cdef or {}).get("version", ""))
+        for cid, cdef in sorted(live_calcs.items())
+        if (cdef or {}).get("status") == "live"
+    }
+    sample_meta_for_profile = project_input.get("sample_meta") or {}
+    static_profile = {
+        "species": sample_meta_for_profile.get("species", ""),
+        "compilation_intent": sample_meta_for_profile.get("compilation_intent", "NEW"),
+        "industry_category": facts.get("field.fact.project.industry_category") or "",
+    }
+    # 来源层选择本身属于输入: 同一个值取自 CALCULATED 还是 PRE_STORED, 结论不同
+    source_layers = {}
+    for field_id in sorted(set(facts) | set(existing_derived)
+                           | set(enriched_views) | set(derived_fields)):
+        if field_id in derived_fields:
+            source_layers[field_id] = "CALCULATED"
+        elif field_id in enriched_views:
+            source_layers[field_id] = "ENRICHED_VIEW"
+        elif field_id in existing_derived:
+            source_layers[field_id] = "PRE_STORED_DERIVED"
+        else:
+            source_layers[field_id] = "PROJECT_FACT"
+
+    fact_hash = _fact_snapshot_hash(facts)
+    gen_hash = _generation_input_hash(
+        facts=facts,
+        pre_stored_derived=existing_derived,
+        source_map=source_layers,
+        profile=static_profile,
+        input_digests=input_digests,
+        calculator_versions=calculator_versions,
+        ruleset=ruleset,
+    )
 
     # ProjectFactSheet: unified = facts + pre-stored derived + runtime derived
     # 与 Step 4 的 unified lookup 口径一致
@@ -406,6 +505,15 @@ def run_project(
         obligation_details=obligation_details,
         required_artifacts=sorted(required_artifacts),
         required_assurances=sorted(required_assurances),
+        unknown_obligations=sorted(unknown_obligations),
+        obligation_applicability=engine_result.applicability_map(),
+        quality_input_hash=compute_quality_input_hash(facts, unified),
+        enriched_views=enriched_views,
+        runtime_diagnostics=enrich_diagnostics,
+        hash_schema_version=HASH_SCHEMA_VERSION,
+        fact_snapshot_hash=fact_hash,
+        generation_input_hash=gen_hash,
+        input_digests=input_digests,
         fact_sheet=fact_sheet,
         submission_profile=profile,
         submission_lifecycle=lc,
@@ -429,20 +537,69 @@ def _serialize_snapshot(snapshot: RuntimeSnapshot) -> str:
                       sort_keys=True, indent=2, default=_default)
 
 
+def build_snapshot_dict(snapshot: RuntimeSnapshot,
+                        project_input: dict,
+                        registries: dict | None = None) -> dict:
+    """
+    产出**唯一**一份供下游消费的 snapshot dict (P0-04 / 验收 I01)。
+
+    在此之前, 每个调用点各自拼 `_original_facts` / `_pre_stored_derived`,
+    而 `derived_fields` 只含计算 derived —— 结果是正文、表格、工作台、导出门禁
+    看到的 derived 各不相同 (DECISION_LOG 条目 007)。
+
+    现在统一经 BuildContext 选定读值:
+      `_original_facts`   = 统一视图里的 field.fact.*   (含 enrich 消费视图)
+      `derived_fields`    = 统一视图里的 field.derived.* (含预存派生量)
+      `_pre_stored_derived` 保留原样, 仅供对照, **不应**再被用来二次合并
+      `_source_map`       每个字段实际选了哪一层
+      `_build_findings`   读取过程中的诊断 (冲突 / 失效 / 未核验 / 演示假设)
+
+    计算失败的字段**不进视图** —— 旧值不顶替失败结果。
+    """
+    from cpswc.snapshot_adapter import make_build_context
+
+    regs = registries if registries is not None else load_all_registries()
+    ctx = make_build_context(project_input, snapshot, regs,
+                             enriched_views=snapshot.enriched_views)
+    view = ctx.unified_view()
+
+    d = json.loads(_serialize_snapshot(snapshot))
+    d["_original_facts"] = {k: v for k, v in view.items()
+                            if not k.startswith("field.derived.")}
+    d["derived_fields"] = {k: v for k, v in view.items()
+                           if k.startswith("field.derived.")}
+    d["_pre_stored_derived"] = project_input.get("derived") or {}
+    d["_source_map"] = ctx.source_map()
+    d["_build_findings"] = [f.to_dict() for f in ctx.findings]
+    d["quality_inputs"] = project_input.get("quality_inputs")
+    d["quality_input_hash"] = snapshot.quality_input_hash
+    d["generation_input_hash"] = snapshot.generation_input_hash
+    d["fact_snapshot_hash"] = snapshot.fact_snapshot_hash
+    d["hash_schema_version"] = snapshot.hash_schema_version
+    if snapshot.fact_sheet is not None:
+        d["fact_sheet"] = asdict(snapshot.fact_sheet)
+    return d
+
+
 def freeze_submission(snapshot: RuntimeSnapshot) -> FrozenSubmissionInput:
-    """从 RuntimeSnapshot 产出 FrozenSubmissionInput (content-addressed)"""
+    """
+    从 RuntimeSnapshot 产出 FrozenSubmissionInput。
+
+    P0-06: 两个语义 hash 在 run_project 里就算好了 (那里才拿得到 facts),
+    这里只搬运 —— 不再像原来那样在冻结时现算, 更不再把 derived_fields
+    当成 facts 去散列 (D10)。
+    """
     snapshot_json = _serialize_snapshot(snapshot)
     content_hash = hashlib.sha256(snapshot_json.encode("utf-8")).hexdigest()
-
-    # fact_snapshot_hash: 仅 facts 部分的 hash, 用于检测 facts 变更
-    facts_json = json.dumps(snapshot.derived_fields, ensure_ascii=False, sort_keys=True)
-    fact_hash = hashlib.sha256(facts_json.encode("utf-8")).hexdigest()
 
     return FrozenSubmissionInput(
         snapshot_json=snapshot_json,
         content_hash=content_hash,
         frozen_at=datetime.now(timezone.utc).isoformat(),
-        fact_snapshot_hash=fact_hash,
+        fact_snapshot_hash=snapshot.fact_snapshot_hash,
+        hash_schema_version=snapshot.hash_schema_version or HASH_SCHEMA_VERSION,
+        generation_input_hash=snapshot.generation_input_hash,
+        input_digests=dict(snapshot.input_digests or {}),
         artifact_manifest=snapshot.required_artifacts,
         assurance_manifest=snapshot.required_assurances,
         calculator_manifest=[c.calculator_id for c in snapshot.calculator_results
@@ -516,8 +673,7 @@ def _cli() -> int:
         registries = load_all_registries()
 
         # 把 original facts 附到 snapshot dict 里供 renderer 使用
-        snapshot_dict = json.loads(_serialize_snapshot(snapshot))
-        snapshot_dict["_original_facts"] = project_input.get("facts") or {}
+        snapshot_dict = build_snapshot_dict(snapshot, project_input, registries)
 
         frozen_dict = None
         version_dict = None

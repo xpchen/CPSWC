@@ -89,6 +89,7 @@ def build_package(
         freeze_submission,
         create_version,
         load_all_registries,
+        build_snapshot_dict,
         _serialize_snapshot,
     )
     from cpswc.renderers.workbench import render_workbench  # type: ignore
@@ -96,6 +97,7 @@ def build_package(
     snapshot = run_project(project_input, ruleset=ruleset, lifecycle=lifecycle)
     frozen = freeze_submission(snapshot)
     version = create_version(frozen, previous_version_id=previous_version_id)
+    registries = load_all_registries()
 
     # ---- Step 2: Create output directory ----
     pkg_dir = Path(output_dir)
@@ -116,7 +118,11 @@ def build_package(
     # frozen_submission_input.json
     frozen_dict = {
         "content_hash": frozen.content_hash,
+        "hash_schema_version": frozen.hash_schema_version,
         "fact_snapshot_hash": frozen.fact_snapshot_hash,
+        "generation_input_hash": frozen.generation_input_hash,
+        "input_digests": frozen.input_digests,
+        "lifecycle_freeze_note": frozen.lifecycle_freeze_note,
         "frozen_at": frozen.frozen_at,
         "artifact_manifest": frozen.artifact_manifest,
         "assurance_manifest": frozen.assurance_manifest,
@@ -138,9 +144,9 @@ def build_package(
         pkg_dir / "submission_package_version.json", version_dict)
 
     # ---- Step 3.1: Export Gate 检查 (宪法 #15) ----
-    snapshot_dict = json.loads(snapshot_json)
-    snapshot_dict["_original_facts"] = project_input.get("facts") or {}
-    snapshot_dict["_pre_stored_derived"] = project_input.get("derived") or {}
+    # P0-04: 全包只构造**一次**统一视图, 正文/表格/工作台/门禁共用同一份
+    # (验收 I01)。此前这里和 Step 3.5 各拼一次, 且都只含计算 derived。
+    snapshot_dict = build_snapshot_dict(snapshot, project_input, registries)
 
     from cpswc.export_gate import check_export_readiness  # type: ignore
     gate_result = check_export_readiness(snapshot_dict)
@@ -167,12 +173,7 @@ def build_package(
         print("  (v0: 继续产包, gate 结果记录在 export_gate_result.json)",
               file=sys.stderr)
 
-    # workbench.html
-    registries = load_all_registries()
-    # ProjectFactSheet: 注入 fact_sheet dict 供 table projections 使用
-    if snapshot.fact_sheet is not None:
-        from dataclasses import asdict as _asdict
-        snapshot_dict["fact_sheet"] = _asdict(snapshot.fact_sheet)
+    # workbench.html (fact_sheet 已由 build_snapshot_dict 注入)
     html = render_workbench(snapshot_dict, frozen_dict, version_dict, registries)
     (pkg_dir / "workbench.html").write_text(html, encoding="utf-8")
     file_hashes["workbench.html"] = _sha256(html)
@@ -216,17 +217,10 @@ def build_package(
 
     try:
         from cpswc.renderers.document import render_report  # type: ignore
-        snapshot_d = json.loads(snapshot_json)
-        # Attach original facts for narrative projection + workbench
-        snapshot_d["_original_facts"] = project_input.get("facts") or {}
-        snapshot_d["_pre_stored_derived"] = project_input.get("derived") or {}
-        if snapshot.fact_sheet is not None:
-            from dataclasses import asdict as _asdict2
-            snapshot_d["fact_sheet"] = _asdict2(snapshot.fact_sheet)
 
-        # DocumentRenderer_v0 统一入口
+        # DocumentRenderer_v0 统一入口 —— 复用上面那一份统一视图, 不再另拼
         report = render_report(
-            snapshot=snapshot_d,
+            snapshot=snapshot_dict,
             frozen=frozen_dict,
             calc_results_dir=calc_dir,
             output_dir=rendered_dir,

@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any
 
 from cpswc.renderers.table_protocol import TableColumn, TableSpec, TableData, TableRenderPolicy
+from cpswc.report_quality import EvidenceState, ledger_from_snapshot
 
 
 def _get(facts: dict, key: str) -> Any:
@@ -366,7 +367,14 @@ SPEC_SIX_INDICATOR = TableSpec(
         TableColumn(key="result", header="达标判定", unit="", align="center", fmt="str"),
     ],
     has_total_row=False,
-    footnote="目标值来源: cal.target.weighted_comprehensive / GB/T 50434-2018 | 实现值来源: field.derived.target.*",
+    footnote=(
+        "目标值来源: cal.target.weighted_comprehensive / GB/T 50434-2018 (按防治标准等级查表)。"
+        "效果列: field.derived.target.* 中的 actual_derived 与 value 目前只是**候选效果输入**——"
+        "同一结构里 value 有时是目标 (含 target_by_standard) 有时带 derivation, "
+        "字段名与推导文字都不能证明其语义, 故一律标注“候选·待确认”且不进入达标比较。"
+        "只有该字段的证据状态达到 READY (有可解析、未被否决的证据记录) 时才参与比较: "
+        "低于目标判“未达标”, 不低于目标判“待复核”——机器检查不能替专业判断下达标结论。"
+        "无候选值时效果列为“待计算”。任何情况下均不出现“达标”。"),
     section_id="sec.soil_loss_prevention.benefit_analysis",
 )
 
@@ -387,50 +395,60 @@ _INDICATOR_META = [
 
 
 def project_six_indicator_review(snapshot: dict) -> TableData:
+    """
+    六项指标复核表。
+
+    P0-03 + A 批验收修正后的三条规则:
+
+      1. **目标只从加权综合目标取。** 旧实现拿 `field.derived.target.<k>.value`
+         当实现值, 而现有样本里那个 value 常常就是目标本身
+         (如 `soil_loss_control_ratio.value = 1.0` = `target_by_standard: 一级 = 1.0`),
+         于是目标和自己比较, 六行全部"达标"。
+      2. **候选效果不进比较。** `actual_derived` 和 `value` 都只是候选效果输入 ——
+         同一结构里两种约定并存 (见 DECISION_LOG 条目 005), 字段名和 derivation
+         文字都不证明语义。候选值照实显示并标"候选·待确认", 但不判达标与否。
+      3. **确认后才比较。** 该字段有可解析、未被否决的证据记录 (EvidenceState.READY)
+         时才进入比较: 低于目标 → 未达标; 不低于目标 → 待复核。
+         "待复核"而不是"达标": 机器检查不替专业判断下达标结论。
+    """
     derived = snapshot.get("derived_fields") or {}
-    facts = snapshot.get("_original_facts") or {}
+    ledger = ledger_from_snapshot(snapshot)
 
-    # 目标值: 从加权综合目标取 (多等级) 或从直接查表取 (单等级)
+    # 目标值: 只从加权综合目标取
     wt = derived.get("field.derived.target.weighted_comprehensive_target") or {}
-
-    # 实际值: 从 field.derived.target.* 各指标取
-    actual_map = {}
-    for key, _, _ in _INDICATOR_META:
-        actual_field = derived.get(f"field.derived.target.{key}")
-        if isinstance(actual_field, dict):
-            actual_map[key] = actual_field.get("value")
-            # 也可能有 actual_derived 子字段
-            if actual_field.get("actual_derived") is not None:
-                actual_map[key] = actual_field["actual_derived"]
-        elif actual_field is not None:
-            actual_map[key] = actual_field
+    if not isinstance(wt, dict):
+        wt = {}
 
     rows = []
+    has_any_target = False
+    has_any_candidate = False
     for key, label, formula in _INDICATOR_META:
-        target_val = wt.get(key) if isinstance(wt, dict) else None
-        actual_val = actual_map.get(key)
+        target_val = wt.get(key)
+        field_id = f"field.derived.target.{key}"
+        candidate, source = _effect_candidate(derived.get(field_id))
+        confirmed = (ledger.evidence_state(field_id) is EvidenceState.READY)
 
-        # 格式化
-        if key == "soil_loss_control_ratio":
-            t_str = str(target_val) if target_val is not None else "—"
-            a_str = str(actual_val) if actual_val is not None else "—"
-        else:
-            t_str = f"{target_val}" if target_val is not None else "—"
-            a_str = f"{actual_val}" if actual_val is not None else "—"
+        t_str = "—" if target_val is None else str(target_val)
+        if target_val is not None:
+            has_any_target = True
 
-        # 达标判定
-        if target_val is not None and actual_val is not None:
-            try:
-                if key == "soil_loss_control_ratio":
-                    # 控制比: 实际值 >= 目标值 即达标
-                    result = "达标" if float(actual_val) >= float(target_val) else "未达标"
-                else:
-                    # 百分比: 实际值 >= 目标值 即达标
-                    result = "达标" if float(actual_val) >= float(target_val) else "未达标"
-            except (ValueError, TypeError):
-                result = "—"
+        if candidate is None:
+            a_str, result = "待计算", "待计算"
+        elif not confirmed:
+            has_any_candidate = True
+            a_str = f"{candidate}（候选·待确认，源自 {source}）"
+            result = "待确认效果来源"
         else:
-            result = "—"
+            has_any_candidate = True
+            a_str = str(candidate)
+            if target_val is None:
+                result = "目标值缺失"
+            else:
+                try:
+                    result = ("未达标" if float(candidate) < float(target_val)
+                              else "待复核")
+                except (ValueError, TypeError):
+                    result = "待复核"
 
         rows.append({
             "indicator": label,
@@ -440,11 +458,30 @@ def project_six_indicator_review(snapshot: dict) -> TableData:
             "result": result,
         })
 
-    policy = TableRenderPolicy.RENDER_WITH_VALUES if any(
-        r["target"] != "—" for r in rows
-    ) else TableRenderPolicy.RENDER_WITH_PLACEHOLDER
+    policy = (TableRenderPolicy.RENDER_WITH_VALUES
+              if (has_any_target or has_any_candidate)
+              else TableRenderPolicy.RENDER_WITH_PLACEHOLDER)
 
     return TableData(spec=SPEC_SIX_INDICATOR, rows=rows, render_policy=policy)
+
+
+def _effect_candidate(entry: Any) -> tuple[Any, str]:
+    """
+    从 `field.derived.target.<k>` 里取出效果**候选**值及其来源键名。
+
+    返回 (候选值, 来源键名)。取不到返回 (None, "")。
+
+    不做任何语义推断: 不看 derivation 文字, 不看有没有 target_by_standard。
+    `actual_derived` 优先只是因为它的命名更接近"实际值", **这不构成可信性证明**
+    (A 批验收意见原话: "actual_derived 也只是候选效果输入, 名称本身不证明可信")。
+    """
+    if not isinstance(entry, dict):
+        return (entry, "value") if isinstance(entry, (int, float)) else (None, "")
+    if entry.get("actual_derived") is not None:
+        return entry["actual_derived"], "actual_derived"
+    if entry.get("value") is not None:
+        return entry["value"], "value"
+    return None, ""
 
 
 # ============================================================

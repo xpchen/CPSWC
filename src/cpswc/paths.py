@@ -17,3 +17,6 @@ GOVERNANCE_DIR = PROJECT_ROOT / "governance"
 DOCS_DIR = PROJECT_ROOT / "docs"
 TESTS_DIR = PROJECT_ROOT / "tests"
 OUTPUTS_DIR = PROJECT_ROOT / "outputs"
+
+# P0-06: narrative 模板目录 —— 模板源码摘要进生成输入 hash
+NARRATIVE_TEMPLATES_DIR = Path(__file__).resolve().parent / "narrative" / "templates"

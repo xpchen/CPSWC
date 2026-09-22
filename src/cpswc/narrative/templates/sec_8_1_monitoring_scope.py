@@ -9,8 +9,11 @@ sec_8_1_monitoring_scope — 8.1 监测范围与时段
 """
 from __future__ import annotations
 from cpswc.narrative.contract import (
-    NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec, RenderStatus,
+    AssertionClass, NarrativeBlock, NarrativeParagraph, NarrativeTemplateSpec,
+    RenderStatus,
 )
+from cpswc.narrative.evidence import SectionEvidence
+from cpswc.report_quality import Severity
 from cpswc.narrative.templates.schedule_phases import derive_phases, format_phases_text
 
 
@@ -33,24 +36,27 @@ SPEC = NarrativeTemplateSpec(
 )
 
 
-def _v(facts: dict, key: str, default: str = "—") -> str:
-    v = facts.get(key)
-    if v is None:
-        return default
-    if isinstance(v, dict) and "value" in v:
-        return f"{v['value']} {v.get('unit', '')}".strip()
-    return str(v)
-
-
 def render(facts: dict, derived: dict, triggered: set[str],
-           **kwargs) -> NarrativeBlock:
-    total_area = _v(facts, "field.fact.land.total_area")
+           ledger=None, context=None, **kwargs) -> NarrativeBlock:
+    ev = SectionEvidence("sec.monitoring.scope_and_period", facts, derived,
+                         ledger=ledger, context=context)
+    area_rv = ev.quantity("field.fact.land.total_area")
     phases = derive_phases(facts)
 
     # Scope paragraph
-    p1 = NarrativeParagraph(
+    if not area_rv.is_present:
+        p1 = ev.gap_paragraph(
+            area_rv,
+            lead="防治责任范围面积缺失，无法界定监测范围",
+            source_rule_refs=["rule.template_2026.section_8"],
+            paragraph_id="narr.monitoring.scope_and_period.scope")
+    else:
+        p1 = NarrativeParagraph(
+        assertion_class=AssertionClass.FACT_RESTATEMENT,
+        paragraph_id="narr.monitoring.scope_and_period.scope",
         text=(
-            f"水土保持监测范围为项目水土流失防治责任范围，面积{total_area}。"
+            f"水土保持监测范围为项目水土流失防治责任范围，"
+            f"面积{area_rv.display()}。"
             f"监测范围覆盖全部永久占地和临时占地区域。"
         ),
         evidence_refs=[
@@ -72,12 +78,17 @@ def render(facts: dict, derived: dict, triggered: set[str],
                 f"应进行本底值监测，掌握项目区水土流失背景值。"
             )
     else:
-        start = _v(facts, "field.fact.schedule.start_time")
-        end = _v(facts, "field.fact.schedule.end_time")
-        period_detail = (
-            f"监测时段自{start}至项目水土保持设施验收完成。"
-            f"施工准备期应进行本底值监测，掌握项目区水土流失背景值。"
-        )
+        start = ev.text("field.fact.schedule.start_time")
+        if start.is_present:
+            period_detail = (
+                f"监测时段自{start.display()}至项目水土保持设施验收完成。"
+                f"施工准备期应进行本底值监测，掌握项目区水土流失背景值。"
+            )
+        else:
+            period_detail = (
+                "施工进度信息不完整（缺 field.fact.schedule.start_time），"
+                "监测时段尚无法确定。施工准备期应进行本底值监测。"
+            )
 
     p2 = NarrativeParagraph(
         text=period_detail,
@@ -101,4 +112,5 @@ def render(facts: dict, derived: dict, triggered: set[str],
         template_id=SPEC.template_id,
         template_version=SPEC.template_version,
         normative_basis=SPEC.normative_basis,
+        quality_findings=ev.findings,
     )

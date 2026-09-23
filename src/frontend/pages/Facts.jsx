@@ -21,6 +21,118 @@ const SENSITIVE_AREAS_12  = window.CPSWC.SENSITIVE_AREAS_12  || [];
 const ANALOG_PROJECTS     = window.CPSWC.ANALOG_PROJECTS     || [];
 const DISPOSAL_RECEIVERS  = window.CPSWC.DISPOSAL_RECEIVERS  || [];
 
+
+// ===================================================================
+// F-4 快照模式事实适配
+// ===================================================================
+// 把 payload.facts (= BuildContext.project_fields() 的逐字搬运) 映射成本页
+// 既有的分类树 / 字段行 / 影响预览三段结构。
+//
+// 三条硬规矩:
+//   1. 状态一律来自 payload 的 state, 界面不判定, 更不给"已校验";
+//   2. 缺失字段照样列出来 —— 看不见的缺口等于不存在;
+//   3. 影响范围只认 payload.field_lineage, 取不到就说"尚未建立", 不套默认值。
+
+const FS_SNAPSHOT = window.CPSWC.IS_SNAPSHOT;
+
+// 分组键: field.fact.land.total_area → 'land'; field.derived.target.x → 'derived.target'
+function fsGroupKey(fieldId) {
+  const seg = fieldId.split('.');
+  if (seg[1] === 'derived') return 'derived.' + (seg[2] || 'other');
+  return seg[2] || 'other';
+}
+
+const FS_GROUP_LABEL = {
+  project:'项目基本信息', location:'地理位置', party:'参建单位',
+  schedule:'建设进度', land:'占地', earthwork:'土石方', topsoil:'表土',
+  natural:'自然条件', prediction:'水土流失预测', prevention:'防治责任与措施',
+  construction:'建设内容', disposal_site:'弃渣场', measures:'措施体系',
+  investment:'投资估算', regulatory:'规费与监管', disposal:'弃方外运',
+  'derived.earthwork':'派生·土石方', 'derived.target':'派生·防治目标',
+  'derived.investment':'派生·投资', 'derived.disposal_site':'派生·弃渣场',
+};
+const FS_GROUP_ICON = {
+  project:'FileSpreadsheet', location:'MapPin', party:'Building2',
+  schedule:'CalendarRange', land:'Layers', earthwork:'Mountain',
+  topsoil:'Sprout', natural:'CloudRain', prediction:'TrendingDown',
+  prevention:'ShieldPlus', construction:'Hammer', disposal_site:'Truck',
+  measures:'ListChecks', investment:'Coins', regulatory:'Gavel', disposal:'Truck',
+};
+
+// 分类展示顺序: 按报告的叙述顺序走, 派生值统一排在最后 ——
+// 派生值不是甲方要填的东西, 混在填报项里会让人以为也要自己填。
+const FS_GROUP_ORDER = [
+  'project','party','location','schedule','construction','land',
+  'earthwork','topsoil','disposal','disposal_site','natural',
+  'prediction','prevention','measures','investment','regulatory',
+];
+
+function fsCats() {
+  const groups = [];
+  (window.CPSWC.PAYLOAD.facts || []).forEach(f => {
+    const k = fsGroupKey(f.field_id);
+    let g = groups.find(x => x.id === k);
+    if (!g) {
+      g = { id:k, name: FS_GROUP_LABEL[k] || k,
+            icon: FS_GROUP_ICON[k] || (k.startsWith('derived.') ? 'Calculator' : 'Database'),
+            done:0, total:0 };
+      groups.push(g);
+    }
+    g.total += 1;
+    if (f.state === 'PRESENT' && !f.is_empty_container) g.done += 1;
+  });
+  const rank = (id) => {
+    const i = FS_GROUP_ORDER.indexOf(id);
+    if (i >= 0) return i;                       // 已登记顺序
+    if (id.startsWith('derived.')) return 900;  // 派生值垫底
+    return 500;                                 // 未登记分组排中间, 看得见
+  };
+  return groups.sort((a, b) => rank(a.id) - rank(b.id) || a.id.localeCompare(b.id));
+}
+
+const FS_PROVENANCE_LABEL = {
+  PROJECT_FACT:'项目事实输入', PRE_STORED_DERIVED:'预存派生值',
+  CALCULATED:'计算器输出', ENRICHED_VIEW:'富化视图', UNKNOWN:'来源未登记',
+};
+
+function fsFields(catId) {
+  return (window.CPSWC.PAYLOAD.facts || [])
+    .filter(f => fsGroupKey(f.field_id) === catId)
+    .map(f => {
+      const present = f.state === 'PRESENT';
+      const empty = present && f.is_empty_container;
+      const lineage = window.CPSWC.FIELD_LINEAGE[f.field_id];
+      return {
+        name: f.canonical_name || f.field_id,
+        id: f.field_id,
+        value: window.CPSWC.factText(f.field_id, { unit:false }),
+        unit: present && !empty ? (f.unit || '') : '',
+        src: FS_PROVENANCE_LABEL[f.provenance] || f.provenance || '未登记',
+        status: empty ? '空清单'
+              : present ? '有取值'
+              : (window.CPSWC.FACT_STATE_LABEL[f.state] || f.state),
+        missing: !present,
+        key: f.is_derived,
+        impacts: !!lineage,
+        note: f.note || '',
+        conflicts: f.conflicts || [],
+        staleValue: f.stale_value,
+      };
+    });
+}
+
+/** 影响范围。**取不到就返回 null**, 由调用方显示"尚未建立" —— 不套 DEFAULT_IMPACT。 */
+function fsImpact(fieldId) {
+  const l = window.CPSWC.FIELD_LINEAGE[fieldId];
+  if (!l) return null;
+  return {
+    narrative: l.section_refs || [],
+    tables: l.artifact_refs || [],
+    calc: l.projection_refs || [],
+    rules: [], delivery: [],
+  };
+}
+
 const FACT_FIELDS = {
   basic: [
     { name:'项目名称', id:'project.name', value:'世维华南供应链（二期）', unit:'', src:'立项批复', status:'已校验', impacts:true },
@@ -110,11 +222,11 @@ function FieldRow({ f, active, onClick, simulated }) {
           {f.key && <span className="text-[10px] px-1.5 py-px rounded bg-teal-50 text-teal-600 border border-teal-200">关键</span>}
           {simulated && <StatusTag status="人工编辑" />}
         </div>
-        <StatusTag status={f.missing ? '缺失' : f.status} dot />
+        <StatusTag status={(!FS_SNAPSHOT && f.missing) ? '缺失' : f.status} dot />
       </div>
       <div className="mt-2 flex items-center gap-3 text-[11.5px]">
         <Chip tone="slate" icon="Hash">{f.id}</Chip>
-        <span className="font-mono tabular text-slate-700 font-semibold">{simulated ? '3.54' : f.value}{f.unit && ` ${f.unit}`}</span>
+        <span className="font-mono tabular text-slate-700 font-semibold">{(!FS_SNAPSHOT && simulated) ? '3.54' : f.value}{f.unit && ` ${f.unit}`}</span>
       </div>
       <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-400">
         <span className="inline-flex items-center gap-1"><Icon name="FileInput" size={11}/>来源：{f.src}</span>
@@ -296,8 +408,10 @@ function ExcelImportDrawer({ onClose, onImported }) {
 }
 
 function FactsPage() {
-  const [cat, setCat] = useState('basic');
-  const [active, setActive] = useState('project.location');
+  // 快照模式: 分类与字段全部来自 payload; 演示模式沿用 mock
+  const CATS = FS_SNAPSHOT ? fsCats() : FACT_CATS;
+  const [cat, setCat] = useState(CATS[0] ? CATS[0].id : 'basic');
+  const [active, setActive] = useState(FS_SNAPSHOT ? '' : 'project.location');
   const [simulated, setSimulated] = useState(false);   // land 演示
   const [codeFilled, setCodeFilled] = useState(false); // 补齐项目代码
   const [locChanged, setLocChanged] = useState(false); // 模拟修改建设地点
@@ -306,8 +420,8 @@ function FactsPage() {
   const [imported, setImported] = useState(false);     // Excel 导入完成
 
   // 派生字段值（基本信息受演示状态影响）
-  let fields = FACT_FIELDS[cat] || FACT_FALLBACK(cat);
-  if (cat === 'basic') fields = fields.map(f => {
+  let fields = FS_SNAPSHOT ? fsFields(cat) : (FACT_FIELDS[cat] || FACT_FALLBACK(cat));
+  if (!FS_SNAPSHOT && cat === 'basic') fields = fields.map(f => {
     if (f.id === 'project.code') return { ...f, value: codeFilled ? '2405-441302-04-01-865321' : '待补充', status: codeFilled ? '已校验' : '缺失', missing: !codeFilled };
     if (f.id === 'project.location') return { ...f, value: locChanged ? '广东省深圳市龙岗区' : '广东省惠州市惠城区马安镇' };
     if (f.id === 'project.city') return { ...f, value: locChanged ? '深圳市' : '惠州市' };
@@ -316,8 +430,10 @@ function FactsPage() {
     return f;
   });
   const activeField = fields.find(f => f.id === active) || fields[0];
-  const impact = FIELD_IMPACTS[active] || DEFAULT_IMPACT;
-  const isBasic = cat === 'basic';
+  // 快照模式**不套 DEFAULT_IMPACT**: 影响关系取不到就是取不到
+  const impact = FS_SNAPSHOT ? fsImpact(activeField ? activeField.id : '')
+                             : (FIELD_IMPACTS[active] || DEFAULT_IMPACT);
+  const isBasic = !FS_SNAPSHOT && cat === 'basic';
 
   // 导入后注入 Excel 来源追溯
   const EXCEL_SRC = {
@@ -326,21 +442,31 @@ function FactsPage() {
     'earthwork.excavation':'土石方 / C5','earthwork.fill':'土石方 / D5','earthwork.spoil':'土石方 / E8',
     'investment.measures_total':'投资估算 / D12',
   };
-  if (imported) fields = fields.map(f => {
+  if (!FS_SNAPSHOT && imported) fields = fields.map(f => {
     if (f.id==='external.compensation_fee') return { ...f, excel:'投资估算 / D12', extDiff:'4.25 万元（系统 4.248）' };
     if (EXCEL_SRC[f.id]) return { ...f, excel: EXCEL_SRC[f.id] };
     return f;
   });
 
-  useEffect(() => { if (!fields.find(f=>f.id===active)) setActive(fields[0].id); }, [cat]);
+  useEffect(() => {
+    if (fields.length && !fields.find(f => f.id === active)) setActive(fields[0].id);
+  }, [cat, fields.length]);
 
-  const curCat = FACT_CATS.find(c => c.id === cat);
+  const curCat = CATS.find(c => c.id === cat);
 
   return (
     <div>
       <PageHeader title="事实填报" sub="事实驱动 · 录入项目事实，系统据此生成审查、计算、表格与正文" icon="Database">
-        <button onClick={()=>setExcelOpen(true)} className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 whitespace-nowrap"><Icon name="FileSpreadsheet" size={14} className="text-emerald-600"/>Excel 导入事实</button>
-        <Chip tone="emerald" icon="CircleCheck">事实完整度 94%</Chip>
+        <button onClick={()=>setExcelOpen(true)} disabled={FS_SNAPSHOT}
+          className="disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 whitespace-nowrap">
+          <Icon name="FileSpreadsheet" size={14} className="text-emerald-600"/>Excel 导入事实{FS_SNAPSHOT && '（未实现）'}</button>
+        {FS_SNAPSHOT
+          ? <Chip tone="slate" icon="Database">
+              {(() => { const fx = window.CPSWC.PAYLOAD.facts;
+                const miss = fx.filter(f => f.state !== 'PRESENT').length;
+                return `登记字段 ${fx.length} 项 · 未取到值 ${miss} 项 · 均未复核`; })()}
+            </Chip>
+          : <Chip tone="emerald" icon="CircleCheck">事实完整度 94%</Chip>}
       </PageHeader>
       {excelOpen && <ExcelImportDrawer onClose={()=>setExcelOpen(false)} onImported={()=>{ setImported(true); setExcelOpen(false); }} />}
 
@@ -349,9 +475,10 @@ function FactsPage() {
         <aside className="border-r border-slate-200 bg-white overflow-y-auto">
           <div className="p-2.5">
             <div className="text-[10.5px] font-semibold text-slate-400 uppercase px-2 mb-1.5 tracking-wide">事实分类</div>
-            {FACT_CATS.map(c => {
+            {CATS.map(c => {
               const act = cat === c.id;
-              const full = c.done === c.total;
+              // 快照模式下"齐了"也不给绿色 —— 有取值 ≠ 已核实
+              const full = !FS_SNAPSHOT && c.done === c.total;
               return (
                 <button key={c.id} onClick={()=>setCat(c.id)}
                   className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md mb-0.5 transition-colors ${act ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'}`}>
@@ -383,7 +510,11 @@ function FactsPage() {
               <Icon name={curCat.icon} size={16} className="text-brand-600"/>{curCat.name}
               <span className="text-[11px] font-normal text-slate-400">共 {fields.length} 个字段</span>
             </div>
-            {isBasic ? (
+            {FS_SNAPSHOT ? (
+              <span className="text-[11.5px] text-slate-500">
+                快照为只读结果，本页不提供录入与保存（编辑能力未实现）
+              </span>
+            ) : isBasic ? (
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button onClick={()=>{ setActive('project.code'); setCodeFilled(true); }} disabled={codeFilled}
                   className={`inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1.5 rounded-md whitespace-nowrap transition-colors ${codeFilled?'bg-slate-100 text-slate-400 cursor-default':'bg-brand-600 text-white hover:bg-brand-700'}`}>
@@ -583,16 +714,52 @@ function FactsPage() {
             </div>
           </div>
           <div className="p-4 space-y-4">
-            {active==='project.location' && locChanged && (
+            {FS_SNAPSHOT && activeField.note && (
+              <div className="flex items-start gap-2 text-[11.5px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2.5 py-2">
+                <Icon name="Info" size={13} className="shrink-0 mt-0.5 text-slate-400"/>
+                <span><b>取值说明：</b>{activeField.note}</span>
+              </div>
+            )}
+            {FS_SNAPSHOT && (activeField.conflicts || []).length > 0 && (
+              <div className="flex items-start gap-2 text-[11.5px] text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-2.5 py-2">
+                <Icon name="GitCompareArrows" size={13} className="shrink-0 mt-0.5"/>
+                来源冲突，未自动合并：{activeField.conflicts.join('；')}
+              </div>
+            )}
+            {FS_SNAPSHOT && activeField.staleValue != null && (
+              <div className="flex items-start gap-2 text-[11.5px] text-orange-700 bg-orange-50 border border-orange-200 rounded-md px-2.5 py-2">
+                <Icon name="History" size={13} className="shrink-0 mt-0.5"/>
+                历史值 {String(activeField.staleValue)} 已失效，未进入本次计算。
+              </div>
+            )}
+            {!FS_SNAPSHOT && active==='project.location' && locChanged && (
               <div className="flex items-start gap-2 text-[11.5px] text-orange-700 bg-orange-50 border border-orange-200 rounded-md px-2.5 py-2">
                 <Icon name="TriangleAlert" size={13} className="shrink-0 mt-0.5"/>区域已变更，下列规则集、计算器与表格均需重新确认。
               </div>
             )}
-            <ImpactGroup icon="Gavel" title="影响规则" items={impact.rules} tone="amber" />
-            <ImpactGroup icon="Calculator" title="影响计算器" items={impact.calc} />
-            <ImpactGroup icon="Table2" title="影响表格" items={impact.tables} tone="teal" />
-            <ImpactGroup icon="FileText" title="影响正文" items={impact.narrative} tone="brand" />
-            <ImpactGroup icon="Package" title="影响交付包" items={impact.delivery} />
+
+            {/* 影响范围。**建立不起来就说建立不起来** —— 这里以前会套一份
+                DEFAULT_IMPACT, 等于给每个字段编一套影响关系。 */}
+            {impact ? (
+              <>
+                {!FS_SNAPSHOT && <ImpactGroup icon="Gavel" title="影响规则" items={impact.rules} tone="amber" />}
+                <ImpactGroup icon="Calculator" title={FS_SNAPSHOT ? '影响投影' : '影响计算器'} items={impact.calc} />
+                <ImpactGroup icon="Table2" title={FS_SNAPSHOT ? '影响图件/表格' : '影响表格'} items={impact.tables} tone="teal" />
+                <ImpactGroup icon="FileText" title="影响正文章节" items={impact.narrative} tone="brand" />
+                {!FS_SNAPSHOT && <ImpactGroup icon="Package" title="影响交付包" items={impact.delivery} />}
+                {FS_SNAPSHOT && (
+                  <div className="text-[11px] text-slate-400 pt-1 border-t border-slate-100">
+                    影响关系取自 FieldIdentityRegistry 的 lineage 登记，非推测。
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-[12px] text-slate-500 rounded-md bg-slate-50 border border-slate-200 px-3 py-2.5">
+                <b>影响范围尚未建立。</b>该字段在 FieldIdentityRegistry 中没有登记
+                projection_target_refs，系统无法确定它影响哪些章节或图件 ——
+                这不表示它不影响任何章节。
+              </div>
+            )}
           </div>
         </aside>
       </div>

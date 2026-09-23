@@ -20,9 +20,9 @@ const PAYLOAD_SCHEMA_VERSION = 'cpswc_frontend_payload_v1';
 
 const PAYLOAD_REQUIRED_KEYS = [
   'schema_version','data_mode','generated_at','shell_digest',
-  'project','hashes','facts','obligations','quality',
+  'project','hashes','facts','field_lineage','obligations','quality',
   'findings','intake_issues','intake_summary',
-  'narrative','requirements','six_rates','export_gate',
+  'narrative','requirements','six_rates','tables','export_gate',
 ];
 
 function validatePayload(pl) {
@@ -128,6 +128,14 @@ const STATUS_STYLES = {
   'BLOCKED':     ['bg-red-50','text-red-700','border-red-200','#dc2626'],
   '风险':         ['bg-red-50','text-red-700','border-red-200','#dc2626'],
   '不一致':       ['bg-red-50','text-red-700','border-red-200','#dc2626'],
+  // F-4 快照事实状态。**刻意没有绿色** —— 快照里的事实只是"有取值",
+  // 既未经复核也未经确认, 给绿色就等于宣布它可信。
+  '有取值':       ['bg-slate-50','text-slate-600','border-slate-200','#64748b'],
+  '空清单':       ['bg-amber-50','text-amber-700','border-amber-200','#d99a06'],
+  '未填报':       ['bg-amber-50','text-amber-700','border-amber-200','#d99a06'],
+  '数据非法':     ['bg-red-50','text-red-700','border-red-200','#dc2626'],
+  '来源冲突':     ['bg-red-50','text-red-700','border-red-200','#dc2626'],
+  '历史值·待确认': ['bg-orange-50','text-orange-700','border-orange-200','#ea7a25'],
   // 灰色
   '不适用':       ['bg-slate-100','text-slate-500','border-slate-200','#94a3b8'],
   'NOT_APPLICABLE':['bg-slate-100','text-slate-500','border-slate-200','#94a3b8'],
@@ -589,12 +597,64 @@ const DISPOSAL_RECEIVERS = [
 // PROJECT_SNAPSHOT 下, 业务数据一律来自 payload; mock 常量不参与。
 
 // 项目抬头: 快照模式取 payload, 演示模式用 mock
+// ===================================================================
+// F-3..F-7 共享取值原语
+// ===================================================================
+// 各页一律经这里读事实, **不得**自己解析 payload、更不得给缺失值兜底。
+// 取不到就如实说取不到 —— 这是三态契约在页面层的落点。
+
+const FACTS_BY_ID = IS_SNAPSHOT
+  ? Object.fromEntries(PAYLOAD.facts.map(f => [f.field_id, f])) : {};
+
+// 非 PRESENT 状态的中文说法。刻意都是"没有/不可用"的措辞,
+// 不许出现任何可被读成肯定结论的词。
+const FACT_STATE_LABEL = {
+  MISSING: '未填报',
+  INVALID: '数据非法',
+  CONFLICT: '来源冲突',
+  STALE: '历史值·待确认',
+  NOT_APPLICABLE: '不适用',
+  UNKNOWN: '状态未知',
+};
+
+function fact(id) { return FACTS_BY_ID[id] || null; }
+
+/** 事实的显示文本。缺失/非法一律返回状态说法, **绝不返回兜底数值**。 */
+function factText(id, opts) {
+  const o = opts || {};
+  const f = fact(id);
+  if (!f) return '未登记';
+  if (f.state !== 'PRESENT') return FACT_STATE_LABEL[f.state] || f.state;
+  let v = f.value;
+  // 空清单**不是**"不涉及"。后端已对此打了 is_empty_container 标记并写明
+  // "已提供列表, 但不能独自证明已完整调查且无涉及" —— 界面必须照这个口径说,
+  // 显示"无 / 否"就等于替甲方下了一个没人核过的结论。
+  if (Array.isArray(v)) v = v.length ? v.join('、') : '空清单·未核实';
+  else if (v && typeof v === 'object') v = o.pick ? (v[o.pick] ?? '(无该项)') : '(结构化数据)';
+  const unit = o.unit === false ? '' : (f.unit ? ' ' + f.unit : '');
+  return String(v) + unit;
+}
+
+/** 事实是否真有值 —— 界面用它决定"显示数字"还是"显示缺口样式"。 */
+function factPresent(id) { const f = fact(id); return !!f && f.state === 'PRESENT'; }
+
+/** 原始值, 只在确为 PRESENT 时给; 否则 null。 */
+function factValue(id) { const f = fact(id); return f && f.state === 'PRESENT' ? f.value : null; }
+
 const LIVE_PROJECT = IS_SNAPSHOT ? (() => {
   const p = PAYLOAD.project, q = PAYLOAD.quality;
+  // **不做 {...PROJECT} 展开。** 展开会把 mock 的 scopeArea / rulesets /
+  // org 等装饰字段带进真实项目对象里, 页面照着渲染就成了半真半演示。
+  // 缺什么就是空, 由页面按缺口样式显示。
   return {
-    ...PROJECT,                       // 保留界面用的静态装饰字段
     name: p.name || '(项目名称未填)',
-    org: '', code: p.code || '', location: '', type: p.industry || '',
+    code: p.code || '',
+    org: factText('field.fact.party.construction_unit', { pick: 'name' }),
+    location: factText('field.fact.location.prefecture_list'),
+    type: p.industry ? `行业类别 ${p.industry}` : '',
+    nature: factText('field.fact.project.nature'),
+    scopeArea: factText('field.fact.prevention.responsibility_range_area'),
+    rulesets: p.ruleset ? [p.ruleset] : [],
     rulesetVersion: p.ruleset || '',
     phase: p.lifecycle || '',
     frozen: false,
@@ -646,6 +706,9 @@ window.CPSWC = {
   KEY_FACTS: LIVE_KEY_FACTS, TODOS: LIVE_TODOS,
   INTAKE_ISSUES: LIVE_INTAKE_ISSUES, INTAKE_SUMMARY: LIVE_INTAKE_SUMMARY,
   GATE: LIVE_GATE,
+  QUALITY: IS_SNAPSHOT ? PAYLOAD.quality : null,
+  fact, factText, factPresent, factValue, FACT_STATE_LABEL,
+  FIELD_LINEAGE: IS_SNAPSHOT ? (PAYLOAD.field_lineage || {}) : {},
   RECENT_CHANGES,
 
   // ---- 界面配置 (不是项目数据, 不受三态约束) ----
@@ -663,4 +726,4 @@ Object.assign(window, { Icon, StatusTag, Panel, MetricCard, Field, Chip });
 // 已接线到 payload 的 **NAV 页面**白名单 (收资抽屉不是 NAV 页, 单独接的)。
 // 刻意用白名单而不是黑名单: 默认未接线, 接好一个加一个。漏加只会多显示一条
 // "本页未接线"的提示 (保守), 而黑名单漏删会让 mock 冒充真数据 (危险)。
-window.CPSWC.WIRED_PAGES = [];
+window.CPSWC.WIRED_PAGES = ['overview', 'facts', 'narrative', 'tables', 'delivery'];

@@ -58,9 +58,9 @@ _SHELL_PATTERNS = ("*.html", "*.jsx")
 # payload 顶层必须齐全的键。缺任何一个 → 前端判 PAYLOAD_ERROR, 不回落 mock。
 REQUIRED_TOP_LEVEL_KEYS: tuple[str, ...] = (
     "schema_version", "data_mode", "generated_at", "shell_digest",
-    "project", "hashes", "facts", "obligations", "quality",
+    "project", "hashes", "facts", "field_lineage", "obligations", "quality",
     "findings", "intake_issues", "intake_summary",
-    "narrative", "requirements", "six_rates", "export_gate",
+    "narrative", "requirements", "six_rates", "tables", "export_gate",
 )
 
 
@@ -125,6 +125,7 @@ def build_payload(project_input: dict, registries: dict | None = None,
         },
 
         "facts": facts,
+        "field_lineage": _field_lineage(facts, fir_fields),
         "source_layers": snap_dict.get("_source_map") or {},
 
         "obligations": {
@@ -141,6 +142,7 @@ def build_payload(project_input: dict, registries: dict | None = None,
         "narrative": _narrative_block(narrative, requirements),
         "requirements": _requirements_block(requirements, narrative),
         "six_rates": _six_rates_block(snap_dict),
+        "tables": _tables_block(snap_dict),
 
         "export_gate": {
             "verdict": gate.verdict,
@@ -157,6 +159,32 @@ def build_payload(project_input: dict, registries: dict | None = None,
 
         "runtime_diagnostics": list(snapshot.runtime_diagnostics or []),
     }
+
+
+def _field_lineage(facts: list[dict], fir_fields: dict) -> dict:
+    """每个字段影响到哪些章节 / 图件 / 投影, 取自 FIR `lineage`。
+
+    **单独成块, 不并进 `facts`。** `facts` 是 `BuildContext.project_fields()`
+    的逐字原样搬运 (有回归测试盯着), 往里塞字段会让"唯一出口"失去意义。
+
+    解析不出来的字段**不出现在这里** —— 界面据此显示"影响范围尚未建立",
+    而不是显示一个空列表然后被读成"不影响任何章节"。
+    """
+    out: dict[str, dict] = {}
+    for f in facts:
+        fid = f.get("field_id") or ""
+        fdef = fir_fields.get(fid)
+        if not isinstance(fdef, dict):
+            continue
+        refs = list((fdef.get("lineage") or {}).get("projection_target_refs") or [])
+        if not refs:
+            continue
+        out[fid] = {
+            "section_refs": sorted(r for r in refs if r.startswith("sec.")),
+            "artifact_refs": sorted(r for r in refs if r.startswith("art.")),
+            "projection_refs": sorted(r for r in refs if r.startswith("proj.")),
+        }
+    return out
 
 
 def _require_project_input(project_input: dict) -> None:
@@ -303,6 +331,65 @@ def _six_rates_block(snap_dict: dict) -> list[dict]:
          "target": r["target"], "actual": r["actual"], "result": r["result"]}
         for r in table.rows
     ]
+
+
+# 后端真正实现了的表投影。界面只能显示这些 ——
+# **不在这里的表就是没有**, 界面必须说"未实现", 不许画一张空表糊弄过去。
+_TABLE_PROJECTIONS = (
+    "project_total_land_occupation",
+    "project_land_occupation_by_county",
+    "project_responsibility_range",
+    "project_earthwork_balance",
+    "project_topsoil_balance",
+    "project_spoil_summary",
+    "project_six_indicator_review",
+    "project_investment_total_summary",
+)
+
+
+def _tables_block(snap_dict: dict) -> list[dict]:
+    """把每个表投影跑一遍, 原样下发 spec + rows + 渲染策略 + warnings。
+
+    渲染策略照搬后端的 `TableRenderPolicy` —— 界面不得把
+    `RENDER_AS_SKELETON` 当成有值的表来画, 也不得把它藏起来。
+    """
+    from cpswc.renderers import table_projections as tp
+
+    out: list[dict] = []
+    for name in _TABLE_PROJECTIONS:
+        fn = getattr(tp, name, None)
+        if fn is None:
+            continue
+        try:
+            data = fn(snap_dict)
+        except Exception as exc:                     # noqa: BLE001
+            # 投影炸了要**说出来**, 不能静默少一张表
+            out.append({
+                "table_id": f"art.table.{name}",
+                "title": name, "columns": [], "rows": [], "total_row": None,
+                "render_policy": "PROJECTION_FAILED",
+                "warnings": [f"表投影执行失败: {type(exc).__name__}: {exc}"],
+                "section_id": "", "footnote": "",
+            })
+            continue
+        spec = data.spec
+        out.append({
+            "table_id": spec.table_id,
+            "title": spec.title,
+            "columns": [
+                {"key": c.key, "header": c.header, "unit": c.unit,
+                 "align": c.align, "fmt": c.fmt}
+                for c in spec.columns
+            ],
+            "rows": [dict(r) for r in data.rows],
+            "total_row": dict(data.total_row) if data.total_row else None,
+            "has_total_row": spec.has_total_row,
+            "render_policy": getattr(data.render_policy, "value", str(data.render_policy)),
+            "warnings": list(data.warnings or []),
+            "section_id": spec.section_id or "",
+            "footnote": spec.footnote or "",
+        })
+    return out
 
 
 # ============================================================

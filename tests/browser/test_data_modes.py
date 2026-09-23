@@ -35,6 +35,10 @@ from cpswc.frontend_payload import (  # noqa: E402
 from cpswc.paths import SAMPLES_DIR  # noqa: E402
 
 # mock 里的标志性数值。
+#
+# 注意 "世维华南供应链": 它同时是 `samples/shiwei_logistics_v0.json` 的**真实**
+# 项目名 —— 当初的演示数据就是照那份样本编的。所以这些断言只能跑在惠州样本的
+# bundle 上; 换样本时它会变成合法内容, 不是泄漏。
 MOCK_MARKERS = [
     "世维华南供应链",        # PROJECT.name
     "GD-HZ-2026-SWBC-0211",  # PROJECT.code
@@ -195,7 +199,7 @@ def test_intake_drawer_shows_real_issues(snapshot_bundle, page):
     page.goto((snapshot_bundle / "index.html").as_uri())
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(700)
-    page.get_by_role("button", name="智能收资向导").click()
+    page.get_by_role("banner").get_by_role("button", name="智能收资向导").click()
     page.wait_for_timeout(400)
     text = page.inner_text("body")
 
@@ -213,7 +217,7 @@ def test_intake_export_button_is_available(snapshot_bundle, page):
     page.goto((snapshot_bundle / "index.html").as_uri())
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(700)
-    page.get_by_role("button", name="智能收资向导").click()
+    page.get_by_role("banner").get_by_role("button", name="智能收资向导").click()
     page.wait_for_timeout(400)
     btn = page.get_by_role("button", name="导出待甲方提供资料清单")
     assert btn.count() == 1 and btn.first.is_enabled()
@@ -228,7 +232,7 @@ def test_intake_export_produces_a_watermarked_list(snapshot_bundle, tmp_path, pa
     page.goto((snapshot_bundle / "index.html").as_uri())
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(700)
-    page.get_by_role("button", name="智能收资向导").click()
+    page.get_by_role("banner").get_by_role("button", name="智能收资向导").click()
     page.wait_for_timeout(400)
 
     with page.expect_download() as dl:
@@ -258,7 +262,7 @@ def test_intake_fake_write_actions_are_disabled(snapshot_bundle, page):
     page.goto((snapshot_bundle / "index.html").as_uri())
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(700)
-    page.get_by_role("button", name="智能收资向导").click()
+    page.get_by_role("banner").get_by_role("button", name="智能收资向导").click()
     page.wait_for_timeout(400)
     for name in ("确认写入事实层（未实现）", "上传资料（未实现）"):
         btn = page.get_by_role("button", name=name)
@@ -308,6 +312,126 @@ def test_no_page_claims_a_hardcoded_positive_state(snapshot_bundle, page):
         if hit:
             offenders[key] = hit
     assert not offenders, f"仍有页面在说写死的肯定状态: {offenders}"
+
+
+# ============================================================
+# 场景 6 — F-3..F-7 逐页接线
+# ============================================================
+
+@pytest.fixture
+def wired_page(snapshot_bundle, page):
+    page.goto((snapshot_bundle / "index.html").as_uri())
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(700)
+    return page
+
+
+def test_overview_shows_the_real_coverage_and_gate(wired_page, snapshot_bundle):
+    """首屏原本写死"无导出阻塞""91% 完成度"。现在必须是 payload 的真数字。"""
+    text = _goto(wired_page, "overview")
+    pl = _payload_of(snapshot_bundle)
+    q, g = pl["quality"], pl["export_gate"]
+    assert f'导出门禁 {g["verdict"]}' in text
+    assert f'（阻断 {g["block_count"]} · 提醒 {g["warn_count"]}）' in text
+    assert "「确认完成」为 0 不是显示故障" in text, "0 必须解释, 否则被当成显示故障"
+    assert str(q["applicable_leaf_count"]) in text
+    assert pl["project"]["name"] in text
+
+
+def test_overview_six_rates_are_not_drawn_as_progress_bars(wired_page):
+    """实现值是候选值。画一根绿进度条等于宣布达标。"""
+    text = _goto(wired_page, "overview")
+    assert "候选·待确认" in text
+    assert "实现值来源待确认" in text
+
+
+def test_facts_lists_missing_fields_too(wired_page, snapshot_bundle):
+    """缺失字段必须看得见 —— 看不见的缺口等于不存在。"""
+    text = _goto(wired_page, "facts")
+    pl = _payload_of(snapshot_bundle)
+    missing = [f for f in pl["facts"] if f["state"] != "PRESENT"]
+    assert missing, "样本没有缺失字段, 断言没有意义"
+    assert f'未取到值 {len(missing)} 项' in text
+    assert "均未复核" in text
+    assert "事实完整度" not in text, "不得给出合成的完整度百分比"
+
+
+def test_facts_never_claims_a_field_is_verified(wired_page):
+    """快照里的事实只是"有取值", 不是"已校验"。"""
+    text = _goto(wired_page, "facts")
+    assert "已校验" not in text
+
+
+def test_narrative_shows_unimplemented_sections_as_gaps(wired_page, snapshot_bundle):
+    """未实现的小节必须以缺口块出现, 不能跳过 ——
+    跳过会让目录看起来连续, 读者默认它写完了。"""
+    text = _goto(wired_page, "narrative")
+    pl = _payload_of(snapshot_bundle)
+    q = pl["quality"]
+    assert f'未实现 {q["unimplemented_leaf_count"]}' in text
+    assert "本节未实现" in text
+    assert "缺口以红框显示，未做任何省略" in text
+
+
+def test_narrative_editing_is_disabled(wired_page):
+    text = _goto(wired_page, "narrative")
+    assert "编辑正文（未实现）" in text
+    assert "导出 Word（未实现）" in text
+
+
+def test_tables_show_only_real_projections(wired_page, snapshot_bundle):
+    """演示版列了 12 张表 9 张 LIVE; 后端实际只有 payload.tables 这些。"""
+    text = _goto(wired_page, "tables")
+    tables = _payload_of(snapshot_bundle)["tables"]
+    assert tables, "样本没有表投影, 断言没有意义"
+    for t in tables:
+        assert t["title"] in text, f"表 {t['table_id']} 没有出现在页面上"
+    assert "LIVE" not in text, "不得沿用演示版的 LIVE 角标"
+    assert "后端未实现" in text, "后端没有的表必须列出来, 不能悄悄消失"
+
+
+def test_placeholder_table_is_explicitly_labelled(wired_page, snapshot_bundle):
+    tables = _payload_of(snapshot_bundle)["tables"]
+    ph = [t for t in tables if t["render_policy"] == "render_with_placeholder"]
+    if not ph:
+        pytest.skip("本样本没有占位表")
+    _goto(wired_page, "tables")
+    # 占位说明只在选中该表时出现 —— 先点开它
+    wired_page.get_by_role("button", name=ph[0]["title"]).first.click()
+    wired_page.wait_for_timeout(250)
+    text = wired_page.inner_text("body")
+    assert "结构占位·缺值" in text
+    assert "不要把它当成一张已经算好的表" in text
+
+
+def test_delivery_never_says_it_is_submittable(wired_page, snapshot_bundle):
+    """「是否可提交：可提交（非阻塞）」是整个界面最危险的一句话。
+
+    后端 `is_submittable` 恒为 None —— 系统不判断能不能报。
+    """
+    text = _goto(wired_page, "delivery")
+    assert _payload_of(snapshot_bundle)["quality"]["is_submittable"] is None
+    assert "系统不作判断" in text
+    assert "可提交（非阻塞）" not in text
+
+
+def test_delivery_only_real_action_is_the_intake_list(wired_page):
+    """这一列里唯一真能按的是收资清单导出, 其余必须禁用并标注。"""
+    text = _goto(wired_page, "delivery")
+    assert "导出待甲方提供资料清单" in text
+    for label in ("生成预览（未实现）", "导出 Word（未实现）",
+                  "导出审查包（未实现）"):
+        assert label in text
+        assert wired_page.get_by_role("button", name=label).first.is_disabled()
+
+
+def test_overview_intake_shortcut_opens_the_drawer(wired_page):
+    """首屏那句"逐条清单见智能收资向导"必须真能点开, 否则就是一句空话。"""
+    _goto(wired_page, "overview")
+    wired_page.get_by_role("main").get_by_role(
+        "button", name="智能收资向导").click()
+    wired_page.wait_for_timeout(400)
+    assert "当前缺失资料 / 待甲方提供" in wired_page.inner_text("body")
 
 
 def test_wired_pages_contain_no_mock_values(snapshot_bundle, page):

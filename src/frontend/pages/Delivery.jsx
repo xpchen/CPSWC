@@ -38,11 +38,17 @@ const { IS_SNAPSHOT: DLV_SNAPSHOT, GATE: DLV_GATE } = window.CPSWC;
 // 只列门禁实际报出来的条目。没有条目也只说"门禁未报出问题", 不说"通过"。
 function gateChecks() {
   const findings = (DLV_GATE && DLV_GATE.findings) || [];
-  return findings.map((f, n) => ({
-    k: f.rule_id || f.code || `检查 ${n + 1}`,
-    s: (f.action || f.severity) === 'BLOCK' ? '风险' : '待确认',
-    d: f.message || '',
-  }));
+  return findings.map((f, n) => {
+    const msg = f.message || '';
+    return {
+      k: f.rule_id || f.code || `检查 ${n + 1}`,
+      s: (f.action || f.severity) === 'BLOCK' ? '风险' : '待确认',
+      // 冲突诊断会把整个 measures_registry 的 JSON 贴进 message, 一条就把整页撑满。
+      // 截断只影响显示, 完整原文挂在 title 上, 不丢内容。
+      d: msg.length > 260 ? msg.slice(0, 260) + '…（悬停查看完整原文）' : msg,
+      full: msg,
+    };
+  });
 }
 
 function DeliveryPage({ frozen, setFrozen }) {
@@ -58,7 +64,18 @@ function DeliveryPage({ frozen, setFrozen }) {
   const warnN = checks.filter(c=>c.s==='待确认').length;
   const riskN = checks.filter(c=>c.s==='风险').length;
 
-  const ACTIONS = [
+  // 快照模式下这一列里**唯一真的**是收资清单导出。其余全部未实现,
+  // 禁用并把"（未实现）"写进标签 —— 留一排看着能按的按钮比没有更糟。
+  const ACTIONS = DLV_SNAPSHOT ? [
+    { label:'导出待甲方提供资料清单', icon:'Download', primary:true,
+      onClick:()=>window.exportIntakeList && window.exportIntakeList() },
+    { label:'生成预览（未实现）', icon:'Eye', disabled:true },
+    { label:'冻结版本（未实现）', icon:'Lock', disabled:true },
+    { label:'导出 Word（未实现）', icon:'FileText', disabled:true },
+    { label:'导出正式表格（未实现）', icon:'Table2', disabled:true },
+    { label:'导出审查包（未实现）', icon:'ShieldCheck', disabled:true },
+    { label:'查看证据链（未实现）', icon:'Workflow', disabled:true },
+  ] : [
     { label:'生成预览', icon:'Eye', primary:true, onClick:()=>setGenerated(true) },
     { label:frozen?'解除冻结':'冻结版本', icon:frozen?'LockOpen':'Lock', onClick:()=>setFrozen(f=>!f) },
     { label:'导出 Word', icon:'FileText' },
@@ -71,21 +88,35 @@ function DeliveryPage({ frozen, setFrozen }) {
   return (
     <div>
       <PageHeader title="交付包" sub="面向交付 · 导出前检查、文件清单与证据链 — 输出完整 submission package" icon="PackageCheck">
-        <StatusTag status={frozen?'已冻结':'未冻结'} dot/>
+        {DLV_SNAPSHOT
+          ? <span className="text-[11.5px] text-slate-500">静态快照 · 冻结与导出均未实现</span>
+          : <StatusTag status={frozen?'已冻结':'未冻结'} dot/>}
       </PageHeader>
 
       <div className="grid grid-cols-[1fr_280px] gap-4 p-5">
         <div className="space-y-4">
           {/* 交付包状态 */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px bg-slate-200 rounded-lg overflow-hidden border border-slate-200">
-            {[
+            {(DLV_SNAPSHOT ? (() => {
+              const { PAYLOAD: pl, QUALITY: q } = window.CPSWC;
+              return [
+                ['输入指纹', pl.hashes.generation_input_hash.slice(0, 16), 'Fingerprint'],
+                ['冻结状态', '未实现', 'Lock'],
+                ['规则集版本', pl.project.ruleset || '未登记', 'BookOpen'],
+                ['正式导出', '未实现', 'Sparkles'],
+                // **系统不判断"能不能报"。** is_submittable 在后端恒为 null,
+                // 这一格照搬那个 null, 不许折成"可提交"。
+                ['是否可提交', q.is_submittable === null ? '系统不作判断' : String(q.is_submittable), 'Send'],
+                ['生成时间', new Date(pl.generated_at).toLocaleString('zh-CN'), 'Clock'],
+              ];
+            })() : [
               ['当前版本','v0.6-preview','GitBranch'],
               ['冻结状态',frozen?'已冻结':'未冻结','Lock'],
               ['规则集版本','2026-06 candidate','BookOpen'],
               ['生成状态',generated?'已生成':'可生成','Sparkles'],
               ['是否可提交','可提交（非阻塞）','Send'],
               ['最近生成', generated?'刚刚':'09:43','Clock'],
-            ].map(([k,v,icon]) => (
+            ]).map(([k,v,icon]) => (
               <div key={k} className="bg-white p-3">
                 <div className="flex items-center gap-1.5 text-[10.5px] text-slate-400"><Icon name={icon} size={11}/>{k}</div>
                 <div className={`mt-1 text-[12.5px] font-medium ${k==='冻结状态'&&frozen?'text-emerald-600':'text-slate-700'}`}>{v}</div>
@@ -120,7 +151,7 @@ function DeliveryPage({ frozen, setFrozen }) {
                   <Icon name={c.s==='通过'?'CircleCheck':c.s==='风险'?'CircleAlert':'Clock'} size={16}
                     className={c.s==='通过'?'text-emerald-500':c.s==='风险'?'text-red-500':'text-orange-500'}/>
                   <span className="text-[13px] text-slate-700 w-32 shrink-0">{c.k}</span>
-                  <span className="text-[12px] text-slate-400 flex-1">{c.d}</span>
+                  <span className="text-[12px] text-slate-400 flex-1 break-all" title={c.full || c.d}>{c.d}</span>
                   <StatusTag status={c.s} dot/>
                 </div>
               ))}
@@ -187,8 +218,9 @@ function DeliveryPage({ frozen, setFrozen }) {
           <Panel title="交付操作">
             <div className="p-3 space-y-2">
               {ACTIONS.map(a => (
-                <button key={a.label} onClick={a.onClick}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] transition-colors ${
+                <button key={a.label} onClick={a.onClick} disabled={!!a.disabled}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] transition-colors
+                    disabled:opacity-40 disabled:cursor-not-allowed ${
                     a.primary ? 'bg-brand-600 text-white hover:bg-brand-700' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                   <Icon name={a.icon} size={15}/>{a.label}
                 </button>
@@ -196,7 +228,7 @@ function DeliveryPage({ frozen, setFrozen }) {
             </div>
           </Panel>
 
-          {generated && (
+          {!DLV_SNAPSHOT && generated && (
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-[12px] text-emerald-700">
               <Icon name="CircleCheck" size={15}/>预览已生成 · 8 个文件就绪
             </div>

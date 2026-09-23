@@ -164,6 +164,69 @@ def test_unknown_impact_carries_no_fabricated_refs(sample_payload):
 
 
 # ============================================================
+# 2b. F-3..F-7 新增块: field_lineage / tables
+# ============================================================
+
+def test_field_lineage_never_invents_a_relation(sample_payload):
+    """影响关系只能来自 FIR 登记。**没登记的字段不许出现在这里** ——
+    出现一个空壳条目, 界面就会把"没登记"显示成"不影响任何章节"。"""
+    for fid, l in sample_payload["field_lineage"].items():
+        assert any(l[k] for k in
+                   ("section_refs", "artifact_refs", "projection_refs")), \
+            f"{fid} 的 lineage 是空的, 不应出现在 field_lineage 里"
+
+
+def test_field_lineage_keys_are_real_fields(sample_payload):
+    known = {f["field_id"] for f in sample_payload["facts"]}
+    assert set(sample_payload["field_lineage"]) <= known
+
+
+def test_field_lineage_refs_are_well_formed(sample_payload):
+    for fid, l in sample_payload["field_lineage"].items():
+        for r in l["section_refs"]:
+            assert r.startswith("sec."), f"{fid}: {r}"
+        for r in l["artifact_refs"]:
+            assert r.startswith("art."), f"{fid}: {r}"
+        for r in l["projection_refs"]:
+            assert r.startswith("proj."), f"{fid}: {r}"
+
+
+def test_tables_declare_a_render_policy(sample_payload):
+    """四态必须显式声明 —— 界面据此决定画值还是画占位, 不做推断。"""
+    allowed = {"render_with_values", "render_with_placeholder",
+               "render_not_applicable", "skip_render", "PROJECTION_FAILED"}
+    assert sample_payload["tables"], "没有下发任何表投影"
+    for t in sample_payload["tables"]:
+        assert t["render_policy"] in allowed, t["render_policy"]
+
+
+def test_no_table_projection_silently_failed(sample_payload):
+    """投影炸了必须显式报出来, 不能少一张表还没人知道。"""
+    failed = [t["table_id"] for t in sample_payload["tables"]
+              if t["render_policy"] == "PROJECTION_FAILED"]
+    assert not failed, f"表投影执行失败: {failed}"
+
+
+def test_table_rows_only_use_declared_columns(sample_payload):
+    """行里出现未声明的列 = 界面渲染时会整列丢掉且无人察觉。"""
+    for t in sample_payload["tables"]:
+        cols = {c["key"] for c in t["columns"]}
+        for r in t["rows"]:
+            extra = set(r) - cols
+            assert not extra, f"{t['table_id']} 行里有未声明的列: {extra}"
+        if t["total_row"]:
+            assert set(t["total_row"]) <= cols, t["table_id"]
+
+
+def test_placeholder_tables_are_labelled_not_hidden(sample_payload):
+    """RENDER_WITH_PLACEHOLDER 的表必须仍带列定义 ——
+    界面要把"结构就位、数值缺失"画出来, 而不是当成不存在。"""
+    for t in sample_payload["tables"]:
+        if t["render_policy"] == "render_with_placeholder":
+            assert t["columns"], f"{t['table_id']} 占位表没有列定义"
+
+
+# ============================================================
 # 3. schema 校验必须挡住残缺 payload
 # ============================================================
 

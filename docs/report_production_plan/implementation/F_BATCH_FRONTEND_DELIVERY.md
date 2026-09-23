@@ -14,7 +14,11 @@
 | F-1A | payload 生成管线：`src/cpswc/frontend_payload.py`（`build_payload` / `validate_payload` / `render_standalone_html` / `write_bundle` + CLI） | DONE |
 | F-1B | 全壳诚实化：三态角标、未接线页自曝、Overview 首屏假结论下线 | DONE |
 | F-2 | 收资清单接线：向导第 4 节由后端 `intake_issues` 驱动，可导出「待甲方提供资料清单」 | DONE |
-| F-3..F-7 | Overview / Facts / Narrative / Delivery / 六率与表格逐页接线 | **未开始** |
+| F-3 | 项目总览：首屏、四状态卡、资料收集、项目概况、关键指标、六率、待办 | DONE |
+| F-4 | 事实填报：分类树、字段行、影响预览全部接 payload | DONE |
+| F-5 | 正文预览：按 2026 章节逐节对照，缺口以红框显示（只读专用页） | DONE |
+| F-6 | 交付包：状态条、导出前检查、文件清单、交付操作 | DONE |
+| F-7 | 表格中心：8 张真实表投影，四态照搬（只读专用页） | DONE |
 
 生成命令：
 
@@ -153,9 +157,9 @@ Chrome 在 `file://` 下按 CORS 直接拒绝（`origin 'null'`），结果是**
 
 | 层 | 文件 | 条数 |
 | --- | --- | --- |
-| Python | `tests/test_frontend_payload.py`（新增） | 107 |
+| Python | `tests/test_frontend_payload.py` | 135 |
 | Python | 其余 | 759 |
-| 浏览器 | `tests/browser/test_data_modes.py` | 27 |
+| 浏览器 | `tests/browser/test_data_modes.py` | 38 |
 
 Python 级验的是"payload 里装的是不是后端的真结论"，浏览器级验的是"页面上显示了什么"。
 两者缺一不可：页面可以显示对的东西却装错数据，payload 也可以装对却渲染不出来。
@@ -186,8 +190,68 @@ PYTHONPATH=src python3 -m pytest tests/browser -q                    # 需 playw
 
 ---
 
-## 7. 下一步
+## 7. F-3..F-7 逐页接线
 
-F-3..F-7 逐页接线。每接好一页：把页面 id 加进 `WIRED_PAGES`，
-`test_wired_pages_contain_no_mock_values` 会自动开始检查该页是否还有 mock。
-Overview（F-3）接线后恢复首屏 hero，数据改由 payload 驱动。
+### 新增的两个 payload 块
+
+界面要的东西后端本来就有，只是没下发：
+
+- **`field_lineage`** — 每个字段影响哪些章节 / 图件 / 投影，取自 FIR 的
+  `lineage.projection_target_refs`。**单独成块，不并进 `facts`**：`facts` 是
+  `BuildContext.project_fields()` 的逐字搬运，有回归测试盯着，往里塞字段会让
+  "唯一出口"失去意义。解析不出来的字段**不出现在这里**，界面据此显示
+  "影响范围尚未建立"，而不是显示一个空列表然后被读成"不影响任何章节"。
+  惠州样本 86/86 字段均有 lineage。
+- **`tables`** — 8 个真实表投影的 spec + rows + `render_policy` + warnings。
+  投影抛异常时写入 `PROJECTION_FAILED` 并保留 warning，**不静默少一张表**。
+
+### 共享取值原语（`data.jsx`）
+
+各页一律经 `fact / factText / factPresent / factValue` 读事实，不得自己解析
+payload，更不得给缺失值兜底。非 PRESENT 状态的中文说法刻意都是"没有／不可用"
+的措辞。空清单显示为「**空清单·未核实**」——后端已写明"已提供列表，但不能独自
+证明已完整调查且无涉及"，显示"无／否"就等于替甲方下了一个没人核过的结论。
+
+新增的状态样式**刻意没有绿色**：快照里的事实只是"有取值"，既未复核也未确认。
+
+### 各页要点
+
+**F-3 项目总览** — 首屏 hero 改接真数据：门禁 verdict + 阻断/提醒数、内容要求
+六格。特意加了一句解释：「『确认完成』为 0 不是显示故障」，否则 0 会被当成 bug；
+「已建立映射」只说明有那么多项被标为 implemented，不证明它们都有合格产出。
+六率**不画进度条**——实现值是候选值，一根绿条就等于宣布达标。
+「最近修改记录」如实写"未实现"，并说明空白表示未接后端、不表示没改动过。
+
+**F-4 事实填报** — 分类树按报告叙述顺序排，派生值统一垫底（不是甲方要填的东西）。
+缺失字段照样列出来：看不见的缺口等于不存在。右栏影响预览**不再套 DEFAULT_IMPACT**
+——原来每个字段都会被编一套影响关系。
+
+**F-5 正文预览**（新文件 `pages/NarrativeSnapshot.jsx`）— 另起只读页，因为演示版
+整页围绕"编辑 / AI 润色 / 加注脚 / 模拟改金额"组织，这些能力一样没实现。
+按 2026 模板章节顺序逐节对照：有产出的显示原文 + 断言类型 + 证据字段数；
+**未实现的显示红框缺口块**。跳过未实现的小节是最危险的做法——目录看起来连续，
+读者会默认它写完了。模板外产出（3 节）单列一章，不藏起来。
+
+**F-6 交付包** — 状态条「是否可提交」照搬后端的 `is_submittable`（恒为 None）
+显示「系统不作判断」。这原本写着「可提交（非阻塞）」，是整个界面最危险的一句话。
+交付操作一列里唯一真能按的是收资清单导出，其余全部禁用并把"（未实现）"写进标签
+——留一排看着能按的按钮比没有更糟。
+
+**F-7 表格中心**（新文件 `pages/TablesSnapshot.jsx`）— 演示版列 12 张表标 9 张
+LIVE；后端真正实现的只有 8 张，其中投资估算总表返回 `RENDER_WITH_PLACEHOLDER`
+（有结构没值）。四态照搬，占位表明确标注"结构已就位、数值缺失"。
+演示版列过而后端没有的 5 张表单列一栏「后端未实现」——**消失会让人以为不需要这些表**。
+
+### 跨样本核验
+
+4 份项目样本 × 5 个已接线页面全部渲染无 JS 错误、无 mock 残留。
+（`shiwei_logistics_v0` 会命中"世维华南供应链"——那是它的**真实项目名**，
+当初的演示数据就是照它编的，不是泄漏。）
+
+---
+
+## 8. 下一步
+
+剩余未接线页面：规则审查、计算器、附图与地图、注脚与依据库、改动追踪、历史与版本。
+它们都带着「本页尚未接入项目数据」提示条。每接好一页：把页面 id 加进
+`WIRED_PAGES`，`test_wired_pages_contain_no_mock_values` 会自动开始检查该页。

@@ -261,14 +261,21 @@ function Workbench({ project, onExit, onAccount, onLogout }) {
   const ctx = { role, frozen, setFrozen, setPage };
   // 供浏览器级验收 (以及将来的深链) 按 NAV id 跳页。
   useEffect(() => { window.__cpswcGo = setPage; }, []);
+  // 任何页面都可以请求打开收资抽屉 (Overview 的"待甲方补充"指路用)
+  useEffect(() => {
+    const open = () => setIntakeOpen(true);
+    window.addEventListener('cpswc:open-intake', open);
+    return () => window.removeEventListener('cpswc:open-intake', open);
+  }, []);
   const PAGES = {
     overview:  window.OverviewPage,
     facts:     window.FactsPage,
     rules:     window.RulesPage,
     calc:      window.CalculatorsPage,
-    tables:    window.TablesPage,
+    tables:    IS_SNAPSHOT ? window.TablesSnapshotPage : window.TablesPage,
     maps:      window.MapsPage,
-    narrative: window.NarrativePage,
+    // 快照模式用只读版: 演示版整页围绕编辑/润色/注脚组织, 而这些一样没实现
+    narrative: IS_SNAPSHOT ? window.NarrativeSnapshotPage : window.NarrativePage,
     footnotes: window.FootnotesPage,
     changes:   window.ChangeTrackingPage,
     history:   window.HistoryPage,

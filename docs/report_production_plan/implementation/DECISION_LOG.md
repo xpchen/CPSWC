@@ -225,6 +225,27 @@
 
 ---
 
+## 条目 016
+
+| 项 | 内容 |
+| --- | --- |
+| 日期 | 2026-09-25 |
+| 事项 | **RuleRegistry v0** —— 补 `kernel_gaps_after_wiring` 的第一号缺口（53 个依据 ID 无条文登记） |
+| 交付 | `registries/RuleRegistry_v0.yaml`(28 条) · `src/cpswc/rule_registry.py` · lint RULE_001..004 · payload `rule_coverage` · 依据库页三态改造 · `tests/test_rule_registry.py`(14) |
+| 三态 | `VERIFIED_TEXT`(原文已核，可出示) / `DECLARED`(定位到文件，没抓原文) / `UNREGISTERED`(不在册)。**DECLARED 不许带 quoted_text** —— 贴原文就等于声称核对过，lint 会拦 |
+| 不给覆盖率 | 刻意不出单一百分比。"定位到文件了"和"条文核对过了"是两回事，压成一个数就抹掉了 |
+| 当前覆盖 | 惠州样本 53 条：**已核原文 4 / 已定位 24 / 未登记 25**，定位到条款 24 |
+| 为什么只有 4 条 | 其余原件多为扫描件抽不出文字：232 号(28 页 **0 字符**)、GB 50433(0)、GB/T 50434(0)、GB 51018(127 页仅 5117 字符且 5.7.1 不在其中)、办水保 135 号(840 字符 OCR 质量差)。读图抓取是独立工作量，本批未做，状态老实写 DECLARED |
+| **25 条刻意不登记** | `rule.t2026.*`。ObligationSet 头部自述是"2026 模板/2018 格式/广东惠州"混合来源，**单条义务没声明出处**；前缀不是证据（`spoil_level_4_geology` 实际更可能出自 GB 51018）。按前缀批量填会让缺口凭空消失而一条没查过。`test_t2026_namespace_stays_unregistered` 专门拦这个 |
+| 顺带查出的缺陷 | 两处陈旧引用，**都对应 `stable_id_migrations` 里已登记的迁移**：① `section_11` —— 2026 模板没有第 11 章，结论已迁 1.9，但 `narr.conclusion.*` 仍写 section_11；② `section_7` —— 效益分析已跨章迁到 9.2，但 `narr.soil_loss_prevention.benefit_analysis.*` 仍引 section_7。章节 ID 迁移做对了，narrative 的 `source_rule_refs` 没跟着改 |
+| 未动 narrative | 改引用是内容变更，应单独决策。本批只把缺陷记进注册表 `defect` 字段 + lint WARN + 界面提示 |
+| 两个防伪点 | ① `source_file` 必须真实存在，lint 逐条查（登记查不到的出处比不登记更糟）；② 子条继承文件信息但**不继承 verification_status**（父条核过≠子条核过） |
+| hash 变更 | 注册表进 `registries/` 目录摘要 → `generation_input_hash` 由 `8d0cc7ab2ac515e6` 变为 `eda8d8b5e8f243bf`。**改依据登记让旧快照失效是对的** |
+| 测试 | Python 942 → **972**；浏览器级 52 → **56**；lint ERROR=0 WARN=2(RULE_004) INFO=27 |
+| 下一步 | ①回 ObligationSet 补 25 条来源 ②读图抓 232 号/GB 条文原文(24 条 DECLARED→VERIFIED) ③决定是否改那两处陈旧引用 |
+
+---
+
 ## 变更请求
 
 （暂无。超出任务包范围时按 `06_CLAUDE_HANDOFF.md` 第 7 节模板登记。）

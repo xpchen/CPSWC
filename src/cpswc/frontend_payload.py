@@ -46,6 +46,8 @@ from cpswc.paths import FRONTEND_DIR, OUTPUT_DIR
 from cpswc.report_quality import (
     evaluate_report_quality, load_content_requirements,
 )
+from cpswc.rule_registry import (
+    load_rule_registry, resolve_rule, summarize_rule_coverage)
 from cpswc.runtime import build_snapshot_dict, load_all_registries, run_project
 from cpswc.snapshot_adapter import make_build_context
 
@@ -62,7 +64,8 @@ REQUIRED_TOP_LEVEL_KEYS: tuple[str, ...] = (
     "obligations_detail", "calculators", "rule_refs",
     "required_artifacts", "required_assurances", "figures", "quality",
     "findings", "intake_issues", "intake_summary",
-    "narrative", "requirements", "six_rates", "tables", "export_gate",
+    "narrative", "requirements", "six_rates", "tables",
+    "rule_coverage", "export_gate",
 )
 
 
@@ -112,6 +115,12 @@ def build_payload(project_input: dict, registries: dict | None = None,
          "quality": quality.findings},
         fir_fields)
 
+    rule_refs = _rule_refs_block(
+        (regs.get("obligations") or {}).get("obligations") or {},
+        (regs.get("calculators") or {}).get("calculators") or {},
+        (regs.get("assurances") or {}).get("assurances") or {},
+        narrative)
+
     return {
         "schema_version": SCHEMA_VERSION,
         # 生成器只会写 PROJECT_SNAPSHOT。DEMO / PAYLOAD_ERROR 由前端判定。
@@ -132,11 +141,9 @@ def build_payload(project_input: dict, registries: dict | None = None,
             snapshot, (regs.get("obligations") or {}).get("obligations") or {}),
         "calculators": _calculators_block(
             snapshot, (regs.get("calculators") or {}).get("calculators") or {}),
-        "rule_refs": _rule_refs_block(
-            (regs.get("obligations") or {}).get("obligations") or {},
-            (regs.get("calculators") or {}).get("calculators") or {},
-            (regs.get("assurances") or {}).get("assurances") or {},
-            narrative),
+        "rule_refs": rule_refs,
+        "rule_coverage": summarize_rule_coverage(
+            [r["rule_id"] for r in rule_refs]),
         "required_artifacts": sorted(snapshot.required_artifacts or []),
         "figures": _figures_block(
             snapshot, (regs.get("artifacts") or {}).get("artifacts") or {}),
@@ -300,14 +307,45 @@ def _rule_refs_block(obligation_registry: dict, calculator_registry: dict,
                 add(r, "narrative", getattr(para, "paragraph_id", "") or sec.section_id)
 
     out = list(cited.values())
+    rule_regs = _load_rule_registry_safe()
     for e in out:
         e["cited_by"].sort(key=lambda c: (c["kind"], c["ref"]))
         e["citation_count"] = len(e["cited_by"])
-        # 全系统没有规则注册表, 所以标题/条文一律缺失。如实标出。
-        e["title"] = ""
-        e["title_registered"] = False
+        # 解析结果**原样搬运**, 本模块不重新判定核验状态
+        r = resolve_rule(e["rule_id"], rule_regs)
+        e.update({
+            "registered": r["registered"],
+            "verification_status": r["verification_status"],
+            "text_verified": r["text_verified"],
+            "clause_located": r["clause_located"],
+            "document_title": r["document_title"],
+            "document_number": r["document_number"],
+            "issuing_authority": r["issuing_authority"],
+            "authority_class": r["authority_class"],
+            "effective_from": r["effective_from"],
+            "clause_ref": r["clause_ref"],
+            "quoted_text": r["quoted_text"],
+            "source_file": r["source_file"],
+            "source_locator": r["source_locator"],
+            "verification_note": r["verification_note"],
+            "defect": r["defect"],
+            "defect_note": r["defect_note"],
+        })
+        # 向后兼容旧字段: title = 文件名 + 条款, 解析不出就空
+        e["title"] = " ".join(x for x in (r["document_number"],
+                                          r["clause_ref"]) if x)
+        e["title_registered"] = r["registered"]
     out.sort(key=lambda e: (-e["citation_count"], e["rule_id"]))
     return out
+
+
+def _load_rule_registry_safe() -> dict:
+    """注册表读不出来时**不静默降级**成"全部未登记" ——
+
+    那会让界面显示一片"无标题登记", 看起来像缺口, 实际是加载故障。
+    所以直接抛。
+    """
+    return load_rule_registry()
 
 
 # 已实现的渲染器。**名单在这里手工维护**, 因为 ArtifactRegistry 里的

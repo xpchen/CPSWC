@@ -284,14 +284,52 @@ def test_calculators_are_only_the_ones_that_actually_ran(sample_payload):
 
 
 def test_rule_refs_never_fake_a_title(sample_payload):
-    """全系统没有规则注册表, 所以标题必然缺失。
+    """未登记的 ID 不许带标题。
 
-    这条测试盯的是**不许假装有**: 一旦有人给 title 填个默认值,
-    界面就会把"没登记"显示成"已登记", 引用缺口随之消失。
+    一旦有人给 title 填个默认值, 界面就会把"没登记"显示成"已登记",
+    引用缺口随之消失。
     """
     for r in sample_payload["rule_refs"]:
-        if not r["title_registered"]:
+        if not r["registered"]:
             assert r["title"] == "", f"{r['rule_id']} 未登记却带了标题"
+            assert r["document_title"] == ""
+            assert r["quoted_text"] == ""
+
+
+def test_rule_refs_carry_the_registry_verdict_verbatim(sample_payload):
+    """payload 只搬运 RuleRegistry 的结论, 不重新判定核验状态。"""
+    from cpswc.rule_registry import load_rule_registry, resolve_rule
+    regs = load_rule_registry()
+    for r in sample_payload["rule_refs"]:
+        expected = resolve_rule(r["rule_id"], regs)
+        assert r["verification_status"] == expected["verification_status"]
+        assert r["text_verified"] == expected["text_verified"]
+        assert r["quoted_text"] == expected["quoted_text"]
+        assert r["clause_ref"] == expected["clause_ref"]
+
+
+def test_declared_rule_refs_show_no_quoted_text(sample_payload):
+    """只定位到文件的条目不许带原文 —— 界面会把它当条文显示给审查人员。"""
+    for r in sample_payload["rule_refs"]:
+        if r["verification_status"] == "DECLARED":
+            assert r["quoted_text"] == "", r["rule_id"]
+
+
+def test_rule_coverage_matches_the_ref_list(sample_payload):
+    cov = sample_payload["rule_coverage"]
+    refs = sample_payload["rule_refs"]
+    assert cov["cited_total"] == len(refs)
+    assert cov["text_verified"] == sum(1 for r in refs if r["text_verified"])
+    assert cov["unregistered"] == sum(1 for r in refs if not r["registered"])
+    assert (cov["text_verified"] + cov["declared"] + cov["unregistered"]
+            == len(refs))
+
+
+def test_rule_coverage_reports_known_defects(sample_payload):
+    """两处引用缺陷 (2026 模板无第 11 章 / 效益分析已迁 9.2) 必须报出来。"""
+    codes = {d["defect"] for d in sample_payload["rule_coverage"]["defects"]}
+    assert "NONEXISTENT_CLAUSE" in codes
+    assert "STALE_CITER" in codes
 
 
 def test_rule_refs_are_traceable_to_a_citer(sample_payload):

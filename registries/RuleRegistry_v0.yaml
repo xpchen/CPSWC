@@ -1,0 +1,346 @@
+# CPSWC RuleRegistry v0
+#
+# 功能: 把散落在 ObligationSet / CalculatorRegistry / AssuranceRegistry /
+#      narrative 模板里的 `rule.*` 依据 ID 解析成"哪部规范的哪一条"。
+#
+# 为什么需要它:
+#   前端接线完成后 (DECISION_LOG 条目 015) 清点出 **53 个 rule.* 依据 ID,
+#   已登记标题 0 个**。报告里每一句"依据 XXX"都指向一个空壳 ——
+#   无法向审查人员出示条文, 也无法核对引用是否正确。
+#
+# ============================================================
+# 硬约束
+# ============================================================
+# 1. **不许推断来源。** 命名空间像什么不算证据。
+#    典型: `rule.t2026.*` 的前缀看着像 2026 模板, 但 ObligationSet 的头部
+#    自述是"2026 模板 / 2018 格式 / 广东惠州"的混合, 单条义务并未声明出处;
+#    例如"弃渣场 4 级需地质报告"更可能出自 GB 51018 而非模板。
+#    **没有登记来源就不进本文件**, 由调用方报 UNREGISTERED。
+#
+# 2. **verification_status 三态, 逐条声明:**
+#      VERIFIED_TEXT — 条文原文已从本地原件抽取并核对, quoted_text 必须非空
+#      DECLARED      — 已定位到具体文件 (可选到章/条), 但未抓取条文原文
+#      (不在本文件中) → UNREGISTERED, 界面显示"系统不知道这个 ID 指向哪一条"
+#
+#    **DECLARED 不许写 quoted_text。** 写了就等于声称核对过。
+#
+# 3. **source_file 必须是仓库内真实存在的路径。** lint 会逐条检查文件在不在。
+#    登记一个查不到的出处, 比不登记更糟 —— 它看起来像证据。
+#
+# 4. 本文件只描述"依据是什么", **不描述任何项目的事实**, 也不做合规判断。
+
+schema_version: rule_registry_v0
+generated_at: '2026-09-25'
+
+# ============================================================
+# 权威层级 (authority_class)
+# ============================================================
+# 法律 > 行政法规 > 部门规章 > 部委规范性文件 > 国家标准 > 行业标准 >
+# 地方性法规 > 地方规范性文件
+# 仅作展示与排序用, v0 不参与任何自动裁决。
+
+rules:
+
+  # ----------------------------------------------------------
+  # 一、已核对条文原文 (VERIFIED_TEXT)
+  # ----------------------------------------------------------
+
+  rule.ministry_order_53:
+    document_title: 生产建设项目水土保持方案管理办法
+    document_number: 中华人民共和国水利部令第 53 号
+    issuing_authority: 中华人民共和国水利部
+    authority_class: 部门规章
+    issued_at: '2023-01-17'
+    effective_from: '2023-03-01'
+    clause_ref: 第七条
+    quoted_text: |
+      第七条 水土保持方案分为报告书和报告表。
+      征占地面积5公顷以上或者挖填土石方总量5万立方米以上的生产建设项目，
+      应当编制水土保持方案报告书。征占地面积0.5公顷以上、不足5公顷或者
+      挖填土石方总量1000立方米以上、不足5万立方米的生产建设项目，应当编制
+      水土保持方案报告表。
+      征占地面积不足0.5公顷并且挖填土石方总量不足1000立方米的生产建设项目，
+      不需要编制水土保持方案，但应当按照水土保持有关技术标准做好水土流失防治工作。
+    source_file: docs/refs/01_国家法律规章/03_生产建设项目水土保持方案管理办法_水利部令53号.pdf
+    source_locator: 正文第一章总则后, 文字层第 57-62 行
+    verification_status: VERIFIED_TEXT
+    verified_at: '2026-09-25'
+    verification_note: |
+      pdftotext 直接抽取 (该 PDF 有完整文字层, 15259 字符)。
+      本条是"报告书 / 报告表"分类阈值的法定来源。
+
+  rule.guangdong.fa_gai_2021_231:
+    document_title: 广东省发展改革委 广东省财政厅 广东省水利厅关于规范水土保持补偿费征收标准的通知
+    document_number: 粤发改价格〔2021〕231 号
+    issuing_authority: 广东省发展和改革委员会、广东省财政厅、广东省水利厅
+    authority_class: 地方规范性文件
+    issued_at: ''
+    effective_from: ''
+    clause_ref: 二、征收标准（一）
+    quoted_text: |
+      二、征收标准
+      （一）对一般性生产建设项目，按照征占用土地面积一次性计征，
+      每平方米 0.6 元（不足 1 平方米的按 1 平方米计，下同）。
+      其中，属水利水电工程建设项目的，水库淹没区不在水土保持补偿费计征范围之内。
+    source_file: docs/refs/04_广东惠州地方资料/02_粤发改价格2021_231号_广东省水土保持补偿费征收标准.pdf
+    source_locator: p.1 "二、征收标准"
+    verification_status: VERIFIED_TEXT
+    verified_at: '2026-09-25'
+    verification_note: |
+      pdftotext 直接抽取。0.6 元/m² 即样本 field.fact.regulatory.compensation_fee_rate
+      的取值依据。issued_at 原件未在抽取范围内标明, 留空不猜。
+
+  rule.guangdong.shui_gui_fan_zi_2026_1:
+    document_title: 广东省水利厅 广东省发展改革委 广东省财政厅关于规范水土保持补偿费征收工作的通知
+    document_number: 粤水规范字〔2026〕1 号
+    issuing_authority: 广东省水利厅、广东省发展和改革委员会、广东省财政厅
+    authority_class: 地方规范性文件
+    issued_at: ''
+    effective_from: ''
+    clause_ref: 一
+    quoted_text: |
+      一、全省范围内新审批的生产建设项目水土保持补偿费征收标准执行
+      《广东省发展改革委 广东省财政厅 广东省水利厅关于规范水土保持补偿费
+      征收标准的通知》（粤发改价格〔2021〕231 号），全额征收。
+    source_file: docs/refs/04_广东惠州地方资料/03_粤水规范字2026_1号_广东省水土保持补偿费征收工作通知.pdf
+    source_locator: p.1 "一"
+    verification_status: VERIFIED_TEXT
+    verified_at: '2026-09-25'
+    verification_note: |
+      本条把费率转致 231 号, 自身不另定标准 —— 即"现行费率仍是 0.6 元/m²"。
+
+  rule.2023_177.review_dimension_county_breakdown:
+    document_title: 生产建设项目水土保持方案审查要点
+    document_number: 办水保〔2023〕177 号
+    issuing_authority: 中华人民共和国水利部办公厅
+    authority_class: 部委规范性文件
+    issued_at: ''
+    effective_from: ''
+    clause_ref: 二、关于项目概况 第 4 项
+    quoted_text: |
+      4.工程征占地应明确占地性质、类型和面积，并以县级行政区域进行统计。
+    source_file: docs/refs/01_国家法律规章/08_办水保2023_177号_生产建设项目水土保持方案审查要点.pdf
+    source_locator: 文字层第 41 行 "二、关于项目概况"
+    verification_status: VERIFIED_TEXT
+    verified_at: '2026-09-25'
+    verification_note: |
+      pdftotext 直接抽取 (该 PDF 有完整文字层, 20351 字符)。
+      这是"按县级行政区分别列明占地"这一要求的原始出处。
+
+  # ----------------------------------------------------------
+  # 二、已定位到文件 / 章节, 未抓取条文原文 (DECLARED)
+  #
+  # 下面的 rule.template_2026.* 是按 ID 解码 + 与
+  # governance/ReportContentRequirements_v1.yaml 交叉核对得到的
+  # (该文件的章节结构已对 232 号原件核验, verification_status: VERIFIED)。
+  # **章节标题可信, 条文原文没抓** —— 232 号是扫描件, 无文字层,
+  # 逐条抓原文需要逐页读图, 尚未做。
+  # ----------------------------------------------------------
+
+  rule.template_2026:
+    document_title: 生产建设项目水土保持方案报告书编制内容
+    document_number: 办水保函〔2026〕232 号 附件1
+    issuing_authority: 中华人民共和国水利部办公厅
+    authority_class: 部委规范性文件
+    issued_at: '2026-04-03'
+    effective_from: '2026-04-03'
+    mandatory_from: '2026-06-01'
+    clause_ref: ''
+    source_file: docs/水利部办公厅关于印发生产建设项目水土保持方案编制模板的通知.pdf
+    source_locator: PDF 第 3-22 页 (附件1)
+    verification_status: DECLARED
+    verification_note: |
+      文件级引用, 未指向具体章节。原件为扫描件 (无文字层),
+      条文原文需逐页读图抓取, 尚未做。
+
+  rule.template_2026.section_1:
+    parent_rule_id: rule.template_2026
+    clause_ref: 第 1 章 综合说明
+    verification_status: DECLARED
+
+  rule.template_2026.section_1_1:
+    parent_rule_id: rule.template_2026
+    clause_ref: 1.1 (1.1.1 项目基本情况 / 1.1.2 自然简况)
+    verification_status: DECLARED
+
+  rule.template_2026.section_2:
+    parent_rule_id: rule.template_2026
+    clause_ref: 第 2 章 项目概况
+    verification_status: DECLARED
+
+  rule.template_2026.section_2_1:
+    parent_rule_id: rule.template_2026
+    clause_ref: 2.1 项目组成及工程布置
+    verification_status: DECLARED
+
+  rule.template_2026.section_2_2:
+    parent_rule_id: rule.template_2026
+    clause_ref: 2.2 施工组织
+    verification_status: DECLARED
+
+  rule.template_2026.section_3:
+    parent_rule_id: rule.template_2026
+    clause_ref: 第 3 章 项目水土保持评价
+    verification_status: DECLARED
+
+  rule.template_2026.section_4:
+    parent_rule_id: rule.template_2026
+    clause_ref: 第 4 章 表土资源保护与利用
+    verification_status: DECLARED
+
+  rule.template_2026.section_5_1:
+    parent_rule_id: rule.template_2026
+    clause_ref: 5.1 渣土来源及流向
+    verification_status: DECLARED
+
+  rule.template_2026.section_5_2:
+    parent_rule_id: rule.template_2026
+    clause_ref: 5.2 弃渣场选址、堆置方案与级别
+    verification_status: DECLARED
+
+  rule.template_2026.section_6:
+    parent_rule_id: rule.template_2026
+    clause_ref: 第 6 章 水土流失分析与预测
+    verification_status: DECLARED
+
+  rule.template_2026.section_7:
+    parent_rule_id: rule.template_2026
+    clause_ref: 第 7 章 水土流失防治
+    verification_status: DECLARED
+    defect: STALE_CITER
+    defect_note: |
+      本身没问题, 但 narr.soil_loss_prevention.benefit_analysis.* 引用它,
+      而效益分析在 2026 模板已跨章迁到 **9.2** (见
+      ReportContentRequirements_v1.yaml stable_id_migrations)。
+      引用方的 source_rule_refs 未随迁移更新。
+
+  rule.template_2026.section_7_3_2:
+    parent_rule_id: rule.template_2026
+    clause_ref: 7.3.2 防治目标
+    verification_status: DECLARED
+
+  rule.template_2026.section_8:
+    parent_rule_id: rule.template_2026
+    clause_ref: 第 8 章 水土保持监测
+    verification_status: DECLARED
+
+  rule.template_2026.section_9:
+    parent_rule_id: rule.template_2026
+    clause_ref: 第 9 章 水土保持投资及效益分析
+    verification_status: DECLARED
+
+  rule.template_2026.section_10:
+    parent_rule_id: rule.template_2026
+    clause_ref: 第 10 章 水土保持管理
+    verification_status: DECLARED
+
+  rule.template_2026.section_11:
+    parent_rule_id: rule.template_2026
+    clause_ref: ''
+    verification_status: DECLARED
+    defect: NONEXISTENT_CLAUSE
+    defect_note: |
+      **2026 模板没有第 11 章** —— 主体章止于第 10 章"水土保持管理"。
+      该 ID 沿用 2018 版 11 章结构。结论已迁至 1.9 (综合说明末节),
+      stable_id `sec.conclusion` 未改名 (符合硬约束), 但引用它的
+      narr.conclusion.* 仍写 section_11。
+
+  # --- 国家标准 (原件为扫描件, 未抓原文) ---
+
+  rule.gb_50433_2018.section_4_4_1:
+    document_title: 生产建设项目水土保持技术标准
+    document_number: GB 50433-2018
+    issuing_authority: 中华人民共和国住房和城乡建设部、国家市场监督管理总局
+    authority_class: 国家标准
+    issued_at: ''
+    effective_from: ''
+    clause_ref: 第 4.4.1 条
+    source_file: docs/refs/03_标准规范/01_GB50433-2018_生产建设项目水土保持技术标准.pdf
+    source_locator: ''
+    verification_status: DECLARED
+    verification_note: 原件为扫描件 (pdftotext 抽出 0 字符), 条文原文需读图抓取。
+
+  rule.gb_t_50434_2018.chapter_4:
+    document_title: 生产建设项目水土流失防治标准
+    document_number: GB/T 50434-2018
+    issuing_authority: 中华人民共和国住房和城乡建设部、国家市场监督管理总局
+    authority_class: 国家标准
+    issued_at: ''
+    effective_from: ''
+    clause_ref: 第 4 章
+    source_file: docs/refs/03_标准规范/02_GBT50434-2018_生产建设项目水土流失防治标准.pdf
+    source_locator: ''
+    verification_status: DECLARED
+    verification_note: 原件为扫描件 (pdftotext 抽出 0 字符), 条文原文需读图抓取。
+
+  rule.gb_t_50434_2018.table_4_0_2_5:
+    parent_rule_id: rule.gb_t_50434_2018.chapter_4
+    clause_ref: 表 4.0.2-5
+    verification_status: DECLARED
+    verification_note: |
+      六率目标值的取值表。参数曾在早前会话抽取进记忆
+      (reference_target_index_table.md), 但本文件不复制那些数字 ——
+      未经本次核对的数值不写进注册表。
+
+  rule.gb_51018_2014.section_5_7_1:
+    document_title: 水土保持工程设计规范
+    document_number: GB 51018-2014
+    issuing_authority: 中华人民共和国住房和城乡建设部、国家质量监督检验检疫总局
+    authority_class: 国家标准
+    issued_at: ''
+    effective_from: ''
+    clause_ref: 第 5.7.1 条
+    source_file: docs/refs/03_标准规范/03_GB51018-2014_水土保持工程设计规范.pdf
+    source_locator: ''
+    verification_status: DECLARED
+    verification_note: |
+      该 PDF 仅有零散文字层 (127 页共 5117 字符), 5.7.1 未落在文字层内,
+      条文原文需读图抓取。
+
+  rule.gb_51018_2014.table_5_7_1_notes:
+    parent_rule_id: rule.gb_51018_2014.section_5_7_1
+    clause_ref: 表 5.7.1 注
+    verification_status: DECLARED
+    verification_note: 弃渣场级别判定表的表注。同上, 未抓原文。
+
+  # --- 办水保〔2018〕135 号 (格式规定) ---
+
+  rule.f2018.responsibility_page_handwritten_signature:
+    document_title: 生产建设项目水土保持技术文件编写和印制格式规定（试行）
+    document_number: 办水保〔2018〕135 号
+    issuing_authority: 中华人民共和国水利部办公厅
+    authority_class: 部委规范性文件
+    issued_at: ''
+    effective_from: ''
+    clause_ref: ''
+    source_file: docs/refs/01_国家法律规章/07_办水保2018_135号_生产建设项目水土保持技术文件编写和印制格式规定.pdf
+    source_locator: ''
+    verification_status: DECLARED
+    verification_note: |
+      原件基本为扫描件 (15 页仅 840 字符文字层, 且 OCR 质量差 ——
+      封面被识别成"办水保 (2018J135 号")。责任页签名条款位置未定位。
+
+  rule.f2018.title_page_seal:
+    parent_rule_id: rule.f2018.responsibility_page_handwritten_signature
+    clause_ref: ''
+    verification_status: DECLARED
+    verification_note: 扉页盖章要求。同上, 条款位置未定位。
+
+# ============================================================
+# 已知未登记 (刻意留白, 不是遗漏)
+# ============================================================
+# `rule.t2026.*` 共 25 个 ID 全部未登记。
+#
+# 原因: ObligationSet_v0.yaml 的头部自述覆盖"2026 模板 / 2018 格式 /
+# 广东惠州 v0 范围"的混合来源, 而**单条义务没有声明自己出自哪一份**。
+# 前缀 `t2026` 只是命名习惯, 不构成证据 —— 例如
+# `rule.t2026.spoil_level_4_geology`(弃渣场 4 级需地质报告) 的实际依据
+# 更可能是 GB 51018 而非 2026 模板。
+#
+# 要登记它们, 需要先回到 ObligationSet 逐条补 source_document + clause,
+# 那是一次独立的溯源工作, 不能靠猜。
+unregistered_namespaces:
+  - namespace: rule.t2026
+    count_at_registry_time: 25
+    reason: 义务登记表未声明单条义务的来源文件, 前缀不构成证据
+    next_step: 回到 ObligationSet_v0.yaml 逐条补 source_document + clause_ref

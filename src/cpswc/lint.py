@@ -1066,6 +1066,64 @@ def pretty_print(report: LintReport, missing: list[str], reserved_files: list[st
 # ------------------------------------------------------------------
 # main
 # ------------------------------------------------------------------
+def lint_rule_registry_refs(registries, report: LintReport):
+    """RULE_001..004 — 依据 ID 的登记情况
+
+    盯两件事:
+      1. RuleRegistry 自身不许伪造 (VERIFIED_TEXT 无原文 / DECLARED 贴原文 /
+         source_file 查无此文) —— 交给 rule_registry.lint_rule_registry
+      2. 被 ObligationSet / CalculatorRegistry / AssuranceRegistry 引用的
+         `rule.*` 有多少还没登记。**报 INFO 不报 ERROR**: 未登记是已知缺口,
+         不是配置错误, 拿 ERROR 卡住 CI 只会逼人乱填。
+    """
+    try:
+        from cpswc.rule_registry import (
+            lint_rule_registry, load_rule_registry, resolve_rule)
+        rule_regs = load_rule_registry()
+    except Exception as exc:                                   # noqa: BLE001
+        report.add("ERROR", "RULE_001",
+                   f"RuleRegistry 无法加载: {type(exc).__name__}: {exc}",
+                   "RuleRegistry_v0.yaml")
+        return
+
+    for problem in lint_rule_registry(rule_regs):
+        report.add("ERROR", "RULE_002", problem, "RuleRegistry_v0.yaml")
+
+    cited: dict[str, list[str]] = {}
+
+    def note(rule_id, where):
+        if rule_id and str(rule_id).startswith("rule."):
+            cited.setdefault(rule_id, []).append(where)
+
+    for oid, meta in ((registries.get("obligations") or {}).get("obligations") or {}).items():
+        note((meta or {}).get("source_rule_id"), f"obligations:{oid}")
+    for cid, meta in ((registries.get("calculators") or {}).get("calculators") or {}).items():
+        for r in ((meta or {}).get("normative_basis_refs") or []):
+            note(r, f"calculators:{cid}")
+    for aid, meta in ((registries.get("assurances") or {}).get("assurances") or {}).items():
+        note((meta or {}).get("source_rule_id"), f"assurances:{aid}")
+
+    unregistered = sorted(r for r in cited
+                          if not resolve_rule(r, rule_regs)["registered"])
+    if unregistered:
+        report.add("INFO", "RULE_003",
+                   f"{len(unregistered)} 个被引用的依据 ID 尚未登记 "
+                   f"(引用处拿不出条文): {', '.join(unregistered[:5])}"
+                   + ("…" if len(unregistered) > 5 else ""),
+                   "RuleRegistry_v0.yaml")
+
+    # 缺陷要全表扫, 不能只扫被三张注册表引用的 —— 已知的两处陈旧引用
+    # (2026 模板无第 11 章 / 效益分析已迁 9.2) 都来自 narrative, 而 narrative
+    # 要跑完项目才拿得到, lint 阶段看不见。
+    for rid in sorted(rule_regs.get("rules") or {}):
+        r = resolve_rule(rid, rule_regs)
+        if r["defect"]:
+            report.add("WARN", "RULE_004",
+                       f"{rid}: {r['defect']} —— "
+                       f"{r['defect_note'].splitlines()[0] if r['defect_note'] else ''}",
+                       f"RuleRegistry_v0.yaml:{rid}")
+
+
 def main():
     json_mode = "--json" in sys.argv
 
@@ -1096,6 +1154,7 @@ def main():
     lint_calculator_structure(registries, report)       # Step 11A (CAL_001)
     lint_artifact_structure(registries, report)
     lint_obligation_structure(registries, report)
+    lint_rule_registry_refs(registries, report)        # 条目 016 (RULE_*)
 
     if json_mode:
         out = {

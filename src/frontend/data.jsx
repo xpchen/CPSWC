@@ -24,7 +24,8 @@ const PAYLOAD_REQUIRED_KEYS = [
   'obligations_detail','calculators','rule_refs',
   'required_artifacts','required_assurances','figures','quality',
   'findings','intake_issues','intake_summary',
-  'narrative','requirements','six_rates','tables','export_gate',
+  'narrative','requirements','six_rates','tables',
+  'rule_coverage','export_gate',
 ];
 
 function validatePayload(pl) {

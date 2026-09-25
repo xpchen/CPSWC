@@ -511,23 +511,77 @@ def test_calculators_flag_unreliable_inputs(wired_page, snapshot_bundle):
             or "该输入是空清单，且未经核实" in text)
 
 
-def test_footnotes_expose_the_unregistered_basis_ids(wired_page, snapshot_bundle):
-    """系统引用了几十个从未登记条文的依据 ID —— 这是该让人看见的缺口。"""
+def test_footnotes_split_verification_into_three_states(wired_page, snapshot_bundle):
+    """「定位到文件了」和「条文核对过了」是两回事, 不许压成一个覆盖率。"""
     text = _goto(wired_page, "footnotes")
+    cov = _payload_of(snapshot_bundle)["rule_coverage"]
+    assert f"依据 ID {cov['cited_total']} 个" in text
+    assert f"已核原文 {cov['text_verified']}" in text
+    assert f"已定位 {cov['declared']}" in text
+    assert f"未登记 {cov['unregistered']}" in text
+    assert "依据覆盖率" not in text, "不得给出单一覆盖率百分比"
+
+
+def test_footnotes_expose_the_unregistered_basis_ids(wired_page, snapshot_bundle):
+    """未登记的依据 ID 是该让人看见的缺口, 并且要说清下一步怎么补。"""
+    text = _goto(wired_page, "footnotes")
+    cov = _payload_of(snapshot_bundle)["rule_coverage"]
+    if not cov["unregistered"]:
+        pytest.skip("本样本依据已全部登记")
+    assert f"{cov['unregistered']} 个依据 ID 未登记" in text
+    assert "无法向审查人员出示条文" in text
+    for ns in cov["unregistered_namespaces"]:
+        assert ns["namespace"] in text
+        assert ns["next_step"] in text
+
+
+def test_footnotes_show_verified_clause_text(wired_page, snapshot_bundle):
+    """已核原文的条目必须真把条文摆出来 —— 这是这份注册表的全部意义。"""
     refs = _payload_of(snapshot_bundle)["rule_refs"]
-    unreg = [r for r in refs if not r["title_registered"]]
-    assert f"依据 ID {len(refs)} 个" in text
-    assert f"已登记标题 {len(refs) - len(unreg)} / {len(refs)}" in text
-    if unreg:
-        assert f"{len(unreg)} 个依据 ID 没有登记标题或条文原文" in text
-        assert "无法向审查人员出示条文" in text
+    verified = [r for r in refs if r["text_verified"]]
+    assert verified, "样本里没有已核原文的依据, 断言没有意义"
+    _goto(wired_page, "footnotes")
+    wired_page.get_by_role("button", name="已核原文", exact=False).last.click()
+    wired_page.wait_for_timeout(200)
+    wired_page.get_by_text(verified[0]["rule_id"], exact=True).first.click()
+    wired_page.wait_for_timeout(250)
+    text = wired_page.inner_text("body")
+    assert verified[0]["document_number"] in text
+    assert verified[0]["clause_ref"] in text
+    first_line = verified[0]["quoted_text"].strip().splitlines()[0]
+    assert first_line in text, "条文原文没有显示出来"
+
+
+def test_footnotes_never_show_text_for_declared_entries(wired_page, snapshot_bundle):
+    """只定位到文件的条目必须说"未抓取", 不能让人以为拿得出条文。"""
+    refs = _payload_of(snapshot_bundle)["rule_refs"]
+    declared = [r for r in refs if r["verification_status"] == "DECLARED"]
+    assert declared, "样本里没有 DECLARED 条目"
+    _goto(wired_page, "footnotes")
+    wired_page.get_by_text(declared[0]["rule_id"], exact=True).first.click()
+    wired_page.wait_for_timeout(250)
+    text = wired_page.inner_text("body")
+    assert "不能直接向审查人员出示" in text
+
+
+def test_footnotes_report_citation_defects(wired_page, snapshot_bundle):
+    """2026 模板没有第 11 章 —— 这种陈旧引用必须报出来。"""
+    cov = _payload_of(snapshot_bundle)["rule_coverage"]
+    if not cov["defects"]:
+        pytest.skip("本样本没有引用缺陷")
+    text = _goto(wired_page, "footnotes")
+    assert f"{len(cov['defects'])} 条依据引用有缺陷" in text
+    for d in cov["defects"]:
+        assert d["rule_id"] in text
+        assert d["defect"] in text
 
 
 def test_footnotes_page_is_not_an_editor(wired_page):
     """系统没有注脚能力: 不能编号、不能插入正文、不能导出、没有存储。"""
     text = _goto(wired_page, "footnotes")
     assert "这一页不是注脚编辑器" in text
-    assert "注脚功能（编号、插入正文、导出）同样未实现" in text
+    assert "不能编号、不能插入正文" in text
+    assert "也没有存储" in text
 
 
 def test_maps_admits_no_figure_can_be_generated(wired_page, snapshot_bundle):

@@ -227,6 +227,121 @@ def test_placeholder_tables_are_labelled_not_hidden(sample_payload):
 
 
 # ============================================================
+# 2c. F-8..F-10 新增块: obligations_detail / calculators / rule_refs
+# ============================================================
+
+def test_obligation_detail_keeps_unknown_as_none(sample_payload):
+    """三值判定必须原样送到前端。
+
+    把 None 折成 False = 把"条件算不出来"当成"条件不成立",
+    等于悄悄放过一条可能适用的义务。
+    """
+    for o in sample_payload["obligations_detail"]:
+        assert o["triggered"] in (True, False, None)
+
+
+def test_obligation_detail_covers_every_obligation(sample_payload):
+    """详情条数必须等于三态清单之和, 少一条就是有义务没被展示。"""
+    ob = sample_payload["obligations"]
+    total = len(ob["triggered"]) + len(ob["not_triggered"]) + len(ob["unknown"])
+    assert len(sample_payload["obligations_detail"]) == total
+
+
+def test_obligation_detail_matches_the_three_way_lists(sample_payload):
+    detail = {o["obligation_id"]: o["triggered"]
+              for o in sample_payload["obligations_detail"]}
+    ob = sample_payload["obligations"]
+    for oid in ob["triggered"]:
+        assert detail[oid] is True, oid
+    for oid in ob["not_triggered"]:
+        assert detail[oid] is False, oid
+    # unknown 条目是 {"id", "reason"} 对象 —— 未知必须带原因, 不是裸 id
+    for entry in ob["unknown"]:
+        assert isinstance(entry, dict) and entry.get("reason"), entry
+        assert detail[entry["id"]] is None, entry["id"]
+
+
+def test_unknown_obligations_carry_a_reason(sample_payload):
+    """判定未知必须说得出为什么 —— 否则界面只能干瞪眼。"""
+    for o in sample_payload["obligations_detail"]:
+        if o["triggered"] is None:
+            assert o["missing_field_refs"] or o["diagnostic_message"] \
+                or o["diagnostic_code"], f"{o['obligation_id']} 未知却没有任何说明"
+
+
+def test_calculators_report_failures_with_a_message(sample_payload):
+    """执行失败必须带错误原文, 不能空着过去。"""
+    for c in sample_payload["calculators"]:
+        if c["status"] != "ok":
+            assert c["error_message"], f"{c['calculator_id']} 失败却没有错误原文"
+
+
+def test_calculators_are_only_the_ones_that_actually_ran(sample_payload):
+    """这一块只装真跑过的。每条都得有输出字段, 否则就是个空壳。"""
+    assert sample_payload["calculators"], "没有下发任何计算器结果"
+    for c in sample_payload["calculators"]:
+        assert c["calculator_id"] and c["output_field_id"]
+
+
+def test_rule_refs_never_fake_a_title(sample_payload):
+    """全系统没有规则注册表, 所以标题必然缺失。
+
+    这条测试盯的是**不许假装有**: 一旦有人给 title 填个默认值,
+    界面就会把"没登记"显示成"已登记", 引用缺口随之消失。
+    """
+    for r in sample_payload["rule_refs"]:
+        if not r["title_registered"]:
+            assert r["title"] == "", f"{r['rule_id']} 未登记却带了标题"
+
+
+def test_rule_refs_are_traceable_to_a_citer(sample_payload):
+    """每个依据 ID 都必须说得出是谁在引用, 否则清点没有意义。"""
+    assert sample_payload["rule_refs"], "没有清点到任何依据 ID"
+    for r in sample_payload["rule_refs"]:
+        assert r["cited_by"], r["rule_id"]
+        assert r["citation_count"] == len(r["cited_by"])
+        assert r["rule_id"].startswith("rule.")
+        for c in r["cited_by"]:
+            assert c["kind"] in ("obligation", "calculator", "assurance", "narrative")
+
+
+def test_required_artifacts_and_assurances_are_listed(sample_payload):
+    assert isinstance(sample_payload["required_artifacts"], list)
+    assert isinstance(sample_payload["required_assurances"], list)
+    for a in sample_payload["required_artifacts"]:
+        assert a.startswith("art."), a
+    for a in sample_payload["required_assurances"]:
+        assert a.startswith("as."), a
+
+
+def test_figures_do_not_claim_a_renderer_that_does_not_exist(sample_payload):
+    """ArtifactRegistry 里的 `renderer` 只是个类名声明, 不保证代码存在。
+
+    实测 9 个图件渲染器一个都没实现。这条测试盯的是**不许靠登记表推断**:
+    一旦有人把 renderer_implemented 写成 bool(renderer), 界面立刻会显示
+    14 张图"可生成", 而实际一张也画不出来。
+    """
+    import cpswc.frontend_payload as fp
+    for f in sample_payload["figures"]:
+        expected = f["renderer"] in fp._IMPLEMENTED_RENDERERS
+        assert f["renderer_implemented"] is expected, f["artifact_id"]
+
+
+def test_figures_required_flag_comes_from_runtime(sample_payload):
+    """"本项目需要哪些图"必须来自本次 runtime 推导, 不是登记表的 always/conditional。"""
+    required = set(sample_payload["required_artifacts"])
+    for f in sample_payload["figures"]:
+        assert f["required_for_this_project"] is (f["artifact_id"] in required)
+
+
+def test_every_figure_says_what_to_draw_or_admits_it_does_not(sample_payload):
+    assert sample_payload["figures"], "没有下发任何图件要求"
+    for f in sample_payload["figures"]:
+        assert f["artifact_id"].startswith("art.figure.")
+        assert f["canonical_name"]
+
+
+# ============================================================
 # 3. schema 校验必须挡住残缺 payload
 # ============================================================
 

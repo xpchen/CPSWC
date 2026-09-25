@@ -270,15 +270,17 @@ function Workbench({ project, onExit, onAccount, onLogout }) {
   const PAGES = {
     overview:  window.OverviewPage,
     facts:     window.FactsPage,
-    rules:     window.RulesPage,
-    calc:      window.CalculatorsPage,
+    rules:     IS_SNAPSHOT ? window.RulesSnapshotPage : window.RulesPage,
+    calc:      IS_SNAPSHOT ? window.CalculatorsSnapshotPage : window.CalculatorsPage,
     tables:    IS_SNAPSHOT ? window.TablesSnapshotPage : window.TablesPage,
-    maps:      window.MapsPage,
+    maps:      IS_SNAPSHOT ? window.MapsSnapshotPage : window.MapsPage,
     // 快照模式用只读版: 演示版整页围绕编辑/润色/注脚组织, 而这些一样没实现
     narrative: IS_SNAPSHOT ? window.NarrativeSnapshotPage : window.NarrativePage,
-    footnotes: window.FootnotesPage,
-    changes:   window.ChangeTrackingPage,
-    history:   window.HistoryPage,
+    footnotes: IS_SNAPSHOT ? window.FootnotesSnapshotPage : window.FootnotesPage,
+    // 后端完全没有对应产出。演示版那一屏伪造的改动日志/版本树,
+    // 一条提示条压不住 —— 快照模式下直接不显示
+    changes:   IS_SNAPSHOT ? window.ChangeTrackingSnapshotPage : window.ChangeTrackingPage,
+    history:   IS_SNAPSHOT ? window.HistorySnapshotPage : window.HistoryPage,
     delivery:  window.DeliveryPage,
   };
   const RawPage = PAGES[page] || (() => <div className="p-8 text-slate-400">页面建设中…</div>);

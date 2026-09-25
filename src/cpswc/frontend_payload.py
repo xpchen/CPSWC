@@ -58,7 +58,9 @@ _SHELL_PATTERNS = ("*.html", "*.jsx")
 # payload 顶层必须齐全的键。缺任何一个 → 前端判 PAYLOAD_ERROR, 不回落 mock。
 REQUIRED_TOP_LEVEL_KEYS: tuple[str, ...] = (
     "schema_version", "data_mode", "generated_at", "shell_digest",
-    "project", "hashes", "facts", "field_lineage", "obligations", "quality",
+    "project", "hashes", "facts", "field_lineage", "obligations",
+    "obligations_detail", "calculators", "rule_refs",
+    "required_artifacts", "required_assurances", "figures", "quality",
     "findings", "intake_issues", "intake_summary",
     "narrative", "requirements", "six_rates", "tables", "export_gate",
 )
@@ -126,6 +128,19 @@ def build_payload(project_input: dict, registries: dict | None = None,
 
         "facts": facts,
         "field_lineage": _field_lineage(facts, fir_fields),
+        "obligations_detail": _obligations_detail_block(
+            snapshot, (regs.get("obligations") or {}).get("obligations") or {}),
+        "calculators": _calculators_block(
+            snapshot, (regs.get("calculators") or {}).get("calculators") or {}),
+        "rule_refs": _rule_refs_block(
+            (regs.get("obligations") or {}).get("obligations") or {},
+            (regs.get("calculators") or {}).get("calculators") or {},
+            (regs.get("assurances") or {}).get("assurances") or {},
+            narrative),
+        "required_artifacts": sorted(snapshot.required_artifacts or []),
+        "figures": _figures_block(
+            snapshot, (regs.get("artifacts") or {}).get("artifacts") or {}),
+        "required_assurances": sorted(snapshot.required_assurances or []),
         "source_layers": snap_dict.get("_source_map") or {},
 
         "obligations": {
@@ -184,6 +199,149 @@ def _field_lineage(facts: list[dict], fir_fields: dict) -> dict:
             "artifact_refs": sorted(r for r in refs if r.startswith("art.")),
             "projection_refs": sorted(r for r in refs if r.startswith("proj.")),
         }
+    return out
+
+
+def _obligations_detail_block(snapshot, obligation_registry: dict) -> list[dict]:
+    """逐条义务的判定结果 + 登记元数据。
+
+    `triggered` 直接来自三值判定: True / False / **None (未知)**。
+    None 不折成 False —— "条件算不出来"和"条件不成立"是两回事,
+    把前者当后者就等于悄悄放过一条可能适用的义务。
+    """
+    regs = obligation_registry or {}
+    out: list[dict] = []
+    for d in snapshot.obligation_details:
+        meta = regs.get(d.obligation_id) or {}
+        trigger = meta.get("trigger") or {}
+        out.append({
+            "obligation_id": d.obligation_id,
+            "triggered": d.triggered,                    # True / False / None
+            "applicability": snapshot.obligation_applicability.get(d.obligation_id, ""),
+            "evaluation_status": d.evaluation_status,
+            "mode": d.mode,
+            "expression": d.py_expr or "",
+            "human": trigger.get("human") or "",
+            "source_rule_id": meta.get("source_rule_id") or "",
+            "requirement_type": meta.get("requirement_type") or "",
+            "protection_level": meta.get("protection_level") or "",
+            "required_artifact_refs": list(meta.get("required_artifact_refs") or []),
+            "required_assurance_refs": list(meta.get("required_assurance_refs") or []),
+            "depends_on_field_refs": list(d.field_refs or []),
+            "missing_field_refs": list(d.missing_field_refs or []),
+            "diagnostic_code": d.diagnostic_code or "",
+            "diagnostic_message": d.diagnostic_message or "",
+            "v0_scope_note": meta.get("v0_scope_note") or "",
+        })
+    out.sort(key=lambda o: (o["triggered"] is not True, o["obligation_id"]))
+    return out
+
+
+def _calculators_block(snapshot, calculator_registry: dict) -> list[dict]:
+    """计算器执行结果 + 登记元数据。
+
+    **只列本次真跑过的计算器。** 登记表里有而没跑的单独由
+    `registered_but_not_run` 给出, 界面要把"没跑"和"跑了"分开显示 ——
+    混在一起会让人以为每个计算器都出过数。
+    """
+    regs = calculator_registry or {}
+    out: list[dict] = []
+    for r in snapshot.calculator_results:
+        meta = regs.get(r.calculator_id) or {}
+        out.append({
+            "calculator_id": r.calculator_id,
+            "canonical_name": meta.get("canonical_name") or r.calculator_id,
+            "purpose": (meta.get("purpose") or "").strip(),
+            "output_field_id": r.output_field_id,
+            "value": r.value,
+            "unit": r.unit or "",
+            "status": r.status,
+            "error_message": r.error_message or "",
+            "protection_level": meta.get("protection_level") or "",
+            "registry_status": meta.get("status") or "",
+            "authority_class": meta.get("authority_class") or "",
+            "provenance_verified": bool(meta.get("provenance_verified")),
+            "normative_basis_refs": list(meta.get("normative_basis_refs") or []),
+            "input_refs": [i.get("ref") for i in (meta.get("inputs") or [])
+                           if isinstance(i, dict) and i.get("ref")],
+            "formula": (meta.get("formula") or "").strip()
+                       if isinstance(meta.get("formula"), str) else "",
+        })
+    return out
+
+
+def _rule_refs_block(obligation_registry: dict, calculator_registry: dict,
+                     assurance_registry: dict, narrative) -> list[dict]:
+    """系统引用过的全部 `rule.*` 依据 ID, 以及谁在引用它。
+
+    **这些 ID 在任何注册表里都没有登记标题或条文原文。** 这不是疏漏记录,
+    而是要让界面把它说出来: 系统在引用自己从未登记的依据。
+    """
+    cited: dict[str, dict] = {}
+
+    def add(rule_id: str, kind: str, who: str) -> None:
+        if not rule_id or not str(rule_id).startswith("rule."):
+            return
+        e = cited.setdefault(rule_id, {"rule_id": rule_id, "cited_by": []})
+        entry = {"kind": kind, "ref": who}
+        if entry not in e["cited_by"]:
+            e["cited_by"].append(entry)
+
+    for oid, meta in (obligation_registry or {}).items():
+        add(meta.get("source_rule_id"), "obligation", oid)
+    for cid, meta in (calculator_registry or {}).items():
+        for r in (meta.get("normative_basis_refs") or []):
+            add(r, "calculator", cid)
+    for aid, meta in (assurance_registry or {}).items():
+        add(meta.get("source_rule_id"), "assurance", aid)
+    for sec in (narrative.blocks if narrative else []):
+        for para in (getattr(sec, "paragraphs", None) or []):
+            for r in (getattr(para, "source_rule_refs", None) or []):
+                add(r, "narrative", getattr(para, "paragraph_id", "") or sec.section_id)
+
+    out = list(cited.values())
+    for e in out:
+        e["cited_by"].sort(key=lambda c: (c["kind"], c["ref"]))
+        e["citation_count"] = len(e["cited_by"])
+        # 全系统没有规则注册表, 所以标题/条文一律缺失。如实标出。
+        e["title"] = ""
+        e["title_registered"] = False
+    out.sort(key=lambda e: (-e["citation_count"], e["rule_id"]))
+    return out
+
+
+# 已实现的渲染器。**名单在这里手工维护**, 因为 ArtifactRegistry 里的
+# `renderer` 只是一个声明性的类名, 不保证代码存在 —— 实测 9 个图件渲染器
+# 一个都没实现。界面据此如实显示"无法生成", 不画一张占位图糊弄过去。
+_IMPLEMENTED_RENDERERS: frozenset[str] = frozenset()
+
+
+def _figures_block(snapshot, artifact_registry: dict) -> list[dict]:
+    """本项目需要的图件, 以及它们**能不能生成**。
+
+    `required` 取自本次 runtime 推导出的 required_artifacts;
+    `renderer_implemented` 取自上面的白名单, 不看登记表怎么写 ——
+    登记表写了 renderer 名字不代表那个渲染器存在。
+    """
+    required = set(snapshot.required_artifacts or [])
+    out: list[dict] = []
+    for aid, meta in (artifact_registry or {}).items():
+        if (meta.get("kind") or "") != "figure":
+            continue
+        renderer = meta.get("renderer") or ""
+        out.append({
+            "artifact_id": aid,
+            "canonical_name": meta.get("canonical_name") or aid,
+            "requirement": meta.get("requirement") or "",
+            "required_for_this_project": aid in required,
+            "content_spec": meta.get("content_spec") or "",
+            "chapter_ref": meta.get("chapter_ref") or "",
+            "data_source_refs": list(meta.get("data_source_refs") or []),
+            "renderer": renderer,
+            "renderer_implemented": renderer in _IMPLEMENTED_RENDERERS,
+            "output_formats": list(meta.get("output_formats") or []),
+        })
+    out.sort(key=lambda f: (not f["required_for_this_project"], f["artifact_id"]))
     return out
 
 

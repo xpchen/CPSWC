@@ -434,6 +434,146 @@ def test_overview_intake_shortcut_opens_the_drawer(wired_page):
     assert "当前缺失资料 / 待甲方提供" in wired_page.inner_text("body")
 
 
+def test_rules_shows_every_obligation_with_its_expression(wired_page, snapshot_bundle):
+    """演示版顶上挂「无阻塞」chip, 而真实门禁是 BLOCK。现在逐条摆判定。"""
+    text = _goto(wired_page, "rules")
+    obs = _payload_of(snapshot_bundle)["obligations_detail"]
+    yes = sum(1 for o in obs if o["triggered"] is True)
+    no = sum(1 for o in obs if o["triggered"] is False)
+    assert f"已触发 {yes}" in text
+    assert f"未触发 {no}" in text
+    assert f"共 {len(obs)} 条义务" in text
+    assert "无阻塞" not in text
+
+
+def test_rules_keeps_unknown_separate_from_not_triggered(wired_page, snapshot_bundle):
+    """「判定未知」不得并入「未触发」—— 那等于悄悄放过一条可能适用的义务。"""
+    text = _goto(wired_page, "rules")
+    assert "「判定未知」单独成类，不并入未触发" in text
+    unk = [o for o in _payload_of(snapshot_bundle)["obligations_detail"]
+           if o["triggered"] is None]
+    if unk:
+        assert f"判定未知 {len(unk)}" in text
+
+
+def test_rules_gate_tab_shows_real_findings(wired_page, snapshot_bundle):
+    _goto(wired_page, "rules")
+    wired_page.get_by_role("button", name="导出门禁").click()
+    wired_page.wait_for_timeout(250)
+    text = wired_page.inner_text("body")
+    g = _payload_of(snapshot_bundle)["export_gate"]
+    assert f"门禁结论 {g['verdict']}" in text
+    assert "门禁只报问题，不出具「通过」结论" in text
+
+
+def test_rules_required_artifacts_are_not_claimed_as_provided(wired_page, snapshot_bundle):
+    """需附文件清单是"需要什么", 不是"已经有什么"。系统收不到附件。"""
+    _goto(wired_page, "rules")
+    wired_page.get_by_role("button", name="需附文件").click()
+    wired_page.wait_for_timeout(250)
+    text = wired_page.inner_text("body")
+    n = len(_payload_of(snapshot_bundle)["required_artifacts"])
+    assert f"{n} 项" in text
+    assert "系统没有接收附件的能力" in text
+    assert "无法核对其中任何一项是否已提供" in text
+
+
+def test_calculators_show_only_what_actually_ran(wired_page, snapshot_bundle):
+    text = _goto(wired_page, "calc")
+    calcs = _payload_of(snapshot_bundle)["calculators"]
+    assert f"已执行 {sum(1 for c in calcs if c['status'] == 'ok')}" in text
+    for c in calcs:
+        assert c["canonical_name"] in text
+    assert "这一页只显示真正跑过的" in text
+    assert "4 / 5 已计算" not in text, "不得沿用演示版的计数"
+
+
+def test_calculators_do_not_equate_success_with_trustworthy(wired_page):
+    text = _goto(wired_page, "calc")
+    assert "执行成功不等于结果可信" in text
+
+
+def test_calculators_flag_unreliable_inputs(wired_page, snapshot_bundle):
+    """输入是 placeholder stub 或空清单时, 输出再精确也只是把一个
+    未经核实的前提算了一遍。两种都必须在输入行上标出来。"""
+    pl = _payload_of(snapshot_bundle)
+    facts = {f["field_id"]: f for f in pl["facts"]}
+    weak = [(c, r) for c in pl["calculators"] for r in c["input_refs"]
+            if "placeholder" in (facts.get(r, {}).get("note") or "").lower()
+            or facts.get(r, {}).get("is_empty_container")]
+    assert weak, "样本里没有不可靠输入, 断言没有意义"
+    calc, _ = weak[0]
+    _goto(wired_page, "calc")
+    wired_page.get_by_role("button", name=calc["canonical_name"]).first.click()
+    wired_page.wait_for_timeout(250)
+    text = wired_page.inner_text("body")
+    assert ("该输入带演示/默认假设标记" in text
+            or "该输入是空清单，且未经核实" in text)
+
+
+def test_footnotes_expose_the_unregistered_basis_ids(wired_page, snapshot_bundle):
+    """系统引用了几十个从未登记条文的依据 ID —— 这是该让人看见的缺口。"""
+    text = _goto(wired_page, "footnotes")
+    refs = _payload_of(snapshot_bundle)["rule_refs"]
+    unreg = [r for r in refs if not r["title_registered"]]
+    assert f"依据 ID {len(refs)} 个" in text
+    assert f"已登记标题 {len(refs) - len(unreg)} / {len(refs)}" in text
+    if unreg:
+        assert f"{len(unreg)} 个依据 ID 没有登记标题或条文原文" in text
+        assert "无法向审查人员出示条文" in text
+
+
+def test_footnotes_page_is_not_an_editor(wired_page):
+    """系统没有注脚能力: 不能编号、不能插入正文、不能导出、没有存储。"""
+    text = _goto(wired_page, "footnotes")
+    assert "这一页不是注脚编辑器" in text
+    assert "注脚功能（编号、插入正文、导出）同样未实现" in text
+
+
+def test_maps_admits_no_figure_can_be_generated(wired_page, snapshot_bundle):
+    """演示版是个能"生成图件"的地图中心。实际 9 个渲染器一个都没实现。"""
+    text = _goto(wired_page, "maps")
+    figs = _payload_of(snapshot_bundle)["figures"]
+    req = [f for f in figs if f["required_for_this_project"]]
+    ok = [f for f in figs if f["renderer_implemented"]]
+    assert f"本项目需要 {len(req)} 张" in text
+    assert f"可生成 {len(ok)} 张" in text
+    if not ok:
+        assert "一张也生成不了" in text
+        assert "这些渲染器没有一个有代码实现" in text
+    assert "已生成" not in text, "不得沿用演示版的「已生成」角标"
+
+
+def test_maps_lists_every_required_figure_as_a_task(wired_page, snapshot_bundle):
+    """这份清单的用处是当制图任务单, 所以一张都不能漏。"""
+    text = _goto(wired_page, "maps")
+    for f in _payload_of(snapshot_bundle)["figures"]:
+        if f["required_for_this_project"]:
+            assert f["canonical_name"] in text, f["artifact_id"]
+
+
+@pytest.mark.parametrize("key,title", [("changes", "改动追踪"), ("history", "历史与版本")])
+def test_unbacked_pages_show_nothing_instead_of_fake_logs(wired_page, key, title):
+    """后端完全没有产出的页面, 不显示任何示例内容。
+
+    一屏具体到人名、时间、金额的演示记录会被当成真的,
+    一条提示条压不住它。
+    """
+    text = _goto(wired_page, key)
+    assert "该功能尚未实现，本页不显示任何内容" in text
+    assert "刻意不显示示例内容" in text
+    # 演示版这两页的伪造记录特征: 人名 + 精确时间
+    for fake in ("李工 · 编制", "今天 09:4", "v0.3", "5 名成员"):
+        assert fake not in text, f"{title} 仍在显示伪造记录: {fake}"
+
+
+def test_no_nav_page_is_left_unwired(wired_page):
+    """全部 NAV 页面都已接线。白名单机制保留 —— 将来新增页面仍默认未接线。"""
+    nav = wired_page.evaluate("() => window.CPSWC.NAV.map(n => n.id)")
+    wired = set(wired_page.evaluate("() => window.CPSWC.WIRED_PAGES || []"))
+    assert set(nav) <= wired, f"仍未接线: {sorted(set(nav) - wired)}"
+
+
 def test_wired_pages_contain_no_mock_values(snapshot_bundle, page):
     """已声明接线的页面必须彻底无 mock。白名单一增长, 覆盖面自动扩大。"""
     page.goto((snapshot_bundle / "index.html").as_uri())

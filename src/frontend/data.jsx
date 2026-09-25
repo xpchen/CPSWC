@@ -20,7 +20,9 @@ const PAYLOAD_SCHEMA_VERSION = 'cpswc_frontend_payload_v1';
 
 const PAYLOAD_REQUIRED_KEYS = [
   'schema_version','data_mode','generated_at','shell_digest',
-  'project','hashes','facts','field_lineage','obligations','quality',
+  'project','hashes','facts','field_lineage','obligations',
+  'obligations_detail','calculators','rule_refs',
+  'required_artifacts','required_assurances','figures','quality',
   'findings','intake_issues','intake_summary',
   'narrative','requirements','six_rates','tables','export_gate',
 ];
@@ -726,4 +728,8 @@ Object.assign(window, { Icon, StatusTag, Panel, MetricCard, Field, Chip });
 // 已接线到 payload 的 **NAV 页面**白名单 (收资抽屉不是 NAV 页, 单独接的)。
 // 刻意用白名单而不是黑名单: 默认未接线, 接好一个加一个。漏加只会多显示一条
 // "本页未接线"的提示 (保守), 而黑名单漏删会让 mock 冒充真数据 (危险)。
-window.CPSWC.WIRED_PAGES = ['overview', 'facts', 'narrative', 'tables', 'delivery'];
+// 全部 11 个 NAV 页面均已接线 (含"如实显示未实现"的页面 —— 那同样是接线:
+// 它显示的是后端的真实状态"没有这个能力", 而不是一屏演示数据)。
+window.CPSWC.WIRED_PAGES = ['overview', 'facts', 'rules', 'calc', 'tables',
+                            'maps', 'narrative', 'footnotes', 'changes',
+                            'history', 'delivery'];

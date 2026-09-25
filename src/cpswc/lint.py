@@ -1117,11 +1117,18 @@ def lint_rule_registry_refs(registries, report: LintReport):
     # 要跑完项目才拿得到, lint 阶段看不见。
     for rid in sorted(rule_regs.get("rules") or {}):
         r = resolve_rule(rid, rule_regs)
-        if r["defect"]:
-            report.add("WARN", "RULE_004",
-                       f"{rid}: {r['defect']} —— "
-                       f"{r['defect_note'].splitlines()[0] if r['defect_note'] else ''}",
-                       f"RuleRegistry_v0.yaml:{rid}")
+        if not r["defect"]:
+            continue
+        # RETIRED_ID 是**已处理完**的历史遗留: 引用方已改指新 ID, 条目留档
+        # 只为解释旧快照和历史审查意见。长期报 WARN 会让人学会忽略 WARN。
+        sev = "INFO" if r["defect"] == "RETIRED_ID" else "WARN"
+        head = r["defect_note"].splitlines()[0] if r["defect_note"] else ""
+        sup = r.get("superseded_by") or ""
+        report.add(sev, "RULE_004",
+                   f"{rid}: {r['defect']}"
+                   + (f" → {sup}" if sup else "")
+                   + (f" —— {head}" if head else ""),
+                   f"RuleRegistry_v0.yaml:{rid}")
 
 
 def main():

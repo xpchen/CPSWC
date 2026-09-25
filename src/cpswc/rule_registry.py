@@ -96,7 +96,7 @@ def resolve_rule(rule_id: str, registry: dict | None = None) -> dict:
             "clause_ref": "", "quoted_text": "",
             "source_file": "", "source_locator": "",
             "verified_at": "", "verification_note": "",
-            "defect": "", "defect_note": "",
+            "defect": "", "defect_note": "", "superseded_by": "",
         }
 
     merged: dict[str, Any] = {}
@@ -132,6 +132,7 @@ def resolve_rule(rule_id: str, registry: dict | None = None) -> dict:
         "verified_at": str(merged.get("verified_at") or ""),
         "verification_note": (merged.get("verification_note") or "").strip(),
         "defect": merged.get("defect") or "",
+        "superseded_by": merged.get("superseded_by") or "",
         "defect_note": (merged.get("defect_note") or "").strip(),
         "parent_rule_id": parent_id or "",
     }

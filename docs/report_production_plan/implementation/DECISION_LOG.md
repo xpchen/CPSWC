@@ -246,6 +246,24 @@
 
 ---
 
+## 条目 017
+
+| 项 | 内容 |
+| --- | --- |
+| 日期 | 2026-09-25 |
+| 事项 | 修掉条目 016 建注册表时查出的**两处陈旧条款引用** |
+| 修了什么 | `narr.conclusion.*` 7 处 `section_11` → `section_1_9`（1.9 结论）；`narr.soil_loss_prevention.benefit_analysis.*` 4 处 `section_7` → `section_9_2`（9.2 效益分析）。两个新 ID 按已有命名约定（section_N_M）加进 RuleRegistry，条款标题取自已对 232 号原件核验的 `ReportContentRequirements_v1.yaml` |
+| 退役 ID 不删 | `section_11` 保留并转 `RETIRED_ID` + `superseded_by`。旧快照与按"第 11 章"定位结论的历史审查意见仍会出现这个 ID，**删掉就没人解释得清它是什么** |
+| lint 分级调整 | RETIRED_ID 由 WARN 降为 INFO —— 它是已处理完的历史遗留，长期挂 WARN 会让人学会忽略 WARN。其余缺陷码仍报 WARN |
+| 没改什么 | 两个 stable_id (`sec.conclusion` / `sec.soil_loss_prevention.benefit_analysis`) 与两个文件名 (`sec_11_conclusion.py` / `sec_7_5_benefit_analysis.py`) 均不动 —— 文件名不是 stable id，改名收益抵不上 import 面扰动 |
+| 模板旧注释结清 | `sec_11_conclusion.py` 里 P0-03 时期留的疑点注释（"本轮不改 stable id, 只在此登记疑点"）已按 P0-05 的核实结果结清 |
+| 测试如期失败再改写 | 两条断言"缺陷存在"的测试在修复后红了 —— 这正是它们该有的反应。改写为断言**修复后的状态**，并新增回归闸 `test_no_registered_rule_still_has_an_open_defect`：谁再引入陈旧引用就会红 |
+| 实测 | 四份样本 `rule_coverage.defects` 全部为 `[]`；退役 ID 不再被任何模板引用；`section_1_9` 被引 4 次、`section_9_2` 被引 2 次 |
+| 测试 | Python 972 → **978**；浏览器级 56 不变（其中一条改为双分支）；lint **ERROR=0 WARN=0** INFO=28 |
+| 状态 | 第一号缺口的"已知错误"部分清零。剩余：25 条 `rule.t2026.*` 待溯源、25 条 DECLARED 待读图升 VERIFIED |
+
+---
+
 ## 变更请求
 
 （暂无。超出任务包范围时按 `06_CLAUDE_HANDOFF.md` 第 7 节模板登记。）

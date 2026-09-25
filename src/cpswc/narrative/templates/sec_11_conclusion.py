@@ -15,8 +15,15 @@ P0-03 变更 (docs/report_production_plan/03_P0_TASKS.md):
       专业复核记录, 就输出"待复核"说明并登记 ASSERTION_UNSUPPORTED。
     - 义务触发数、制品数只是**统计**, 不再被表述为"已满足/已编制"。
 
-  注意: `rule.template_2026.section_11` 这个条款引用尚未核验 —— 2026 模板的
-  结论位置属 P0-05 的核对范围, 本轮不改 stable id, 只在此登记疑点。
+  2026-09-25 (DECISION_LOG 条目 017): 上面登记的疑点已结清。
+  P0-05 核实结果: **2026 模板没有第 11 章**, 主体章止于第 10 章"水土保持管理";
+  结论是综合说明的末节 **1.9**。条款引用由 section_11 改为
+  `rule.template_2026.section_1_9`; 旧 ID 在 RuleRegistry 里标 RETIRED_ID 留档,
+  用于解释旧快照与按"第 11 章"定位结论的历史审查意见。
+
+  SECTION_ID 仍是 `sec.conclusion`, **不改名** (硬约束见
+  ReportContentRequirements_v1.yaml)。本文件名 sec_11_conclusion.py 同样保留,
+  它只是文件名, 不是 stable id。
 """
 from __future__ import annotations
 
@@ -34,7 +41,7 @@ TEMPLATE_SPEC = NarrativeTemplateSpec(
     section_id=SECTION_ID,
     template_version="v2",
     template_author="cpswc_p0_03",
-    normative_basis=["rule.template_2026.section_11"],
+    normative_basis=["rule.template_2026.section_1_9"],
     supported_variants=["default"],
     input_fields=[
         "field.fact.project.name",
@@ -67,7 +74,7 @@ def render(facts: dict, derived: dict, triggered: set[str],
             text=head,
             evidence_refs=["field.fact.project.name",
                            "field.fact.prevention.control_standard_level"],
-            source_rule_refs=["rule.template_2026.section_11"],
+            source_rule_refs=["rule.template_2026.section_1_9"],
             assertion_class=AssertionClass.FACT_RESTATEMENT,
             paragraph_id="narr.conclusion.identity",
         ))
@@ -75,7 +82,7 @@ def render(facts: dict, derived: dict, triggered: set[str],
         paragraphs.append(ev.gap_paragraph(
             name, level,
             lead="本节无法给出结论对象",
-            source_rule_refs=["rule.template_2026.section_11"],
+            source_rule_refs=["rule.template_2026.section_1_9"],
             paragraph_id="narr.conclusion.identity",
         ))
 
@@ -103,7 +110,7 @@ def render(facts: dict, derived: dict, triggered: set[str],
     paragraphs.append(NarrativeParagraph(
         text=stat,
         evidence_refs=sorted(triggered)[:10] or [SECTION_ID],
-        source_rule_refs=["rule.template_2026.section_11"],
+        source_rule_refs=["rule.template_2026.section_1_9"],
         assertion_class=AssertionClass.FACT_RESTATEMENT,
         paragraph_id="narr.conclusion.obligation_stats",
     ))
@@ -114,7 +121,7 @@ def render(facts: dict, derived: dict, triggered: set[str],
             text=f"水土保持补偿费计算结果为{fee.display()}万元。",
             evidence_refs=["field.derived.investment.compensation_fee_amount",
                            "cal.compensation.fee"],
-            source_rule_refs=["rule.template_2026.section_11"],
+            source_rule_refs=["rule.template_2026.section_1_9"],
             assertion_class=AssertionClass.ARITHMETIC,
             paragraph_id="narr.conclusion.compensation",
         ))
@@ -122,7 +129,7 @@ def render(facts: dict, derived: dict, triggered: set[str],
         paragraphs.append(ev.gap_paragraph(
             fee,
             lead="水土保持补偿费尚无有效计算结果",
-            source_rule_refs=["rule.template_2026.section_11"],
+            source_rule_refs=["rule.template_2026.section_1_9"],
             extra_refs=["cal.compensation.fee"],
             paragraph_id="narr.conclusion.compensation",
         ))
@@ -169,7 +176,7 @@ def render(facts: dict, derived: dict, triggered: set[str],
             "投资估算依据是否成立，须由水土保持工程师在全册资料齐备后复核确认；"
             "复核记录形成前，本节不作上述结论。"),
         evidence_refs=[SECTION_ID],
-        source_rule_refs=["rule.template_2026.section_11"],
+        source_rule_refs=["rule.template_2026.section_1_9"],
         paragraph_id="narr.conclusion.overall",
         remediation="全册校审后录入绑定当前输入的复核记录",
     ))

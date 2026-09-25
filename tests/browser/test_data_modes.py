@@ -565,15 +565,20 @@ def test_footnotes_never_show_text_for_declared_entries(wired_page, snapshot_bun
 
 
 def test_footnotes_report_citation_defects(wired_page, snapshot_bundle):
-    """2026 模板没有第 11 章 —— 这种陈旧引用必须报出来。"""
+    """有陈旧引用就必须在页面顶部报出来; 没有就不许凭空显示一条。
+
+    当前两处已修 (section_11 → 1.9, section_7 → 9.2), 所以走的是"不显示"分支。
+    谁再引入一个坏引用, 上面那半边会开始生效。
+    """
     cov = _payload_of(snapshot_bundle)["rule_coverage"]
-    if not cov["defects"]:
-        pytest.skip("本样本没有引用缺陷")
     text = _goto(wired_page, "footnotes")
-    assert f"{len(cov['defects'])} 条依据引用有缺陷" in text
-    for d in cov["defects"]:
-        assert d["rule_id"] in text
-        assert d["defect"] in text
+    if cov["defects"]:
+        assert f"{len(cov['defects'])} 条依据引用有缺陷" in text
+        for d in cov["defects"]:
+            assert d["rule_id"] in text
+            assert d["defect"] in text
+    else:
+        assert "条依据引用有缺陷" not in text
 
 
 def test_footnotes_page_is_not_an_editor(wired_page):

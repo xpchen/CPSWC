@@ -163,6 +163,14 @@ rules:
     clause_ref: 1.1 (1.1.1 项目基本情况 / 1.1.2 自然简况)
     verification_status: DECLARED
 
+  rule.template_2026.section_1_9:
+    parent_rule_id: rule.template_2026
+    clause_ref: 1.9 结论
+    verification_status: DECLARED
+    verification_note: |
+      结论在 2026 模板是综合说明的末节 1.9, 不是独立章节。
+      取代 rule.template_2026.section_11 (2018 版 11 章结构的遗留)。
+
   rule.template_2026.section_2:
     parent_rule_id: rule.template_2026
     clause_ref: 第 2 章 项目概况
@@ -207,12 +215,10 @@ rules:
     parent_rule_id: rule.template_2026
     clause_ref: 第 7 章 水土流失防治
     verification_status: DECLARED
-    defect: STALE_CITER
-    defect_note: |
-      本身没问题, 但 narr.soil_loss_prevention.benefit_analysis.* 引用它,
-      而效益分析在 2026 模板已跨章迁到 **9.2** (见
-      ReportContentRequirements_v1.yaml stable_id_migrations)。
-      引用方的 source_rule_refs 未随迁移更新。
+    verification_note: |
+      2026-09-25: 原标 STALE_CITER —— narr.soil_loss_prevention.benefit_analysis.*
+      引用本条, 而效益分析已跨章迁到 9.2。引用方已改指
+      rule.template_2026.section_9_2, 缺陷解除。
 
   rule.template_2026.section_7_3_2:
     parent_rule_id: rule.template_2026
@@ -229,21 +235,35 @@ rules:
     clause_ref: 第 9 章 水土保持投资及效益分析
     verification_status: DECLARED
 
+  rule.template_2026.section_9_2:
+    parent_rule_id: rule.template_2026
+    clause_ref: 9.2 效益分析
+    verification_status: DECLARED
+    verification_note: |
+      效益分析在 2026 模板属第 9 章 (水土保持投资及效益分析) 的 9.2,
+      不在第 7 章。stable_id 仍为 sec.soil_loss_prevention.benefit_analysis
+      (跨章迁移不改名, 见 ReportContentRequirements_v1.yaml stable_id_migrations)。
+
   rule.template_2026.section_10:
     parent_rule_id: rule.template_2026
     clause_ref: 第 10 章 水土保持管理
     verification_status: DECLARED
 
+  # 退役 ID。**不删除** —— 旧快照和按"第 11 章"定位结论的历史审查意见
+  # 仍会出现这个 ID, 删掉就没人解释得清它是什么。
   rule.template_2026.section_11:
     parent_rule_id: rule.template_2026
     clause_ref: ''
     verification_status: DECLARED
-    defect: NONEXISTENT_CLAUSE
+    defect: RETIRED_ID
+    superseded_by: rule.template_2026.section_1_9
     defect_note: |
       **2026 模板没有第 11 章** —— 主体章止于第 10 章"水土保持管理"。
-      该 ID 沿用 2018 版 11 章结构。结论已迁至 1.9 (综合说明末节),
-      stable_id `sec.conclusion` 未改名 (符合硬约束), 但引用它的
-      narr.conclusion.* 仍写 section_11。
+      该 ID 沿用 2018 版 11 章结构。结论在 2026 模板是 1.9 (综合说明末节)。
+
+      2026-09-25: narr.conclusion.* 已改指 rule.template_2026.section_1_9,
+      本 ID 不再被任何模板引用, 仅留档用于解释旧快照与历史审查意见。
+      stable_id `sec.conclusion` 始终未改名 (符合硬约束)。
 
   # --- 国家标准 (原件为扫描件, 未抓原文) ---
 

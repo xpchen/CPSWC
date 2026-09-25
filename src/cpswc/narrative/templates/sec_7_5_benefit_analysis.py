@@ -20,6 +20,12 @@ P0-03 变更 (docs/report_production_plan/03_P0_TASKS.md, 验收 N04/N05/N06):
 
   本模板**不**新建六率算法, 也不为通过正向测试临时造效果字段。
 
+  2026-09-25 (DECISION_LOG 条目 017): 条款引用由 section_7 改为
+  `rule.template_2026.section_9_2` —— 效益分析在 2026 模板属第 9 章的 9.2,
+  不在第 7 章 (跨章迁移, 见 ReportContentRequirements_v1.yaml
+  stable_id_migrations)。stable_id `sec.soil_loss_prevention.benefit_analysis`
+  与本文件名均**不改**。
+
 A 批验收后的追加修正:
   - 验收复现出"复核记录盖过已知不达标"的反例: 只要有一条匹配当前输入的复核
     记录, 正文就会在"某指标未达标、另五项无结果"的同时输出"各项防治目标可以
@@ -46,7 +52,7 @@ TEMPLATE_SPEC = NarrativeTemplateSpec(
     template_version="v2",
     template_author="cpswc_p0_03",
     normative_basis=[
-        "rule.template_2026.section_7",
+        "rule.template_2026.section_9_2",
         "rule.gb_t_50434_2018.chapter_4",
     ],
     supported_variants=["default"],
@@ -105,7 +111,7 @@ def render(facts: dict, derived: dict, triggered: set[str],
         paragraphs.append(NarrativeParagraph(
             text=text,
             evidence_refs=[v.field_id for v in losses],
-            source_rule_refs=["rule.template_2026.section_7"],
+            source_rule_refs=["rule.template_2026.section_9_2"],
             assertion_class=AssertionClass.ARITHMETIC,
             paragraph_id="narr.soil_loss_prevention.benefit_analysis.losses",
         ))
@@ -113,7 +119,7 @@ def render(facts: dict, derived: dict, triggered: set[str],
         paragraphs.append(ev.gap_paragraph(
             *losses,
             lead="效益分析缺少流失预测数据",
-            source_rule_refs=["rule.template_2026.section_7"],
+            source_rule_refs=["rule.template_2026.section_9_2"],
             paragraph_id="narr.soil_loss_prevention.benefit_analysis.losses",
         ))
 
@@ -250,7 +256,7 @@ def render(facts: dict, derived: dict, triggered: set[str],
              f"{len(shortfalls)} 项指标效果低于目标值" if shortfalls else ""),
         ],
         evidence_refs=["field.fact.land.total_area", SECTION_ID],
-        source_rule_refs=["rule.template_2026.section_7"],
+        source_rule_refs=["rule.template_2026.section_9_2"],
         paragraph_id="narr.soil_loss_prevention.benefit_analysis.conclusion",
         remediation="完成效果计算、确认来源并复核后录入绑定当前输入的复核记录",
     ))

@@ -131,13 +131,38 @@ def test_child_inherits_document_but_not_verification(registry):
     assert child["verification_status"] == DECLARED
 
 
-def test_known_defects_are_recorded(registry):
-    """两处引用缺陷必须留在册: 2026 模板没有第 11 章; 效益分析已迁到 9.2。"""
+def test_retired_id_is_kept_with_a_successor(registry):
+    """退役 ID **不删除**。
+
+    旧快照和按"第 11 章"定位结论的历史审查意见仍会出现这个 ID,
+    删掉就没人解释得清它是什么。必须留档并指明谁接手。
+    """
     s11 = resolve_rule("rule.template_2026.section_11", registry)
-    assert s11["defect"] == "NONEXISTENT_CLAUSE"
+    assert s11["registered"] is True
+    assert s11["defect"] == "RETIRED_ID"
+    assert s11["superseded_by"] == "rule.template_2026.section_1_9"
     assert "没有第 11 章" in s11["defect_note"]
-    s7 = resolve_rule("rule.template_2026.section_7", registry)
-    assert s7["defect"] == "STALE_CITER"
+
+
+def test_successor_clauses_point_at_the_real_2026_positions(registry):
+    """接手的两个 ID 必须指向 2026 模板里的真实位置。"""
+    assert resolve_rule("rule.template_2026.section_1_9", registry)["clause_ref"] \
+        == "1.9 结论"
+    assert resolve_rule("rule.template_2026.section_9_2", registry)["clause_ref"] \
+        == "9.2 效益分析"
+
+
+def test_no_registered_rule_still_has_an_open_defect(registry):
+    """RETIRED_ID 是已处理完的; 其余缺陷码都表示"还没修"。
+
+    这条是回归闸: 谁再引入一个陈旧引用, 这里会红。
+    """
+    open_defects = {
+        rid: resolve_rule(rid, registry)["defect"]
+        for rid in registry["rules"]
+        if resolve_rule(rid, registry)["defect"] not in ("", "RETIRED_ID")
+    }
+    assert not open_defects, open_defects
 
 
 # ============================================================

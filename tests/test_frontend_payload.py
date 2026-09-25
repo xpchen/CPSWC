@@ -325,11 +325,30 @@ def test_rule_coverage_matches_the_ref_list(sample_payload):
             == len(refs))
 
 
-def test_rule_coverage_reports_known_defects(sample_payload):
-    """两处引用缺陷 (2026 模板无第 11 章 / 效益分析已迁 9.2) 必须报出来。"""
-    codes = {d["defect"] for d in sample_payload["rule_coverage"]["defects"]}
-    assert "NONEXISTENT_CLAUSE" in codes
-    assert "STALE_CITER" in codes
+def test_no_narrative_cites_a_retired_or_defective_rule(sample_payload):
+    """正文不许引用退役或有缺陷的依据 ID。
+
+    修好那两处陈旧引用 (section_11 → 1.9, section_7 → 9.2) 之后,
+    `defects` 应当为空 —— 它非空就说明有正文又指回了坏 ID。
+    """
+    defects = sample_payload["rule_coverage"]["defects"]
+    assert defects == [], f"仍有正文引用坏 ID: {defects}"
+
+
+def test_conclusion_and_benefit_analysis_cite_the_migrated_clauses(sample_payload):
+    """结论在 1.9、效益分析在 9.2 —— 引用必须跟着迁移走。"""
+    by_id = {r["rule_id"]: r for r in sample_payload["rule_refs"]}
+    assert "rule.template_2026.section_11" not in by_id, "退役 ID 仍被引用"
+
+    concl = by_id.get("rule.template_2026.section_1_9")
+    assert concl and concl["clause_ref"] == "1.9 结论"
+    assert all(c["ref"].startswith("narr.conclusion") or c["ref"] == "sec.conclusion"
+               for c in concl["cited_by"]), concl["cited_by"]
+
+    benefit = by_id.get("rule.template_2026.section_9_2")
+    assert benefit and benefit["clause_ref"] == "9.2 效益分析"
+    assert all("benefit_analysis" in c["ref"] for c in benefit["cited_by"]), \
+        benefit["cited_by"]
 
 
 def test_rule_refs_are_traceable_to_a_citer(sample_payload):

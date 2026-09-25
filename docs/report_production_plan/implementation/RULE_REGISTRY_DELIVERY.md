@@ -19,7 +19,7 @@
 
 | 件 | 位置 |
 | --- | --- |
-| 注册表 | `registries/RuleRegistry_v0.yaml`（28 条） |
+| 注册表 | `registries/RuleRegistry_v0.yaml`（30 条） |
 | 解析器 | `src/cpswc/rule_registry.py` |
 | lint 规则 | `src/cpswc/lint.py` `lint_rule_registry_refs`（RULE_001..004） |
 | payload | `rule_refs` 每条带核验结果；新增 `rule_coverage` 汇总块 |
@@ -122,9 +122,19 @@ UNREGISTERED   不在注册表里 —— 系统不知道这个 ID 指向哪一�
 **两处都对应 `stable_id_migrations` 里已登记的迁移** ——
 章节 ID 迁移做对了，但 narrative 模板里的 `source_rule_refs` 没跟着改。
 
-这两条已记进注册表的 `defect` 字段，lint 报 WARN（RULE_004），
-界面在依据库页顶部显示。**本批没有动 narrative 模板** —— 改引用是内容变更，
-应当单独决策。
+**已于同日修复**（决议条目 017）：
+
+- `narr.conclusion.*` 7 处 → `rule.template_2026.section_1_9`（1.9 结论）
+- `narr.soil_loss_prevention.benefit_analysis.*` 4 处 → `rule.template_2026.section_9_2`（9.2 效益分析）
+
+`rule.template_2026.section_11` **不删除**，转为 `RETIRED_ID` 并登记
+`superseded_by`：旧快照和按"第 11 章"定位结论的历史审查意见仍会出现这个 ID，
+删掉就没人解释得清它是什么。lint 对 RETIRED_ID 只报 INFO——
+它是已处理完的历史遗留，长期挂 WARN 会让人学会忽略 WARN。
+
+`sec.conclusion` / `sec.soil_loss_prevention.benefit_analysis` 两个 stable_id
+与 `sec_11_conclusion.py` / `sec_7_5_benefit_analysis.py` 两个文件名**均未改动**——
+文件名不是 stable id，改名的收益抵不上 import 面的扰动。
 
 ---
 
@@ -157,4 +167,4 @@ PYTHONPATH=src python3 -m cpswc.frontend_payload samples/huizhou_housing_v0.json
 
 1. **补 `rule.t2026.*` 的来源**——回 ObligationSet 逐条溯源（25 条）
 2. **读图抓 232 号 / GB 标准的条文原文**——把 DECLARED 升成 VERIFIED_TEXT（24 条）
-3. **决定要不要改那两处陈旧引用**——`section_11` → 1.9，`section_7` → 9.2
+3. ~~决定要不要改那两处陈旧引用~~ **已修**（条目 017）
